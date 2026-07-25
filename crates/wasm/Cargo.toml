@@ -1,0 +1,12 @@
+[package]
+name = "social-wrapped-wasm"
+version.workspace = true
+edition.workspace = true
+description = "WASM bindings for social-wrapped"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+social-wrapped-core = { path = "../core" }
+wasm-bindgen = "0.2"

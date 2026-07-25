@@ -4,8 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "build:wasm": "wasm-pack build crates/wasm --target web --out-dir ../../src/wasm-pkg",
+    "build:wasm:dev": "wasm-pack build crates/wasm --target web --out-dir ../../src/wasm-pkg --dev",
+    "dev": "bun run build:wasm:dev && vite",
+    "build": "bun run build:wasm && vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri"
   },
@@ -22,6 +24,8 @@
     "@vitejs/plugin-vue": "^6.0.8",
     "typescript": "~5.6.2",
     "vite": "^8.1.5",
+    "vite-plugin-top-level-await": "^1.6.0",
+    "vite-plugin-wasm": "^3.5.0",
     "vue-tsc": "^3.3.8"
   }
 }

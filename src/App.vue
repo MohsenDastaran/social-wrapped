@@ -1,17 +1,13 @@
 <script setup lang="ts" vapor>
 import { ref } from "vue";
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { greet as greetApi } from "@/platform/api";
 
 const greetMsg = ref("");
 const name = ref("");
 
 async function greet() {
   try {
-    if (isTauri()) {
-      greetMsg.value = await invoke("greet", { name: name.value });
-    } else {
-      greetMsg.value = `Hello, ${name.value}! You've been greeted from the browser preview.`;
-    }
+    greetMsg.value = await greetApi(name.value);
   } catch (error) {
     greetMsg.value =
       error instanceof Error ? error.message : "Failed to greet.";

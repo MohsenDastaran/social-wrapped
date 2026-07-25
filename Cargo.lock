@@ -3047,9 +3047,26 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "social-wrapped-core",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",
+]
+
+[[package]]
+name = "social-wrapped-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "social-wrapped-wasm"
+version = "0.1.0"
+dependencies = [
+ "social-wrapped-core",
+ "wasm-bindgen",
 ]
 
 [[package]]
