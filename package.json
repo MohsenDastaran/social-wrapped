@@ -7,9 +7,13 @@
     "build:wasm": "wasm-pack build crates/wasm --target web --out-dir ../../src/wasm-pkg",
     "build:wasm:dev": "wasm-pack build crates/wasm --target web --out-dir ../../src/wasm-pkg --dev",
     "dev": "bun run build:wasm:dev && vite",
+    "dev:app": "vite",
     "build": "bun run build:wasm && vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "android:dev": "tauri android dev",
+    "android:dev:device": "tauri android dev --host",
+    "android:build": "tauri android build --apk"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

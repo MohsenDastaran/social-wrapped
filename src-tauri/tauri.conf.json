@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.mohsendastaran.social-wrapped",
   "build": {
-    "beforeDevCommand": "bun run dev",
+    "beforeDevCommand": "bun run dev:app",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "bun run build",
     "frontendDist": "../dist"
