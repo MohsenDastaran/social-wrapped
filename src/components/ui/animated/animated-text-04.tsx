@@ -69,7 +69,7 @@ export function AnimatedTextRoller({
       )}
     >
       {prefix ? (
-        <p className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+        <p className="text-3xl font-semibold tracking-tight text-black sm:text-4xl">
           {prefix}
         </p>
       ) : null}
