@@ -66,7 +66,7 @@ export function AboutPage() {
         <CanvasCrowd />
       </div>
 
-      <div className="relative z-10 flex w-full max-w-2xl flex-col items-center px-1 sm:px-2">
+      <div className="relative z-10 flex w-full max-w-2xl flex-col items-center rounded-3xl bg-background/75 px-3 py-6 shadow-[0_0_80px_24px] shadow-background/80 backdrop-blur-[2px] sm:px-6 dark:bg-background/70 dark:shadow-background/90">
         <p className="mb-4 text-center text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:mb-6 sm:text-sm sm:tracking-[0.2em]">
           Why Social Wrapped
         </p>
@@ -77,7 +77,7 @@ export function AboutPage() {
           intervalMs={4000}
           stacked
           onIndexChange={onIndexChange}
-          className="w-full drop-shadow-sm"
+          className="w-full"
         />
 
         <TextReveal
