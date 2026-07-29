@@ -12,6 +12,7 @@ dist
 dist-ssr
 target
 src/wasm-pkg
+crates/core/mock/
 *.local
 
 # Editor directories and files
@@ -24,3 +25,4 @@ src/wasm-pkg
 *.njsproj
 *.sln
 *.sw?
+graphify-out

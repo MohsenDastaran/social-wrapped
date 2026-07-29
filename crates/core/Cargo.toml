@@ -1,9 +1,22 @@
 [package]
-name = "social-wrapped-core"
+name = "app-core"
 version.workspace = true
 edition.workspace = true
-description = "Shared business logic for social-wrapped"
+description = "Platform-agnostic analytics core for social media data exports"
+
+[features]
+default = ["storage", "analytics", "parallel"]
+storage = ["dep:duckdb"]
+analytics = ["storage"]
+parallel = ["dep:rayon"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 thiserror = "2"
+zip = "2"
+tempfile = "3"
+rayon = { version = "1", optional = true }
+duckdb = { version = "1", features = ["bundled"], optional = true }
+
+[dev-dependencies]
