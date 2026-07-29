@@ -26,7 +26,7 @@
 //! serde without allocation.
 
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{BufReader, Read};
 use std::path::Path;
 
 use serde::Deserialize;
@@ -146,10 +146,17 @@ impl TelegramExportSummary {
 /// [`CoreError::Json`] if the JSON is malformed.
 pub fn summarize_export(path: &Path) -> Result<TelegramExportSummary, CoreError> {
     let file_size_bytes = std::fs::metadata(path)?.len();
-
     let file = File::open(path)?;
-    // 256 KB read buffer — reduces syscall overhead on large files.
     let reader = BufReader::with_capacity(256 * 1024, file);
+    summarize_export_from_reader(reader, Some(file_size_bytes))
+}
+
+/// Parses a Telegram full-account export from any [`Read`] source.
+pub fn summarize_export_from_reader<R: Read>(
+    reader: R,
+    file_size_bytes: Option<u64>,
+) -> Result<TelegramExportSummary, CoreError> {
+    let reader = BufReader::with_capacity(256 * 1024, reader);
     let export: RawExport = serde_json::from_reader(reader)?;
 
     // ── Identity ──────────────────────────────────────────────────────────────
@@ -226,7 +233,7 @@ pub fn summarize_export(path: &Path) -> Result<TelegramExportSummary, CoreError>
         display_name,
         username,
         about_preview,
-        file_size_bytes,
+        file_size_bytes: file_size_bytes.unwrap_or(0),
         chat_count,
         total_messages,
         sent_messages,
