@@ -55,7 +55,7 @@ export function ModeToggle({ className }: { className?: string }) {
         aria-hidden
         className={cn(
           "pointer-events-none absolute inset-0 rounded-full opacity-0 transition-opacity duration-500",
-          "bg-[radial-gradient(circle_at_30%_30%,rgba(251,191,36,0.35),transparent_55%)]",
+          "bg-[radial-gradient(circle_at_30%_30%,color-mix(in_oklch,var(--primary)_40%,transparent),transparent_55%)]",
           !isDark && "opacity-100"
         )}
       />
