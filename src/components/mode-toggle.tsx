@@ -76,7 +76,7 @@ export function ModeToggle({ className }: { className?: string }) {
             animate={{ opacity: 1, rotate: 0, scale: 1, y: 0 }}
             exit={{ opacity: 0, rotate: 90, scale: 0.4, y: -6 }}
             transition={{ type: "spring", stiffness: 320, damping: 18 }}
-            className="relative z-10 inline-flex text-amber-400"
+            className="relative z-10 inline-flex text-primary-foreground"
           >
             <SunIcon />
           </motion.span>
