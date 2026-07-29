@@ -1,15 +1,22 @@
 "use client";
 
 import { gsap } from "gsap";
-import { useEffect, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 
 interface CrowdCanvasProps {
   src: string;
   rows?: number;
   cols?: number;
+  /** Cap how many peeps walk at once (sprite sheet still sliced with rows×cols). */
+  maxCrowd?: number;
 }
 
-const CrowdCanvas = ({ src, rows = 15, cols = 7 }: CrowdCanvasProps) => {
+const CrowdCanvas = ({
+  src,
+  rows = 15,
+  cols = 7,
+  maxCrowd,
+}: CrowdCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -23,6 +30,7 @@ const CrowdCanvas = ({ src, rows = 15, cols = 7 }: CrowdCanvasProps) => {
       src,
       rows,
       cols,
+      maxCrowd,
     };
 
     // UTILS
@@ -252,7 +260,19 @@ const CrowdCanvas = ({ src, rows = 15, cols = 7 }: CrowdCanvasProps) => {
 
       crowd.length = 0;
       availablePeeps.length = 0;
-      availablePeeps.push(...allPeeps);
+
+      const pool = [...allPeeps];
+      const limit = config.maxCrowd;
+      if (limit !== undefined && limit < pool.length) {
+        // Fisher–Yates shuffle, then take a smaller mobile-friendly crowd
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = (Math.random() * (i + 1)) | 0;
+          ;[pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        availablePeeps.push(...pool.slice(0, limit));
+      } else {
+        availablePeeps.push(...pool);
+      }
 
       initCrowd();
     };
@@ -276,14 +296,34 @@ const CrowdCanvas = ({ src, rows = 15, cols = 7 }: CrowdCanvasProps) => {
         if (peep.walk) peep.walk.kill();
       });
     };
-  }, [src, rows, cols]);
+  }, [src, rows, cols, maxCrowd]);
 
   return (
     <canvas ref={canvasRef} className="absolute inset-x-0 bottom-0 h-[90vh] w-full" />
   );
 };
 
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(`(max-width: ${breakpoint - 1}px)`).matches
+      : false
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const onChange = () => setIsMobile(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
 const Skiper39 = () => {
+  const isMobile = useIsMobile();
+
   return (
     <div className="relative min-h-svh w-full bg-white text-black">
       <div className="top-22 absolute start-1/2 grid -translate-x-1/2 rtl:translate-x-1/2 content-start justify-items-center gap-6 text-center text-black">
@@ -292,7 +332,12 @@ const Skiper39 = () => {
         </span>
       </div>
       <div className="absolute inset-x-0 bottom-0 min-h-svh w-full">
-        <CrowdCanvas src="/images/peeps/all-peeps.png" rows={15} cols={7} />
+        <CrowdCanvas
+          src="/images/peeps/all-peeps.png"
+          rows={15}
+          cols={7}
+          maxCrowd={isMobile ? 20 : undefined}
+        />
       </div>
     </div>
   );
