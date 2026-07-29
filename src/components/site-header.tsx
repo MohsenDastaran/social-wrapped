@@ -28,11 +28,11 @@ export function SiteHeader() {
                 end={item.to === "/"}
                 className={({ isActive }) =>
                   cn(
-                    "relative inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs/relaxed font-medium outline-none transition-colors",
+                    "relative inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs/relaxed outline-none transition-colors",
                     "focus-visible:ring-2 focus-visible:ring-ring/30",
                     isActive
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "font-semibold text-primary"
+                      : "font-medium text-muted-foreground hover:text-foreground"
                   )
                 }
               >
@@ -41,7 +41,7 @@ export function SiteHeader() {
                     {isActive ? (
                       <motion.span
                         layoutId="header-nav-active"
-                        className="absolute inset-0 rounded-full bg-primary/10 ring-1 ring-primary/15"
+                        className="absolute inset-0 rounded-full bg-primary/15 ring-1 ring-primary/25"
                         transition={{
                           type: "spring",
                           stiffness: 380,
