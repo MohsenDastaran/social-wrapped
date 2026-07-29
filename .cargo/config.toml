@@ -1,0 +1,7 @@
+# Limit parallel rustc/C++ jobs so optional DuckDB (bundled C++) builds cannot
+# exhaust RAM and freeze the machine.  Applies workspace-wide.
+#
+# When you opt in to analytics (see README), expect a long first build.
+# You can lower this further: jobs = 1
+[build]
+jobs = 2

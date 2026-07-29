@@ -61,13 +61,22 @@ All processing happens locally — your exports never leave your device.
 ### Feature flags (`app-core`)
 
 ```
-default = ["storage", "analytics", "parallel"]
-storage   → enables DuckDB
-analytics → requires storage
+default = []                  # nothing heavy — safe for everyday dev
+storage   → enables DuckDB    # opt-in only (bundled C++, RAM-heavy compile)
+analytics → storage + rayon   # OLAP queries (top_senders, etc.)
 parallel  → enables rayon
 ```
 
-WASM builds disable all default features (`default-features = false`) because DuckDB and rayon cannot target `wasm32-unknown-unknown`.
+**DuckDB is off by default** in both `app-core` and `src-tauri`. The bundled C++ build can use 10+ GB RAM and freeze your machine. Normal dev (`bun run tauri dev`) does not compile it.
+
+To enable OLAP analytics when you need them:
+
+```bash
+cargo build -p social-wrapped --features analytics
+bun run tauri dev -- --features analytics
+```
+
+WASM builds also use `default-features = false` because DuckDB cannot target `wasm32-unknown-unknown`.
 
 ### Platform abstraction (frontend)
 
@@ -158,11 +167,12 @@ bun run android:build
 ### Rust checks
 
 ```bash
-# Full workspace (includes DuckDB — first build takes 2–4 min)
-cargo build
+# Default — no DuckDB, fast compile
+cargo check -p app-core
+cargo check -p social-wrapped
 
-# WASM-safe subset only
-cargo check -p app-core --no-default-features
+# With DuckDB analytics (slow first build; .cargo/config.toml limits jobs to 2)
+cargo check -p app-core --features analytics
 ```
 
 ---

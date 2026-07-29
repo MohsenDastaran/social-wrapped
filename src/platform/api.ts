@@ -21,3 +21,14 @@ export async function greet(name: string): Promise<string> {
   const wasm = await getWasm();
   return wasm.greet(name);
 }
+
+/// Reads the Telegram mock export and returns a plain-text summary.
+/// Only works in the desktop/mobile Tauri app (requires local filesystem access).
+export async function loadTelegramMock(): Promise<string> {
+  if (isTauri()) {
+    return invoke<string>("load_telegram_mock");
+  }
+  throw new Error(
+    "Telegram mock loading requires the desktop app — not available in browser.",
+  );
+}

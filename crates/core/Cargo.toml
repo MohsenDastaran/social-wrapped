@@ -5,9 +5,12 @@ edition.workspace = true
 description = "Platform-agnostic analytics core for social media data exports"
 
 [features]
-default = ["storage", "analytics", "parallel"]
+# DuckDB compiles ~300 MB of C++ from source (features = ["bundled"]) and can
+# freeze low-RAM machines. Keep storage/analytics opt-in — enable only when
+# you need OLAP queries: cargo build --features analytics
+default = []
 storage = ["dep:duckdb"]
-analytics = ["storage"]
+analytics = ["storage", "parallel"]
 parallel = ["dep:rayon"]
 
 [dependencies]

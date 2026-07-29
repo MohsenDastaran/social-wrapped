@@ -4,7 +4,10 @@ mod commands;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![commands::greet::greet])
+        .invoke_handler(tauri::generate_handler![
+            commands::greet::greet,
+            commands::telegram_mock::load_telegram_mock,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

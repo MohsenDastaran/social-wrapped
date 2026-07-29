@@ -1,9 +1,13 @@
 <script setup lang="ts" vapor>
 import { ref } from "vue";
-import { greet as greetApi } from "@/platform/api";
+import { greet as greetApi, loadTelegramMock } from "@/platform/api";
 
 const greetMsg = ref("");
 const name = ref("");
+
+const telegramReport = ref("");
+const telegramError = ref("");
+const telegramLoading = ref(false);
 
 async function greet() {
     try {
@@ -11,6 +15,20 @@ async function greet() {
     } catch (error) {
         greetMsg.value =
             error instanceof Error ? error.message : "Failed to greet.";
+    }
+}
+
+async function useTelegramMock() {
+    telegramLoading.value = true;
+    telegramReport.value = "";
+    telegramError.value = "";
+    try {
+        telegramReport.value = await loadTelegramMock();
+    } catch (error) {
+        telegramError.value =
+            error instanceof Error ? error.message : "Failed to load Telegram mock.";
+    } finally {
+        telegramLoading.value = false;
     }
 }
 </script>
@@ -41,6 +59,18 @@ async function greet() {
             <button type="submit">Greet</button>
         </form>
         <p>{{ greetMsg }}</p>
+
+        <div class="row" style="margin-top: 1.5rem;">
+            <button
+                type="button"
+                @click="useTelegramMock"
+                :disabled="telegramLoading"
+            >
+                {{ telegramLoading ? "Loading…" : "Use Telegram Mock" }}
+            </button>
+        </div>
+        <p v-if="telegramError" class="telegram-error">{{ telegramError }}</p>
+        <pre v-if="telegramReport" class="telegram-report">{{ telegramReport }}</pre>
     </main>
 </template>
 
@@ -51,6 +81,24 @@ async function greet() {
 
 .logo.vue:hover {
     filter: drop-shadow(0 0 2em #249b73);
+}
+
+.telegram-error {
+    color: #c0392b;
+}
+
+.telegram-report {
+    text-align: left;
+    font-family: monospace;
+    font-size: 0.9em;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    margin: 1rem auto;
+    max-width: 600px;
+    width: 100%;
 }
 </style>
 <style>
