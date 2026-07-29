@@ -326,11 +326,11 @@ const Skiper39 = () => {
 
   return (
     <div className="relative min-h-svh w-full bg-white text-black">
-      <div className="top-22 absolute start-1/2 grid -translate-x-1/2 rtl:translate-x-1/2 content-start justify-items-center gap-6 text-center text-black">
+      {/* <div className="top-22 absolute start-1/2 grid -translate-x-1/2 rtl:translate-x-1/2 content-start justify-items-center gap-6 text-center text-black">
         <span className="relative max-w-[12ch] text-xs uppercase leading-tight opacity-40 after:absolute after:start-1/2 after:top-full after:h-16 after:w-px after:bg-gradient-to-b after:from-white after:to-black after:content-['']">
           Croud Canvas
         </span>
-      </div>
+      </div> */}
       <div className="absolute inset-x-0 bottom-0 min-h-svh w-full">
         <CrowdCanvas
           src="/images/peeps/all-peeps.png"
