@@ -1,3 +1,4 @@
+import { motion } from "motion/react"
 import { NavLink } from "react-router"
 
 import { ModeToggle } from "@/components/mode-toggle"
@@ -16,7 +17,7 @@ export function SiteHeader() {
           Social Wrapped
         </NavLink>
 
-        <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
+        <nav aria-label="Primary" className="relative hidden items-center gap-0.5 md:flex">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
 
@@ -27,17 +28,32 @@ export function SiteHeader() {
                 end={item.to === "/"}
                 className={({ isActive }) =>
                   cn(
-                    buttonNavClass,
+                    "relative inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs/relaxed font-medium outline-none transition-colors",
+                    "focus-visible:ring-2 focus-visible:ring-ring/30",
                     isActive
-                      ? "bg-secondary text-secondary-foreground"
-                      : "hover:bg-muted hover:text-foreground"
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-foreground"
                   )
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <Icon className="size-4" />
-                    <span aria-current={isActive ? "page" : undefined}>
+                    {isActive ? (
+                      <motion.span
+                        layoutId="header-nav-active"
+                        className="absolute inset-0 rounded-full bg-primary/10 ring-1 ring-primary/15"
+                        transition={{
+                          type: "spring",
+                          stiffness: 380,
+                          damping: 30,
+                        }}
+                      />
+                    ) : null}
+                    <Icon className="relative size-3.5" />
+                    <span
+                      className="relative"
+                      aria-current={isActive ? "page" : undefined}
+                    >
                       {item.label}
                     </span>
                   </>
@@ -52,6 +68,3 @@ export function SiteHeader() {
     </header>
   )
 }
-
-const buttonNavClass =
-  "inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-xs/relaxed font-medium transition-all outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
