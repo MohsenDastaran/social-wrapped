@@ -1,38 +1,48 @@
+import { NavLink } from "react-router"
+
 import { ModeToggle } from "@/components/mode-toggle"
-import { NAV_ITEMS, type PageId } from "@/components/nav-items"
-import { Button } from "@/components/ui/button"
+import { NAV_ITEMS } from "@/components/nav-items"
+import { cn } from "@/lib/utils"
 
-interface SiteHeaderProps {
-  activePage: PageId
-  onNavigate: (page: PageId) => void
-}
-
-export function SiteHeader({ activePage, onNavigate }: SiteHeaderProps) {
+export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
-        <span className="text-sm font-semibold tracking-tight">
+        <NavLink
+          to="/"
+          className="text-sm font-semibold tracking-tight"
+          end
+        >
           Social Wrapped
-        </span>
+        </NavLink>
 
         <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
-            const isActive = activePage === item.id
 
             return (
-              <Button
+              <NavLink
                 key={item.id}
-                type="button"
-                variant={isActive ? "secondary" : "ghost"}
-                size="sm"
-                className="gap-1.5"
-                aria-current={isActive ? "page" : undefined}
-                onClick={() => onNavigate(item.id)}
+                to={item.to}
+                end={item.to === "/"}
+                className={({ isActive }) =>
+                  cn(
+                    buttonNavClass,
+                    isActive
+                      ? "bg-secondary text-secondary-foreground"
+                      : "hover:bg-muted hover:text-foreground"
+                  )
+                }
               >
-                <Icon className="size-4" />
-                {item.label}
-              </Button>
+                {({ isActive }) => (
+                  <>
+                    <Icon className="size-4" />
+                    <span aria-current={isActive ? "page" : undefined}>
+                      {item.label}
+                    </span>
+                  </>
+                )}
+              </NavLink>
             )
           })}
         </nav>
@@ -42,3 +52,6 @@ export function SiteHeader({ activePage, onNavigate }: SiteHeaderProps) {
     </header>
   )
 }
+
+const buttonNavClass =
+  "inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-xs/relaxed font-medium transition-all outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
