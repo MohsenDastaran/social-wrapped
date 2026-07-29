@@ -1,11 +1,21 @@
 import { useCallback, useState } from "react"
+import { ArrowUpRight, Code2, UserRound } from "lucide-react"
 
+import { DataSafetyDialog } from "@/components/data-safety-dialog"
 import {
   AnimatedTextRoller,
   type AnimatedTextItem,
 } from "@/components/ui/animated/animated-text-04"
 import { TextReveal } from "@/components/ui/animated/animated-text-06"
+import {
+  CraftButton,
+  CraftButtonIcon,
+  CraftButtonLabel,
+} from "@/components/ui/animated/link-button"
 import { Skiper39 as CanvasCrowd } from "@/components/ui/animated/skiper39"
+
+const DEVELOPER_URL = "https://github.com/MohsenDastaran"
+const SOURCE_URL = "https://github.com/MohsenDastaran/social-wrapped"
 
 const PLATFORM_GOALS: (AnimatedTextItem & { detail: string })[] = [
   {
@@ -57,7 +67,7 @@ export function AboutPage() {
       </div>
 
       <div className="relative z-10 flex w-full max-w-2xl flex-col items-center px-1 sm:px-2">
-        <p className="text-center text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:text-sm sm:tracking-[0.2em]  mb-4 sm:mb-6 ">
+        <p className="mb-4 text-center text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:mb-6 sm:text-sm sm:tracking-[0.2em]">
           Why Social Wrapped
         </p>
 
@@ -83,6 +93,42 @@ export function AboutPage() {
           once={false}
           className="w-full max-w-lg px-1 text-center text-sm font-medium leading-relaxed text-muted-foreground sm:px-0 sm:text-base md:text-lg"
         />
+
+        <div className="mt-8 flex w-full max-w-lg flex-col items-center gap-4">
+          <DataSafetyDialog />
+
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <CraftButton
+              render={
+                <a href={DEVELOPER_URL} target="_blank" rel="noreferrer" />
+              }
+            >
+              <UserRound
+                className="relative z-2 size-3.5 shrink-0 opacity-70 transition-colors duration-500 group-hover/button:text-foreground group-hover/button:opacity-100"
+                aria-hidden
+              />
+              <CraftButtonLabel>Developer</CraftButtonLabel>
+              <CraftButtonIcon>
+                <ArrowUpRight className="size-3" aria-hidden />
+              </CraftButtonIcon>
+            </CraftButton>
+
+            <CraftButton
+              render={
+                <a href={SOURCE_URL} target="_blank" rel="noreferrer" />
+              }
+            >
+              <Code2
+                className="relative z-2 size-3.5 shrink-0 opacity-70 transition-colors duration-500 group-hover/button:text-foreground group-hover/button:opacity-100"
+                aria-hidden
+              />
+              <CraftButtonLabel>Source code</CraftButtonLabel>
+              <CraftButtonIcon>
+                <ArrowUpRight className="size-3" aria-hidden />
+              </CraftButtonIcon>
+            </CraftButton>
+          </div>
+        </div>
       </div>
     </>
   )
