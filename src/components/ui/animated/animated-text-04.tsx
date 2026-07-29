@@ -87,7 +87,7 @@ export function AnimatedTextRoller({
             <p
               key={`${item.text}-${i}`}
               className={cn(
-                "flex items-center text-3xl font-semibold leading-tight tracking-tight sm:text-4xl",
+                "flex items-center text-3xl font-semibold leading-tight tracking-tight capitalize sm:text-4xl",
                 stacked ? "w-full justify-center text-center" : "justify-start",
                 item.color ?? "text-primary"
               )}
