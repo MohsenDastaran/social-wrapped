@@ -1,103 +1,43 @@
-import { useState, type FormEvent } from "react"
+import { useState, type ComponentType } from "react"
 
-import { Button } from "@/components/ui/button"
-import {
-  formatInvokeError,
-  greet as greetApi,
-  loadTelegramMock,
-} from "@/platform/api"
-import reactLogo from "@/assets/react.svg"
+import { BottomNav } from "@/components/bottom-nav"
+import type { PageId } from "@/components/nav-items"
+import { SiteHeader } from "@/components/site-header"
+import { Skiper39 } from "@/components/ui/skiper-ui/skiper39"
+import { AboutPage } from "@/pages/about-page"
+import { DocsPage } from "@/pages/docs-page"
+import { HistoryPage } from "@/pages/history-page"
+import { HomePage } from "@/pages/home-page"
+import { SettingsPage } from "@/pages/settings-page"
+
+const PAGES: Record<PageId, ComponentType> = {
+  home: HomePage,
+  docs: DocsPage,
+  history: HistoryPage,
+  settings: SettingsPage,
+  about: AboutPage,
+}
 
 export function App() {
-  const [name, setName] = useState("")
-  const [greetMsg, setGreetMsg] = useState("")
-  const [telegramReport, setTelegramReport] = useState("")
-  const [telegramError, setTelegramError] = useState("")
-  const [telegramLoading, setTelegramLoading] = useState(false)
-
-  async function handleGreet(event: FormEvent) {
-    event.preventDefault()
-    try {
-      setGreetMsg(await greetApi(name))
-    } catch (error) {
-      setGreetMsg(formatInvokeError(error))
-    }
-  }
-
-  async function handleTelegramMock() {
-    setTelegramLoading(true)
-    setTelegramReport("")
-    setTelegramError("")
-    try {
-      setTelegramReport(await loadTelegramMock())
-    } catch (error) {
-      setTelegramError(formatInvokeError(error))
-    } finally {
-      setTelegramLoading(false)
-    }
-  }
+  const [activePage, setActivePage] = useState<PageId>("home")
+  const ActivePageComponent = PAGES[activePage]
 
   return (
-    <main className="flex min-h-svh flex-col items-center px-6 pt-[10vh] text-center">
-      <h1 className="text-2xl font-semibold">Welcome to Tauri + React</h1>
-
-      <div className="mt-6 flex items-center justify-center gap-2">
-        <a href="https://vite.dev" target="_blank" rel="noreferrer">
-          <img src="/vite.svg" className="h-24 p-6" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank" rel="noreferrer">
-          <img src="/tauri.svg" className="h-24 p-6" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank" rel="noreferrer">
-          <img src={reactLogo} className="h-24 p-6" alt="React logo" />
-        </a>
-      </div>
-
-      <p className="mt-2 text-sm text-muted-foreground">
-        Click on the Tauri, Vite, and React logos to learn more.
-      </p>
-
-      <form
-        className="mt-6 flex items-center justify-center gap-2"
-        onSubmit={handleGreet}
-      >
-        <input
-          id="greet-input"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Enter a name..."
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-        />
-        <Button type="submit">Greet</Button>
-      </form>
-
-      {greetMsg ? <p className="mt-4 text-sm">{greetMsg}</p> : null}
-
-      <div className="mt-6">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleTelegramMock}
-          disabled={telegramLoading}
-        >
-          {telegramLoading ? "Loading…" : "Use Telegram Mock"}
-        </Button>
-      </div>
-
-      {telegramError ? (
-        <p className="mt-4 text-sm text-destructive">{telegramError}</p>
+    <div className="relative flex min-h-svh flex-col">
+      {activePage === "about" ? (
+        <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+          <Skiper39 />
+        </div>
       ) : null}
 
-      {telegramReport ? (
-        <pre className="mt-4 max-w-xl w-full rounded-md bg-muted p-4 text-left font-mono text-xs leading-relaxed whitespace-pre-wrap">
-          {telegramReport}
-        </pre>
-      ) : null}
+      <SiteHeader activePage={activePage} onNavigate={setActivePage} />
 
-      <p className="mt-auto pb-6 font-mono text-xs text-muted-foreground">
-        (Press <kbd className="rounded border px-1">d</kbd> to toggle dark mode)
-      </p>
-    </main>
+      <main className="relative z-10 flex flex-1 flex-col items-center px-6 pb-24 pt-10 text-center md:pb-10">
+        <ActivePageComponent />
+      </main>
+
+      <BottomNav activePage={activePage} onNavigate={setActivePage} />
+    </div>
   )
 }
 
