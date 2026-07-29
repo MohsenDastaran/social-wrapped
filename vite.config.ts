@@ -3,7 +3,6 @@ import fs from "node:fs"
 import path from "node:path"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
-import topLevelAwait from "vite-plugin-top-level-await"
 import wasm from "vite-plugin-wasm"
 import { defineConfig, type Plugin } from "vite"
 
@@ -85,7 +84,6 @@ export default defineConfig(async () => ({
     react(),
     tailwindcss(),
     wasm(),
-    topLevelAwait(),
   ],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
@@ -116,5 +114,9 @@ export default defineConfig(async () => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  build: {
+    // Native top-level await — no vite-plugin-top-level-await / esbuild needed
+    target: "esnext",
   },
 }))
