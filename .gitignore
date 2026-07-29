@@ -13,6 +13,7 @@ dist-ssr
 target
 src/wasm-pkg
 crates/core/mock/
+crates/core/src/mock/
 *.local
 
 # Editor directories and files
