@@ -104,7 +104,7 @@ export function TextReveal({
       initial={props.initial ?? "hidden"}
       whileInView={props.whileInView ?? "visible"}
       viewport={props.viewport ?? { once, amount: 0.2 }}
-      className={cn("inline-block", className)}
+      className={cn("inline-block max-w-full text-pretty", className)}
       {...props}
     >
       {mode === "letter"
@@ -124,15 +124,13 @@ export function TextReveal({
                     </motion.span>
                   )
                 })}
-                {wordIdx < words.length - 1 && (
-                  <span className="inline-block">&nbsp;</span>
-                )}
+                {wordIdx < words.length - 1 ? "\u00A0" : null}
               </span>
             )
           })
         : words.map((word, wordIdx) => {
             return (
-              <span key={wordIdx} className="inline-block whitespace-nowrap">
+              <span key={wordIdx} className="mr-[0.3em] inline-block last:mr-0">
                 <motion.span
                   custom={wordIdx}
                   variants={childVariants}
@@ -140,9 +138,6 @@ export function TextReveal({
                 >
                   {word}
                 </motion.span>
-                {wordIdx < words.length - 1 && (
-                  <span className="inline-block">&nbsp;</span>
-                )}
               </span>
             )
           })}

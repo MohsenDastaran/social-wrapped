@@ -56,8 +56,8 @@ export function AboutPage() {
         <CanvasCrowd />
       </div>
 
-      <div className="relative z-10 flex w-full max-w-2xl flex-col items-center gap-6 px-2">
-        <p className="text-center text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+      <div className="relative z-10 flex w-full max-w-2xl flex-col items-center px-1 sm:px-2">
+        <p className="text-center text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:text-sm sm:tracking-[0.2em]  mb-4 sm:mb-6 ">
           Why Social Wrapped
         </p>
 
@@ -65,10 +65,9 @@ export function AboutPage() {
           prefix="Made for"
           items={PLATFORM_GOALS}
           intervalMs={4000}
-          lineHeightRem={3.25}
-          
+          stacked
           onIndexChange={onIndexChange}
-          className="drop-shadow-sm"
+          className="w-full drop-shadow-sm"
         />
 
         <TextReveal
@@ -77,12 +76,12 @@ export function AboutPage() {
           as="p"
           mode="word"
           delay={0.05}
-          stagger={0.04}
-          duration={0.4}
+          stagger={0.035}
+          duration={0.35}
           blur="6px"
           y={8}
           once={false}
-          className="max-w-lg text-center text-base font-medium leading-relaxed text-muted-foreground sm:text-lg"
+          className="w-full max-w-lg px-1 text-center text-sm font-medium leading-relaxed text-muted-foreground sm:px-0 sm:text-base md:text-lg"
         />
       </div>
     </>
