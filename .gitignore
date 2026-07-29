@@ -26,4 +26,3 @@ crates/core/src/mock/telegram/
 *.njsproj
 *.sln
 *.sw?
-graphify-out
