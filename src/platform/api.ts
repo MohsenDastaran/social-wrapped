@@ -4,6 +4,16 @@ type WasmModule = typeof import("../wasm-pkg/social_wrapped_wasm");
 
 let wasmInit: Promise<WasmModule> | null = null;
 
+/** Tauri invoke rejections are often plain strings, not Error instances. */
+export function formatInvokeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return String(error);
+}
+
 async function getWasm(): Promise<WasmModule> {
   if (!wasmInit) {
     wasmInit = import("../wasm-pkg/social_wrapped_wasm.js").then(async (mod) => {

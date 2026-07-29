@@ -74,11 +74,18 @@ impl MockDataProvider {
     /// so tests that have not yet populated a given platform continue to compile
     /// and run without failing.
     pub fn platform_files(&self, platform: &str) -> Result<Vec<PathBuf>, CoreError> {
-        let dir = self.platform_dir(platform);
-        if !dir.exists() {
-            return Ok(Vec::new());
+        for dir in [
+            self.platform_dir(platform),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("src")
+                .join("mock")
+                .join(platform),
+        ] {
+            if dir.exists() {
+                return collect_files_recursive(&dir);
+            }
         }
-        collect_files_recursive(&dir)
+        Ok(Vec::new())
     }
 
     /// Loads raw bytes from a file at `mock/<relative_path>`.
@@ -113,6 +120,37 @@ impl MockDataProvider {
     /// you need to pass a path directly to a parser or the analytics engine.
     pub fn resolve(&self, relative_path: &str) -> PathBuf {
         self.base_path.join(relative_path)
+    }
+
+    /// Resolves a fixture file, checking both canonical and in-tree locations:
+    ///
+    /// 1. `crates/core/mock/<relative>` (preferred for large exports)
+    /// 2. `crates/core/src/mock/<relative>` (legacy / dev convenience)
+    ///
+    /// Returns the first path that exists, or the canonical path if none exist
+    /// (so error messages point at the preferred location).
+    pub fn resolve_fixture(&self, relative_path: &str) -> PathBuf {
+        for candidate in Self::fixture_candidates(relative_path) {
+            if candidate.exists() {
+                return candidate;
+            }
+        }
+        self.base_path.join(relative_path)
+    }
+
+    /// Returns `true` when a fixture exists in any search location.
+    pub fn fixture_exists(&self, relative_path: &str) -> bool {
+        Self::fixture_candidates(relative_path)
+            .iter()
+            .any(|path| path.exists())
+    }
+
+    fn fixture_candidates(relative_path: &str) -> Vec<PathBuf> {
+        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        vec![
+            manifest.join("mock").join(relative_path),
+            manifest.join("src").join("mock").join(relative_path),
+        ]
     }
 }
 
