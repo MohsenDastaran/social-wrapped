@@ -15,9 +15,11 @@ DuckDB is still in the project for future OLAP queries (`top_senders`, `messages
 
 ## Architecture overview
 
+### Tauri desktop / mobile app
+
 ```mermaid
 sequenceDiagram
-    participant UI as App.vue
+    participant UI as App.tsx
     participant API as platform/api.ts
     participant Tauri as Tauri IPC
     participant Cmd as telegram_mock.rs
@@ -38,7 +40,33 @@ sequenceDiagram
     Parser-->>Cmd: String report
     Cmd-->>Tauri: Ok(String)
     Tauri-->>API: resolved promise
-    API-->>UI: telegramReport.value = text
+    API-->>UI: setTelegramReport(text)
+    UI->>UI: render in pre block
+```
+
+### Browser (`localhost` via Vite)
+
+```mermaid
+sequenceDiagram
+    participant UI as App.tsx
+    participant API as platform/api.ts
+    participant WASM as wasm load_telegram_mock
+    participant Vite as Vite /mock middleware
+    participant Parser as telegram.rs summarize_export_from_reader
+    participant Disk as result.json on disk
+
+    UI->>UI: Click "Use Telegram Mock"
+    UI->>API: loadTelegramMock()
+    API->>WASM: wasm.load_telegram_mock()
+    WASM->>Vite: fetch("/mock/telegram/result.json")
+    Vite->>Disk: stream fixture file
+    Vite-->>WASM: JSON bytes
+    WASM->>Parser: summarize_export_from_reader
+    Parser->>Parser: count sent/received, sample 5 messages
+    Parser->>Parser: to_text_report()
+    Parser-->>WASM: String report
+    WASM-->>API: resolved promise
+    API-->>UI: setTelegramReport(text)
     UI->>UI: render in pre block
 ```
 
@@ -48,11 +76,13 @@ sequenceDiagram
 
 | Layer | File(s) | Role |
 |---|---|---|
-| UI | `src/App.vue` | Button, loading state, display result |
+| UI | `src/App.tsx` | Button, loading state, display result |
 | Platform API | `src/platform/api.ts` | Tauri vs browser routing, error formatting |
+| WASM (browser only) | `crates/wasm/src/lib.rs` | Fetch mock JSON, call core parser |
+| Vite dev server | `vite.config.ts` (`mockFixtures`) | Serve fixtures at `/mock/…` |
 | Tauri shell | `src-tauri/src/lib.rs` | Registers commands |
 | Tauri command | `src-tauri/src/commands/telegram_mock.rs` | Thin bridge: find file → call core |
-| Mock paths | `crates/core/src/mock/provider.rs` | Resolve fixture file on disk |
+| Mock paths | `crates/core/src/mock/provider.rs` | Resolve fixture file on disk (Tauri path) |
 | Business logic | `crates/core/src/parsers/telegram.rs` | Parse JSON, aggregate stats, format text |
 | Data file | `crates/core/src/mock/telegram/result.json` | Your Telegram export (gitignored) |
 
@@ -62,17 +92,25 @@ sequenceDiagram
 
 ### Step 1 — User clicks the button
 
-**File:** [`src/App.vue`](../src/App.vue) (template, ~line 58–68)
+**File:** [`src/App.tsx`](../src/App.tsx) (lines 76–95)
 
-```html
-<button @click="useTelegramMock" :disabled="telegramLoading">
-  {{ telegramLoading ? "Loading…" : "Use Telegram Mock" }}
-</button>
-<pre v-if="telegramReport">{{ telegramReport }}</pre>
+```tsx
+<Button
+  type="button"
+  variant="outline"
+  onClick={handleTelegramMock}
+  disabled={telegramLoading}
+>
+  {telegramLoading ? "Loading…" : "Use Telegram Mock"}
+</Button>
+
+{telegramReport ? (
+  <pre className="...">{telegramReport}</pre>
+) : null}
 ```
 
 **What happens:**
-- `@click` calls `useTelegramMock()`
+- `onClick` calls `handleTelegramMock()`
 - Button shows "Loading…" and is disabled while work runs
 - Result goes into `<pre>` as plain text
 
@@ -80,41 +118,48 @@ sequenceDiagram
 
 ---
 
-### Step 2 — Vue handler resets state and calls the API
+### Step 2 — React handler resets state and calls the API
 
-**File:** [`src/App.vue`](../src/App.vue) (`useTelegramMock`, lines 20–30)
+**File:** [`src/App.tsx`](../src/App.tsx) (`handleTelegramMock`, lines 27–38)
 
 ```typescript
-telegramLoading.value = true;
-telegramReport.value = "";
-telegramError.value = "";
-telegramReport.value = await loadTelegramMock();
+setTelegramLoading(true)
+setTelegramReport("")
+setTelegramError("")
+try {
+  setTelegramReport(await loadTelegramMock())
+} catch (error) {
+  setTelegramError(formatInvokeError(error))
+} finally {
+  setTelegramLoading(false)
+}
 ```
 
-**Why:** Clear previous output/errors; `await` keeps the UI responsive during the Rust work (Tauri runs the command on a background thread).
+**Why:** Clear previous output/errors; `await` keeps the UI responsive during the Rust work (Tauri runs the command on a background thread; WASM runs async fetch + parse).
 
 ---
 
-### Step 3 — Platform API routes to Tauri (not WASM/browser)
+### Step 3 — Platform API routes by environment
 
-**File:** [`src/platform/api.ts`](../src/platform/api.ts) (`loadTelegramMock`, lines 37–44)
+**File:** [`src/platform/api.ts`](../src/platform/api.ts) (`loadTelegramMock`, lines 37–43)
 
 ```typescript
 if (isTauri()) {
-  return invoke<string>("load_telegram_mock");
+  return invoke<string>("load_telegram_mock")
 }
-throw new Error("Telegram mock loading requires the desktop app...");
+const wasm = await getWasm()
+return wasm.load_telegram_mock()
 ```
 
 **What happens:**
-- In the **Tauri desktop app**: `invoke` sends an IPC message to Rust
-- In **browser** (`localhost`): throws — no filesystem access for a 362 MB local file
+- In the **Tauri desktop/mobile app**: `invoke` sends an IPC message to Rust (filesystem access)
+- In **browser** (`localhost`): loads WASM and calls `load_telegram_mock()`, which fetches the fixture from the Vite dev server
 
-**Why:** Reading local export files needs the Tauri/Rust backend. WASM in the browser can't access arbitrary paths on disk.
+**Why:** Tauri can read local paths directly. The browser has no filesystem access, so it fetches `/mock/telegram/result.json` (served by Vite) and parses in WASM with the same Rust core logic.
 
 ---
 
-### Step 4 — Tauri dispatches to the registered command
+### Step 4a — Tauri path: dispatch to the registered command
 
 **File:** [`src-tauri/src/lib.rs`](../src-tauri/src/lib.rs) (lines 7–10)
 
@@ -127,7 +172,28 @@ throw new Error("Telegram mock loading requires the desktop app...");
 
 **What happens:** Tauri matches `"load_telegram_mock"` to the Rust function in `telegram_mock.rs`.
 
-**Why:** Commands are the boundary between the WebView (Vue) and native Rust.
+**Why:** Commands are the boundary between the WebView (React) and native Rust.
+
+---
+
+### Step 4b — Browser path: WASM fetch + parse
+
+**File:** [`crates/wasm/src/lib.rs`](../crates/wasm/src/lib.rs) (`load_telegram_mock`)
+
+```rust
+const MOCK_URL: &str = "/mock/telegram/result.json";
+// fetch → array_buffer → summarize_export_from_reader → to_text_report()
+```
+
+**File:** [`vite.config.ts`](../vite.config.ts) (`mockFixtures` plugin)
+
+Serves files from:
+1. `crates/core/mock/`
+2. `crates/core/src/mock/`
+
+at the URL prefix `/mock/…`.
+
+**Why:** Same `app-core` parser runs in WASM; only the I/O layer differs (HTTP fetch vs `File::open`).
 
 ---
 
@@ -153,11 +219,11 @@ summarize_export(&path)
 3. Resolve the absolute path
 4. Call `summarize_export`, format as text, return `String` to the frontend
 
-**Why:** The command stays thin; logic lives in `app-core` so it can be reused (tests, CLI, Android later) without Tauri.
+**Why:** The command stays thin; logic lives in `app-core` so it can be reused (tests, CLI, WASM, Android later) without Tauri.
 
 ---
 
-### Step 6 — MockDataProvider resolves the file path
+### Step 6 — MockDataProvider resolves the file path (Tauri only)
 
 **File:** [`crates/core/src/mock/provider.rs`](../crates/core/src/mock/provider.rs) (`resolve_fixture`, lines 132–154)
 
@@ -173,16 +239,19 @@ Uses `env!("CARGO_MANIFEST_DIR")` — compile-time path to `crates/core/`.
 
 ### Step 7 — Rust opens and parses the entire JSON file
 
-**File:** [`crates/core/src/parsers/telegram.rs`](../crates/core/src/parsers/telegram.rs) (`summarize_export`, lines 147–236)
+**File:** [`crates/core/src/parsers/telegram.rs`](../crates/core/src/parsers/telegram.rs)
+
+**Tauri:** `summarize_export(path)` — opens file from disk.
+
+**Browser/WASM:** `summarize_export_from_reader(reader, file_size)` — parses bytes from fetch.
 
 ```rust
-let file = File::open(path)?;
-let reader = BufReader::with_capacity(256 * 1024, file);
+let reader = BufReader::with_capacity(256 * 1024, reader);
 let export: RawExport = serde_json::from_reader(reader)?;
 ```
 
 **What happens:**
-1. Read file size from metadata
+1. Read file size from metadata (Tauri) or fetch buffer length (browser)
 2. Stream-read with a 256 KB buffer
 3. Deserialize into `RawExport` — only fields we care about:
 
@@ -256,21 +325,23 @@ Sample messages:
   ...
 ```
 
-**Why plain text:** You asked for "not fancy, just text". A `String` crosses the Tauri boundary easily; Vue renders it in `<pre>`.
+**Why plain text:** You asked for "not fancy, just text". A `String` crosses the Tauri/WASM boundary easily; React renders it in `<pre>`.
 
 ---
 
 ### Step 10 — Result travels back to the UI
 
-**Path:** `telegram_mock.rs` → Tauri IPC → `api.ts` → `App.vue`
+**Tauri path:** `telegram_mock.rs` → Tauri IPC → `api.ts` → `App.tsx`
+
+**Browser path:** `wasm/lib.rs` → `api.ts` → `App.tsx`
 
 ```typescript
-telegramReport.value = await loadTelegramMock();
+setTelegramReport(await loadTelegramMock())
 ```
 
-On error, `formatInvokeError()` in `api.ts` handles Tauri rejections (often plain strings, not `Error` objects).
+On error, `formatInvokeError()` in `api.ts` handles Tauri rejections (often plain strings, not `Error` objects) and WASM errors.
 
-**File:** [`src/App.vue`](../src/App.vue) — `telegramError` shown in `<p>`, `telegramReport` in `<pre>`.
+**File:** [`src/App.tsx`](../src/App.tsx) — `telegramError` shown in `<p>`, `telegramReport` in `<pre>`.
 
 ---
 
@@ -281,7 +352,6 @@ On error, `formatInvokeError()` in `api.ts` handles Tauri rejections (often plai
 | **DuckDB** | Not used | Opt-in via `--features analytics`; disabled by default |
 | **`AnalyticsEngine`** | Not used | For future `top_senders()` etc. on simpler schemas |
 | **`PlatformParser` trait** | Not used | Telegram parser in `detector.rs` is still a stub |
-| **WASM** | Not used | Browser can't read local 362 MB files |
 | **Database / SQLite** | Not used | Everything is in-memory Rust |
 
 ---
@@ -308,25 +378,33 @@ The Telegram mock button intentionally bypasses that stack for a quick, self-con
 ## File dependency diagram
 
 ```
-src/App.vue
+src/App.tsx
     └── src/platform/api.ts
-            └── Tauri IPC: "load_telegram_mock"
-                    └── src-tauri/src/commands/telegram_mock.rs
-                            ├── crates/core/src/mock/provider.rs  (find file)
-                            └── crates/core/src/parsers/telegram.rs  (parse + summarize)
-                                    └── crates/core/src/mock/telegram/result.json  (your data)
+            ├── Tauri: IPC "load_telegram_mock"
+            │       └── src-tauri/src/commands/telegram_mock.rs
+            │               ├── crates/core/src/mock/provider.rs  (find file)
+            │               └── crates/core/src/parsers/telegram.rs  (parse + summarize)
+            │                       └── crates/core/src/mock/telegram/result.json
+            │
+            └── Browser: WASM load_telegram_mock()
+                    ├── crates/wasm/src/lib.rs  (fetch + bridge)
+                    ├── vite.config.ts  (/mock/… static serve)
+                    └── crates/core/src/parsers/telegram.rs  (parse + summarize)
+                            └── crates/core/src/mock/telegram/result.json
 ```
 
 ---
 
 ## Summary
 
-1. **Click** → Vue handler in `App.vue`
-2. **Route** → `loadTelegramMock()` in `api.ts` → Tauri `invoke`
-3. **Command** → `telegram_mock.rs` finds file via `MockDataProvider`
+1. **Click** → React handler in `App.tsx`
+2. **Route** → `loadTelegramMock()` in `api.ts`
+   - **Tauri:** `invoke("load_telegram_mock")`
+   - **Browser:** WASM `load_telegram_mock()` + fetch `/mock/telegram/result.json`
+3. **Load data** → Tauri reads disk via `MockDataProvider`, or Vite serves the fixture to WASM
 4. **Parse** → `telegram.rs` reads entire JSON with `serde_json` in Rust
 5. **Aggregate** → count sent/received, sample 5 messages in Rust loops
 6. **Format** → `to_text_report()` → plain `String`
-7. **Display** → string returned over IPC → shown in `<pre>` in Vue
+7. **Display** → string returned over IPC or WASM → shown in `<pre>` in React
 
 **All processing is in Rust, in memory, no database.** DuckDB exists in the project for future analytics but is deliberately not used here — for performance, simplicity, and compatibility with your export format.
