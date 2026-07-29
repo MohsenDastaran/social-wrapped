@@ -75,11 +75,11 @@ const CrowdCanvas = ({
 
     const normalWalk = ({ peep, props }: { peep: any; props: any }) => {
       const { startX, startY, endX } = props;
-      const xDuration = 10;
-      const yDuration = 0.25;
+      const xDuration = 14;
+      const yDuration = 0.3;
 
       const tl = gsap.timeline();
-      tl.timeScale(randomRange(0.5, 1.5));
+      tl.timeScale(randomRange(0.45, 1));
       tl.to(
         peep,
         {
