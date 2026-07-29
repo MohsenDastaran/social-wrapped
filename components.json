@@ -23,6 +23,7 @@
   },
   "registries": {
     "@skiper-ui": "https://skiper-ui.com/registry/{name}.json",
-    "@dotmatrix": "https://dotmatrix.zzzzshawn.cloud/r/{name}.json"
+    "@dotmatrix": "https://dotmatrix.zzzzshawn.cloud/r/{name}.json",
+    "@shadcn-space": "https://shadcnspace.com/r/{name}.json"
   }
 }

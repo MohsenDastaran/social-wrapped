@@ -1,7 +1,7 @@
 import { Info } from "lucide-react"
 
 import { PagePlaceholder } from "@/components/page-placeholder"
-import { Skiper39 as CanvasCrowd } from "@/components/ui/skiper-ui/skiper39"
+import { Skiper39 as CanvasCrowd } from "@/components/ui/animated/skiper39"
 
 export function AboutPage() {
   return (
