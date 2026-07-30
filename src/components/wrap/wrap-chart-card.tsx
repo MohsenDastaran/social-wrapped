@@ -27,6 +27,8 @@ export type WrapChartCardProps = {
   exportLines?: string[]
   /** Export frame width preset. Use `compact` for pie charts. @default "default" */
   exportSize?: WrapChartExportSize
+  /** Extra controls next to the export button (e.g. filters). */
+  headerExtra?: ReactNode
   className?: string
   chartClassName?: string
   children: ReactNode
@@ -81,6 +83,7 @@ export function WrapChartCard({
   description,
   exportName,
   exportSize = "default",
+  headerExtra,
   className,
   chartClassName,
   children,
@@ -106,22 +109,25 @@ export function WrapChartCard({
             <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
           ) : null}
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          data-export-ignore
-          disabled={exporting}
-          onClick={() => void exportPng(`${exportName}.png`)}
-          aria-label={`Export ${title}`}
-        >
-          {exporting ? (
-            <Loader2 data-icon="inline-start" className="animate-spin" />
-          ) : (
-            <Download data-icon="inline-start" />
-          )}
-          {exporting ? "Exporting…" : "Export"}
-        </Button>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+          {headerExtra}
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            data-export-ignore
+            disabled={exporting}
+            onClick={() => void exportPng(`${exportName}.png`)}
+            aria-label={`Export ${title}`}
+          >
+            {exporting ? (
+              <Loader2 data-icon="inline-start" className="animate-spin" />
+            ) : (
+              <Download data-icon="inline-start" />
+            )}
+            {exporting ? "Exporting…" : "Export"}
+          </Button>
+        </div>
       </div>
       <SizedChartHost className={chartClassName}>{children}</SizedChartHost>
     </div>

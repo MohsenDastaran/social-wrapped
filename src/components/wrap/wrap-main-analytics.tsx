@@ -3,17 +3,15 @@ import { EChartsPieChart } from "@/components/evilcharts/charts/echarts-pie-char
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 import { CircadianPolarChart } from "@/components/wrap/charts/circadian-polar-chart"
 import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-time-chart"
+import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
 import {
   fmt,
-  fmtDuration,
   fmtResponseTime,
   INITIATOR_AREA,
   LATE_NIGHT_AREA,
   LENGTH_AREA,
-  pieConfigForKeys,
   RESPONSE_AREA,
   SENT_RECEIVED_PIE,
-  contentMixPieConfig,
   EMOJI_AREA,
 } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
@@ -36,24 +34,23 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
   if (!analytics?.account) return null
   const a = analytics.account
 
+  const sentRecvTotal = a.volume.sent + a.volume.received
   const sentReceived = [
-    { side: "sent", count: a.volume.sent },
-    { side: "received", count: a.volume.received },
+    {
+      side: "sent",
+      count: a.volume.sent,
+      pctLabel: `${Math.round(
+        sentRecvTotal > 0 ? (a.volume.sent / sentRecvTotal) * 100 : 0
+      )}%`,
+    },
+    {
+      side: "received",
+      count: a.volume.received,
+      pctLabel: `${Math.round(
+        sentRecvTotal > 0 ? (a.volume.received / sentRecvTotal) * 100 : 0
+      )}%`,
+    },
   ]
-
-  const dominanceKeys = a.volume.participants.slice(0, 8).map((p) => p.name)
-  const dominanceData = a.volume.participants.slice(0, 8).map((p) => ({
-    name: p.name,
-    count: p.count,
-  }))
-
-  const mix = a.contentMix
-  const contentMix = (mix?.types ?? []).map((t) => ({
-    kind: t.kind,
-    count: t.count,
-    pctLabel: `${Math.round(t.pct)}%`,
-  }))
-  const contentMixKeys = contentMix.map((t) => t.kind)
 
   const lengthData = a.messageLength.participants.map((p) => ({
     name: truncate(p.name, 12),
@@ -152,8 +149,8 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
           exportName="main-sent-vs-received"
           exportSize="compact"
           exportLines={[
-            `Sent ${fmt(a.sentMessages)}`,
-            `Received ${fmt(a.receivedMessages)}`,
+            `Sent ${fmt(a.sentMessages)} (${sentReceived[0]?.pctLabel ?? "0%"})`,
+            `Received ${fmt(a.receivedMessages)} (${sentReceived[1]?.pctLabel ?? "0%"})`,
           ]}
           chartClassName="h-64"
         >
@@ -167,78 +164,17 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
             <EChartsPieChart.Legend isClickable />
             <EChartsPieChart.Tooltip />
             <EChartsPieChart.Pie isClickable>
-              <EChartsPieChart.Label dataKey="count" position="inside" />
+              <EChartsPieChart.Label dataKey="pctLabel" position="inside" />
             </EChartsPieChart.Pie>
           </EChartsPieChart>
         </WrapChartCard>
 
-        {/* Message content mix — always visible */}
-        <WrapChartCard
-          title="Message types"
-          description={
-            contentMix.length === 0
-              ? "Re-import your export to unlock the type breakdown"
-              : a.contentMix.totalVoiceDurationSecs > 0
-                ? `${fmtDuration(a.contentMix.totalVoiceDurationSecs)} of voice · share by type`
-                : "Share of messages by content type"
-          }
+        <MessageTypesChart
+          types={a.contentMix?.types ?? []}
+          totalVoiceDurationSecs={a.contentMix?.totalVoiceDurationSecs ?? 0}
           exportName="main-message-types"
-          exportSize="compact"
-          exportLines={(a.contentMix?.types ?? []).map(
-            (t) => `${t.label} ${fmt(t.count)} (${t.pct.toFixed(1)}%)`
-          )}
-          chartClassName="h-64"
-        >
-          {contentMix.length > 0 ? (
-            <EChartsPieChart
-              className="h-full w-full p-3"
-              data={contentMix}
-              dataKey="count"
-              nameKey="kind"
-              config={contentMixPieConfig(contentMixKeys)}
-            >
-              <EChartsPieChart.Legend isClickable />
-              <EChartsPieChart.Tooltip />
-              <EChartsPieChart.Pie isClickable>
-                <EChartsPieChart.Label dataKey="pctLabel" position="inside" />
-              </EChartsPieChart.Pie>
-            </EChartsPieChart>
-          ) : (
-            <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
-              No type data yet. Re-import after updating to see normal, link,
-              emoji, image, video, and more.
-            </div>
-          )}
-        </WrapChartCard>
+        />
       </div>
-
-      {/* Dominance */}
-      {dominanceData.length > 0 && (
-        <WrapChartCard
-          title="Message dominance"
-          description="Who sent the most across your export"
-          exportName="main-dominance"
-          exportSize="compact"
-          exportLines={a.volume.participants
-            .slice(0, 5)
-            .map((p) => `${p.name} ${p.pct.toFixed(1)}%`)}
-          chartClassName="h-72"
-        >
-          <EChartsPieChart
-            className="h-full w-full p-3"
-            data={dominanceData}
-            dataKey="count"
-            nameKey="name"
-            config={pieConfigForKeys(dominanceKeys)}
-          >
-            <EChartsPieChart.Legend isClickable />
-            <EChartsPieChart.Tooltip />
-            <EChartsPieChart.Pie isClickable innerRadius="42%">
-              <EChartsPieChart.Label dataKey="count" position="inside" />
-            </EChartsPieChart.Pie>
-          </EChartsPieChart>
-        </WrapChartCard>
-      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Message length */}

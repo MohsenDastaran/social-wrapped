@@ -1,23 +1,18 @@
 import {
   EChartsAreaChart,
 } from "@/components/evilcharts/charts/echarts-area-chart"
-import {
-  EChartsPieChart,
-} from "@/components/evilcharts/charts/echarts-pie-chart"
 import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-time-chart"
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 import { CircadianPolarChart } from "@/components/wrap/charts/circadian-polar-chart"
 import { ContactVolumeBarChart } from "@/components/wrap/charts/contact-volume-bar-chart"
+import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
 import {
   EMOJI_AREA,
   fmt,
-  fmtDuration,
   fmtResponseTime,
   INITIATOR_AREA,
   LENGTH_AREA,
-  pieConfigForKeys,
   RESPONSE_AREA,
-  contentMixPieConfig,
 } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import type { ChatResult } from "@/platform/analytics-types"
@@ -32,20 +27,6 @@ type WrapChatAnalyticsProps = {
 /** Per-contact analytics — chart-first drill-down from Top contacts. */
 export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
   const a = chat.analytics
-  const participants = a.volume.participants
-  const dominanceKeys = participants.slice(0, 6).map((p) => p.name)
-  const dominanceData = participants.slice(0, 6).map((p) => ({
-    name: p.name,
-    count: p.count,
-  }))
-
-  const mix = a.contentMix
-  const contentMix = (mix?.types ?? []).map((t) => ({
-    kind: t.kind,
-    count: t.count,
-    pctLabel: `${Math.round(t.pct)}%`,
-  }))
-  const contentMixKeys = contentMix.map((t) => t.kind)
 
   const lengthData = a.messageLength.participants.map((p) => ({
     name: truncate(p.name, 12),
@@ -129,30 +110,11 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
         totalMessages={a.totalMessages}
       />
 
-      <WrapChartCard
-        title="Dominance"
-        description="Who sent more in this chat"
-        exportName={`chat-${chat.chatId}-dominance`}
-        exportSize="compact"
-        exportLines={participants.map(
-          (p) => `${p.name} ${fmt(p.count)} (${p.pct.toFixed(1)}%)`
-        )}
-        chartClassName="h-64 sm:h-72"
-      >
-        <EChartsPieChart
-          className="h-full w-full p-3"
-          data={dominanceData}
-          dataKey="count"
-          nameKey="name"
-          config={pieConfigForKeys(dominanceKeys)}
-        >
-          <EChartsPieChart.Legend isClickable />
-          <EChartsPieChart.Tooltip />
-          <EChartsPieChart.Pie isClickable innerRadius="40%">
-            <EChartsPieChart.Label dataKey="count" position="inside" />
-          </EChartsPieChart.Pie>
-        </EChartsPieChart>
-      </WrapChartCard>
+      <MessageTypesChart
+        types={a.contentMix?.types ?? []}
+        totalVoiceDurationSecs={a.contentMix?.totalVoiceDurationSecs ?? 0}
+        exportName={`chat-${chat.chatId}-message-types`}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {responseData.length > 0 && (
@@ -237,44 +199,6 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
           </WrapChartCard>
         )}
       </div>
-
-      <WrapChartCard
-        title="Message types"
-        description={
-          contentMix.length === 0
-            ? "Re-import your export to unlock the type breakdown"
-            : a.contentMix.totalVoiceDurationSecs > 0
-              ? `${fmtDuration(a.contentMix.totalVoiceDurationSecs)} of voice · share by type`
-              : "Share of messages by content type"
-        }
-        exportName={`chat-${chat.chatId}-message-types`}
-        exportSize="compact"
-        exportLines={(a.contentMix?.types ?? []).map(
-          (t) => `${t.label} ${fmt(t.count)} (${t.pct.toFixed(1)}%)`
-        )}
-        chartClassName="h-56"
-      >
-        {contentMix.length > 0 ? (
-          <EChartsPieChart
-            className="h-full w-full p-3"
-            data={contentMix}
-            dataKey="count"
-            nameKey="kind"
-            config={contentMixPieConfig(contentMixKeys)}
-          >
-            <EChartsPieChart.Legend isClickable />
-            <EChartsPieChart.Tooltip />
-            <EChartsPieChart.Pie isClickable>
-              <EChartsPieChart.Label dataKey="pctLabel" position="inside" />
-            </EChartsPieChart.Pie>
-          </EChartsPieChart>
-        ) : (
-          <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
-            No type data yet. Re-import after updating to see the full
-            breakdown.
-          </div>
-        )}
-      </WrapChartCard>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {initiatorData.length > 0 && (
