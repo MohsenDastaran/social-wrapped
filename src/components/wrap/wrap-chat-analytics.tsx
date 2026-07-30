@@ -1,6 +1,4 @@
-import {
-  EChartsAreaChart,
-} from "@/components/evilcharts/charts/echarts-area-chart"
+import { EChartsAreaChart } from "@/components/evilcharts/charts/echarts-area-chart"
 import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-time-chart"
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 import { ContactVolumeBarChart } from "@/components/wrap/charts/contact-volume-bar-chart"
@@ -59,13 +57,10 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
     }))
 
   return (
-    <section
-      id="contact-stats"
-      className="flex scroll-mt-4 flex-col gap-4"
-    >
+    <section id="contact-stats" className="flex scroll-mt-4 flex-col gap-4">
       <header className="flex items-start justify-between gap-3 text-start">
         <div className="min-w-0">
-          <h2 className="font-heading truncate text-xl font-semibold tracking-tight">
+          <h2 className="truncate font-heading text-xl font-semibold tracking-tight">
             {chat.chatName}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">

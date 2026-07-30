@@ -347,7 +347,7 @@ function HeatmapCanvas({
     <div
       ref={containerRef}
       style={{ width, height }}
-      className="shrink-0"
+      className="mx-auto shrink-0"
       aria-label={`Activity heatmap for ${year}`}
     />
   )

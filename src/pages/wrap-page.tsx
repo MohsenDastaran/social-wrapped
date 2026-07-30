@@ -55,7 +55,7 @@ export function WrapPage() {
       : undefined
 
   return (
-    <div className="-mt-4 flex w-full max-w-2xl flex-col items-stretch gap-6 text-start sm:-mt-6 sm:gap-8">
+    <div className="-mt-4 flex w-full max-w-4xl flex-col items-stretch gap-6 text-start sm:-mt-6 sm:gap-8 md:max-w-4xl lg:max-w-5xl">
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0 text-start">
           <Button
