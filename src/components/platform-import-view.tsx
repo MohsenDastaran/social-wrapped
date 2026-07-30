@@ -1,10 +1,10 @@
 import { useId, useRef, useState, type ChangeEvent, type DragEvent } from "react"
-import { ArrowLeft, FileUp, Upload } from "lucide-react"
+import { ArrowLeft, CircleHelp, FileUp, Upload } from "lucide-react"
 import { Link } from "react-router"
 
 import { PlatformLogo } from "@/components/platform-logo"
 import { Button } from "@/components/ui/button"
-import type { PlatformConfig } from "@/lib/platforms"
+import { platformDocsPath, type PlatformConfig } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
 
 export type PlatformImportViewProps = {
@@ -77,13 +77,22 @@ export function PlatformImportView({
         className
       )}
     >
-      <Link
-        to="/"
-        className="mb-4 inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-      >
-        <ArrowLeft className="size-3.5" />
-        Back
-      </Link>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <Link
+          to="/"
+          className="inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <ArrowLeft className="size-3.5" />
+          Back
+        </Link>
+        <Link
+          to={platformDocsPath(platform.id)}
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-primary ring-1 ring-primary/25 transition-colors hover:bg-primary/10"
+        >
+          <CircleHelp className="size-3.5" aria-hidden />
+          Need help?
+        </Link>
+      </div>
 
       <header className="mb-8 flex flex-col items-center text-center">
         <span

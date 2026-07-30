@@ -1,15 +1,21 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
+import { useSearchParams } from "react-router"
 
-import {
-  HIGH_PRIORITY_PLATFORMS,
-} from "@/lib/platforms"
 import { PlatformGuideCard } from "@/components/platform-guide-card"
 import { PlatformSearchInput } from "@/components/platform-search-input"
+import {
+  getPlatform,
+  HIGH_PRIORITY_PLATFORMS,
+  type PlatformId,
+} from "@/lib/platforms"
 
 export function DocsPage() {
   const [query, setQuery] = useState("")
+  const [searchParams, setSearchParams] = useSearchParams()
   const reduceMotion = useReducedMotion()
+  const platformParam = searchParams.get("platform")
+  const deepLinked = getPlatform(platformParam ?? undefined)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -28,6 +34,22 @@ export function DocsPage() {
       return haystack.includes(q)
     })
   }, [query])
+
+  // Keep the deep-linked card in the list so its dialog can mount.
+  useEffect(() => {
+    if (deepLinked) setQuery("")
+  }, [deepLinked])
+
+  function handleOpenChange(platformId: PlatformId, open: boolean) {
+    if (open) {
+      setSearchParams({ platform: platformId }, { replace: true })
+      return
+    }
+    if (platformParam !== platformId) return
+    const next = new URLSearchParams(searchParams)
+    next.delete("platform")
+    setSearchParams(next, { replace: true })
+  }
 
   return (
     <div className="flex w-full max-w-2xl flex-col items-stretch text-start">
@@ -79,7 +101,11 @@ export function DocsPage() {
                 ease: [0.22, 1, 0.36, 1],
               }}
             >
-              <PlatformGuideCard platform={platform} />
+              <PlatformGuideCard
+                platform={platform}
+                open={platformParam === platform.id}
+                onOpenChange={(open) => handleOpenChange(platform.id, open)}
+              />
             </motion.li>
           ))}
         </AnimatePresence>
