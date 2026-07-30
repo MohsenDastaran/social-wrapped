@@ -1,4 +1,5 @@
 import type { ChartConfig as AreaConfig } from "@/components/evilcharts/charts/echarts-area-chart"
+import type { ChartConfig as BarConfig } from "@/components/evilcharts/charts/echarts-bar-chart"
 import type { ChartConfig as PieConfig } from "@/components/evilcharts/charts/echarts-pie-chart"
 
 export const PALETTES = [
@@ -213,6 +214,24 @@ export const CONTACT_VOLUME_AREA: AreaConfig = {
     colors: {
       light: ["#14b8a6", "#0ea5e9", "#84cc16"],
       dark: ["#2dd4bf", "#38bdf8", "#a3e635"],
+    },
+  },
+}
+
+/** Stacked sent / received per contact (Top contacts peak bar). */
+export const CONTACT_SENT_RECEIVED_BAR: BarConfig = {
+  received: {
+    label: "Received",
+    colors: {
+      light: ["#d97706"],
+      dark: ["#fbbf24"],
+    },
+  },
+  sent: {
+    label: "Sent",
+    colors: {
+      light: ["#0d9488"],
+      dark: ["#2dd4bf"],
     },
   },
 }
