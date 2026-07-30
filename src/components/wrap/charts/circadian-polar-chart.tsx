@@ -1,17 +1,17 @@
 /**
- * 24-hour circadian “clock” — activity by hour on a polar ring.
+ * 24-hour activity clock — message volume by hour on a polar ring.
  * Midnight at top; hours increase clockwise (like a real clock).
  */
 import { useEffect } from "react"
 import * as echarts from "echarts/core"
 import { LineChart } from "echarts/charts"
 import {
+  GraphicComponent,
   LegendComponent,
   PolarComponent,
   TooltipComponent,
 } from "echarts/components"
 import { CanvasRenderer } from "echarts/renderers"
-import type { CircadianParticipant } from "@/platform/analytics-types"
 import { cn } from "@/lib/utils"
 import { useSizedEcharts } from "@/components/wrap/charts/use-sized-echarts"
 
@@ -20,13 +20,10 @@ echarts.use([
   PolarComponent,
   TooltipComponent,
   LegendComponent,
+  GraphicComponent,
   CanvasRenderer,
 ])
 
-/**
- * Axis labels: major hours named; minor hours blank so the dial stays readable.
- * Data index always matches hour 0..23.
- */
 const AXIS_LABELS = [
   "12am",
   "",
@@ -81,48 +78,57 @@ const HOUR_FULL = [
   "11pm",
 ]
 
-const PARTICIPANT_COLORS_LIGHT = ["#0d9488", "#d97706", "#7c3aed", "#be185d"]
-const PARTICIPANT_COLORS_DARK = ["#2dd4bf", "#fbbf24", "#a78bfa", "#f472b6"]
+const SERIES_COLORS_LIGHT = ["#0d9488", "#d97706", "#7c3aed", "#be185d"]
+const SERIES_COLORS_DARK = ["#2dd4bf", "#fbbf24", "#a78bfa", "#f472b6"]
+
+export type CircadianSeries = {
+  name: string
+  hourly: number[]
+}
 
 type CircadianPolarChartProps = {
-  participants: CircadianParticipant[]
+  series: CircadianSeries[]
+  /** Hide legend for a single aggregate series. @default series.length > 1 */
+  showLegend?: boolean
   className?: string
 }
 
 export function CircadianPolarChart({
-  participants,
+  series,
+  showLegend,
   className,
 }: CircadianPolarChartProps) {
   const { containerRef, chartRef, ready } = useSizedEcharts()
+  const legendVisible = showLegend ?? series.length > 1
 
   useEffect(() => {
     const chart = chartRef.current
-    if (!chart || !ready || participants.length === 0) return
+    if (!chart || !ready || series.length === 0) return
 
     const isDark = document.documentElement.classList.contains("dark")
-    const colors = isDark ? PARTICIPANT_COLORS_DARK : PARTICIPANT_COLORS_LIGHT
+    const colors = isDark ? SERIES_COLORS_DARK : SERIES_COLORS_LIGHT
     const muted = isDark ? "#64748b" : "#94a3b8"
     const gridLine = isDark ? "#334155" : "#e2e8f0"
-    const maxVal = Math.max(...participants.flatMap((p) => p.hourly), 1)
+    const maxVal = Math.max(...series.flatMap((s) => s.hourly), 1)
 
-    const series = participants.map((p, i) => {
+    const chartSeries = series.map((s, i) => {
       const color = colors[i % colors.length]!
       return {
-        name: p.name,
+        name: s.name,
         type: "line" as const,
         coordinateSystem: "polar" as const,
-        data: padHourly(p.hourly),
+        data: padHourly(s.hourly),
         smooth: 0.35,
         symbol: "circle",
         symbolSize: 5,
         showSymbol: false,
         lineStyle: { color, width: 2.5 },
-        areaStyle: { color, opacity: 0.16 },
+        areaStyle: { color, opacity: 0.18 },
         emphasis: {
           focus: "series" as const,
           scale: true,
           itemStyle: { color, borderWidth: 2, borderColor: "#fff" },
-          areaStyle: { opacity: 0.3 },
+          areaStyle: { opacity: 0.32 },
         },
       }
     })
@@ -131,15 +137,17 @@ export function CircadianPolarChart({
       {
         backgroundColor: "transparent",
         animationDuration: 450,
-        legend: {
-          bottom: 2,
-          left: "center",
-          icon: "circle",
-          itemWidth: 8,
-          itemHeight: 8,
-          itemGap: 14,
-          textStyle: { color: muted, fontSize: 11 },
-        },
+        legend: legendVisible
+          ? {
+              bottom: 2,
+              left: "center",
+              icon: "circle",
+              itemWidth: 8,
+              itemHeight: 8,
+              itemGap: 14,
+              textStyle: { color: muted, fontSize: 11 },
+            }
+          : { show: false },
         tooltip: {
           trigger: "axis",
           axisPointer: { type: "line" },
@@ -159,22 +167,24 @@ export function CircadianPolarChart({
             const hour = items[0]?.dataIndex ?? 0
             const head = `<div style="margin-bottom:4px;font-weight:600">${HOUR_FULL[hour] ?? ""}</div>`
             const rows = items
-              .map(
-                (p) =>
-                  `${p.marker ?? ""} ${p.seriesName ?? ""}: <b>${p.value ?? 0}</b>`
-              )
+              .map((p) => {
+                const label =
+                  legendVisible || items.length > 1
+                    ? `${p.marker ?? ""} ${p.seriesName ?? ""}: `
+                    : `${p.marker ?? ""} `
+                return `${label}<b>${p.value ?? 0}</b> messages`
+              })
               .join("<br/>")
             return head + rows
           },
         },
         polar: {
-          radius: ["24%", "70%"],
-          center: ["50%", "46%"],
+          radius: legendVisible ? ["24%", "68%"] : ["20%", "72%"],
+          center: legendVisible ? ["50%", "46%"] : ["50%", "50%"],
         },
         angleAxis: {
           type: "category",
           data: AXIS_LABELS,
-          // Midnight at top; hours run clockwise like a clock face.
           startAngle: 90,
           clockwise: true,
           boundaryGap: false,
@@ -213,53 +223,27 @@ export function CircadianPolarChart({
             },
           },
         },
-        series,
+        series: chartSeries,
         graphic: [
           {
             type: "group",
             left: "center",
-            top: "42%",
+            top: legendVisible ? "42%" : "46%",
             bounding: "raw",
             z: 100,
             silent: true,
-            children: [
-              {
-                type: "circle",
-                shape: { cx: 0, cy: 0, r: 22 },
-                style: {
-                  fill: isDark
-                    ? "rgba(15, 23, 42, 0.92)"
-                    : "rgba(255, 255, 255, 0.92)",
-                  stroke: gridLine,
-                  lineWidth: 1,
-                },
-              },
-              {
-                type: "text",
-                style: {
-                  text: "24h",
-                  x: 0,
-                  y: 0,
-                  align: "center",
-                  verticalAlign: "middle",
-                  fill: muted,
-                  fontSize: 11,
-                  fontWeight: 700,
-                },
-              },
-            ],
           },
         ],
       },
       true
     )
-  }, [participants, ready, chartRef])
+  }, [series, legendVisible, ready, chartRef])
 
   return (
     <div
       ref={containerRef}
       className={cn("h-full w-full", className)}
-      aria-label="Circadian rhythm — 24-hour activity clock"
+      aria-label="Activity by hour — 24-hour clock"
     />
   )
 }
@@ -271,4 +255,18 @@ function padHourly(hourly: number[]): number[] {
 export function formatCircadianHour(hour: number): string {
   const h = ((hour % 24) + 24) % 24
   return HOUR_FULL[h] ?? `${h}:00`
+}
+
+/** Peak hour label from a 24-length hourly array. */
+export function peakHourLabel(hourly: number[]): string {
+  let best = 0
+  let bestCount = -1
+  for (let i = 0; i < 24; i++) {
+    const n = hourly[i] ?? 0
+    if (n > bestCount) {
+      bestCount = n
+      best = i
+    }
+  }
+  return formatCircadianHour(best)
 }

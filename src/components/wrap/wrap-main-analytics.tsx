@@ -136,7 +136,7 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
       <TopEmojisCard emojis={a.emojis.topOverall} exportName="main-emojis" />
 
       <CircadianRhythmCard
-        participants={a.circadian.participants}
+        hourlyTotal={a.circadian.hourlyTotal}
         exportName="main-circadian"
       />
 
