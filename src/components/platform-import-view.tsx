@@ -1,11 +1,26 @@
 import { useId, useRef, useState, type ChangeEvent, type DragEvent } from "react"
-import { ArrowLeft, CircleHelp, FileUp, Upload } from "lucide-react"
+import {
+  ArrowLeft,
+  CircleHelp,
+  FileUp,
+  Inbox,
+  MessageSquare,
+  Send,
+  Upload,
+  Users,
+} from "lucide-react"
 import { Link } from "react-router"
 
+import { AppLoader } from "@/components/app-loader"
 import { PlatformLogo } from "@/components/platform-logo"
 import { Button } from "@/components/ui/button"
 import { platformDocsPath, type PlatformConfig } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
+import {
+  formatInvokeError,
+  summarizeTelegramFile,
+  type TelegramExportStats,
+} from "@/platform/api"
 
 export type PlatformImportViewProps = {
   platform: PlatformConfig
@@ -19,6 +34,34 @@ export type PlatformImportViewProps = {
   accept?: string
   onFileSelect?: (file: File) => void
   className?: string
+}
+
+function formatCount(n: number): string {
+  return new Intl.NumberFormat().format(n)
+}
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string
+  value: string
+  icon: typeof Send
+}) {
+  return (
+    <div className="rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Icon className="size-3.5" aria-hidden />
+        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em]">
+          {label}
+        </p>
+      </div>
+      <p className="font-heading mt-1.5 text-2xl font-semibold tracking-tight tabular-nums">
+        {value}
+      </p>
+    </div>
+  )
 }
 
 /** Shared import UI — used by every platform’s dedicated import route. */
@@ -36,10 +79,13 @@ export function PlatformImportView({
   const [file, setFile] = useState<File | null>(null)
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [stats, setStats] = useState<TelegramExportStats | null>(null)
 
   function takeFile(next: File | null) {
     if (!next) return
     setError("")
+    setStats(null)
     setFile(next)
     onFileSelect?.(next)
   }
@@ -68,6 +114,25 @@ export function PlatformImportView({
       return
     }
     takeFile(next)
+  }
+
+  async function handleAnalyze() {
+    if (!file) return
+    setLoading(true)
+    setError("")
+    setStats(null)
+    try {
+      if (platform.id !== "telegram") {
+        throw new Error(
+          `${platform.name} import isn’t wired yet. Only Telegram JSON exports can be analyzed right now.`
+        )
+      }
+      setStats(await summarizeTelegramFile(file))
+    } catch (err) {
+      setError(formatInvokeError(err))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -185,8 +250,11 @@ export function PlatformImportView({
             type="button"
             variant="outline"
             size="default"
+            disabled={loading}
             onClick={() => {
               setFile(null)
+              setStats(null)
+              setError("")
               if (inputRef.current) inputRef.current.value = ""
             }}
           >
@@ -199,14 +267,79 @@ export function PlatformImportView({
         type="button"
         size="lg"
         className="mt-6 w-full"
-        disabled={!file}
-        onClick={() => {
-          if (!file) return
-          // Parsing pipeline lands here per platform; selection is ready.
-        }}
+        disabled={!file || loading}
+        onClick={() => void handleAnalyze()}
       >
-        Continue with this file
+        {loading ? (
+          <>
+            <AppLoader size="sm" label="Analyzing export" className="shrink-0" />
+            Analyzing…
+          </>
+        ) : (
+          "Analyze export"
+        )}
       </Button>
+
+      {stats ? (
+        <section className="mt-8 flex flex-col gap-4">
+          <div className="rounded-xl bg-muted/40 px-4 py-3 ring-1 ring-border/50">
+            <p className="font-heading text-lg font-semibold tracking-tight">
+              {stats.displayName}
+              {stats.username ? (
+                <span className="ms-2 text-sm font-medium text-muted-foreground">
+                  @{stats.username}
+                </span>
+              ) : null}
+            </p>
+            {stats.aboutPreview ? (
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                {stats.aboutPreview}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard
+              label="Sent"
+              value={formatCount(stats.sentMessages)}
+              icon={Send}
+            />
+            <StatCard
+              label="Received"
+              value={formatCount(stats.receivedMessages)}
+              icon={Inbox}
+            />
+            <StatCard
+              label="Total messages"
+              value={formatCount(stats.totalMessages)}
+              icon={MessageSquare}
+            />
+            <StatCard
+              label="Chats"
+              value={formatCount(stats.chatCount)}
+              icon={Users}
+            />
+          </div>
+
+          {stats.sampleMessages.length > 0 ? (
+            <div className="rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10">
+              <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Sample messages
+              </p>
+              <ul className="flex flex-col gap-2">
+                {stats.sampleMessages.map((line, index) => (
+                  <li
+                    key={`${index}-${line.slice(0, 24)}`}
+                    className="text-sm leading-relaxed text-foreground/90"
+                  >
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
     </div>
   )
 }

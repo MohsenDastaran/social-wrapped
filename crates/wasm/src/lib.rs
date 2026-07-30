@@ -49,3 +49,16 @@ pub async fn load_telegram_mock() -> Result<String, JsValue> {
         .map(|summary| summary.to_text_report())
         .map_err(|error| JsValue::from_str(&error.to_string()))
 }
+
+/// Summarize a Telegram `result.json` already loaded in the browser (file picker).
+/// Returns a camelCase JSON string matching [`TelegramExportSummary`].
+#[wasm_bindgen]
+pub fn summarize_telegram_bytes(data: &[u8]) -> Result<String, JsValue> {
+    summarize_telegram_bytes_json(data)
+}
+
+fn summarize_telegram_bytes_json(bytes: &[u8]) -> Result<String, JsValue> {
+    app_core::parsers::telegram::summarize_export_bytes(bytes)
+        .and_then(|summary| summary.to_json())
+        .map_err(|error| JsValue::from_str(&error.to_string()))
+}

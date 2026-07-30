@@ -29,7 +29,7 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::CoreError;
@@ -80,7 +80,8 @@ struct RawMessage {
 // ── Public summary type ───────────────────────────────────────────────────────
 
 /// Statistical summary of a Telegram full-account `result.json` export.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TelegramExportSummary {
     pub display_name: String,
     pub username: Option<String>,
@@ -129,6 +130,18 @@ impl TelegramExportSummary {
 
         lines.join("\n")
     }
+
+    /// JSON form used by the web/WASM import UI.
+    pub fn to_json(&self) -> Result<String, CoreError> {
+        serde_json::to_string(self).map_err(CoreError::from)
+    }
+}
+
+/// Parses a Telegram export already loaded into memory (browser file picker / WASM).
+pub fn summarize_export_bytes(bytes: &[u8]) -> Result<TelegramExportSummary, CoreError> {
+    let file_size_bytes = bytes.len() as u64;
+    let reader = std::io::Cursor::new(bytes);
+    summarize_export_from_reader(reader, Some(file_size_bytes))
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
