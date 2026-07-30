@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Check, Download, Share2 } from "lucide-react"
+import { useState, type ReactNode } from "react"
+import { Check, Download, Loader2, Share2 } from "lucide-react"
 
 import {
   copyShareText,
@@ -20,8 +20,90 @@ export type ShareSaveActionsProps = {
   className?: string
   shareLabel?: string
   downloadLabel?: string
-  /** Icon-only controls (more reliable on narrow fullscreen headers). */
+  /** Compact icon-only pill (fullscreen header). */
   iconOnly?: boolean
+}
+
+type ActionTone = "neutral" | "primary" | "success"
+
+function ActionButton({
+  label,
+  icon,
+  tone,
+  overlay,
+  compact,
+  disabled,
+  onClick,
+}: {
+  label: string
+  icon: ReactNode
+  tone: ActionTone
+  overlay: boolean
+  compact: boolean
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={cn(
+        "inline-flex items-center justify-center font-medium transition-all",
+        "disabled:pointer-events-none disabled:opacity-45",
+        "active:scale-[0.97]",
+        compact
+          ? "size-10 rounded-full"
+          : "min-h-11 flex-1 gap-2 rounded-xl px-4 py-2.5 text-sm",
+        overlay && compact && tone === "neutral" && [
+          "text-white hover:bg-white/15",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+        ],
+        overlay && compact && tone === "primary" && [
+          "bg-primary text-primary-foreground shadow-sm",
+          "hover:bg-primary/90",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+        ],
+        overlay && compact && tone === "success" && [
+          "bg-emerald-500 text-white",
+          "hover:bg-emerald-500/90",
+        ],
+        overlay && !compact && [
+          "flex-col gap-1.5 border border-white/15 bg-white/10 text-white backdrop-blur-md",
+          "hover:bg-white/15",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+        ],
+        overlay && !compact && tone === "primary" && [
+          "border-primary/40 bg-primary text-primary-foreground",
+          "hover:bg-primary/90",
+        ],
+        overlay && !compact && tone === "success" && [
+          "border-emerald-400/40 bg-emerald-500 text-white",
+        ],
+        !overlay && compact && [
+          "bg-muted text-foreground ring-1 ring-foreground/10 hover:bg-muted/80",
+        ],
+        !overlay && !compact && tone === "neutral" && [
+          "bg-card text-foreground ring-1 ring-foreground/10 hover:bg-muted/60",
+        ],
+        !overlay && !compact && tone === "primary" && [
+          "bg-primary text-primary-foreground hover:bg-primary/90",
+        ],
+        !overlay && !compact && tone === "success" && [
+          "bg-emerald-600 text-white hover:bg-emerald-600/90",
+        ]
+      )}
+    >
+      {icon}
+      {!compact ? (
+        <span className={cn(overlay && "text-xs font-semibold tracking-tight")}>
+          {label}
+        </span>
+      ) : null}
+    </button>
+  )
 }
 
 /**
@@ -36,7 +118,7 @@ export function ShareSaveActions({
   appearance = "default",
   className,
   shareLabel = "Share",
-  downloadLabel = "Download",
+  downloadLabel = "Save",
   iconOnly = false,
 }: ShareSaveActionsProps) {
   const [busy, setBusy] = useState<"share" | "download" | null>(null)
@@ -73,46 +155,69 @@ export function ShareSaveActions({
   }
 
   const shareCaption =
-    busy === "share" ? "Sharing…" : copied ? "Copied" : shareLabel
-  const downloadCaption =
-    busy === "download" ? "Saving…" : downloadLabel
+    busy === "share" ? "Sharing…" : copied ? "Copied!" : shareLabel
+  const downloadCaption = busy === "download" ? "Saving…" : downloadLabel
+
+  const shareIcon =
+    busy === "share" ? (
+      <Loader2 className="size-4 animate-spin" aria-hidden />
+    ) : copied ? (
+      <Check className="size-4" aria-hidden />
+    ) : (
+      <Share2 className="size-4" aria-hidden />
+    )
+
+  const downloadIcon =
+    busy === "download" ? (
+      <Loader2 className="size-4 animate-spin" aria-hidden />
+    ) : (
+      <Download className="size-4" aria-hidden />
+    )
+
+  const shellClass = cn(
+    "inline-flex items-center",
+    iconOnly
+      ? cn(
+          "gap-0.5 rounded-full p-1 shadow-lg backdrop-blur-xl",
+          overlay
+            ? "border border-white/20 bg-black/50"
+            : "border border-border/80 bg-background/90"
+        )
+      : "w-full gap-2",
+    className
+  )
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      <button
-        type="button"
+    <div className={shellClass} role="group" aria-label="Share and save">
+      <ActionButton
+        label={shareCaption}
+        icon={shareIcon}
+        tone={copied ? "success" : "neutral"}
+        overlay={overlay}
+        compact={iconOnly}
         disabled={busy !== null}
         onClick={() => void handleShare()}
-        aria-label={shareCaption}
-        title={shareCaption}
-        className={cn(
-          "inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors disabled:opacity-50",
-          iconOnly && "size-10 px-0",
-          overlay
-            ? "bg-white/20 text-white ring-1 ring-white/40 backdrop-blur-md hover:bg-white/30"
-            : "bg-muted text-foreground ring-1 ring-foreground/10 hover:bg-muted/80"
-        )}
-      >
-        {copied ? <Check className="size-4" /> : <Share2 className="size-4" />}
-        {iconOnly ? null : <span>{shareCaption}</span>}
-      </button>
-      <button
-        type="button"
+      />
+
+      {iconOnly ? (
+        <span
+          className={cn(
+            "h-5 w-px shrink-0",
+            overlay ? "bg-white/20" : "bg-border"
+          )}
+          aria-hidden
+        />
+      ) : null}
+
+      <ActionButton
+        label={downloadCaption}
+        icon={downloadIcon}
+        tone="primary"
+        overlay={overlay}
+        compact={iconOnly}
         disabled={busy !== null || !mediaUrl}
         onClick={() => void handleDownload()}
-        aria-label={downloadCaption}
-        title={downloadCaption}
-        className={cn(
-          "inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors disabled:opacity-50",
-          iconOnly && "size-10 px-0",
-          overlay
-            ? "bg-white text-black hover:bg-white/90"
-            : "bg-primary text-primary-foreground hover:bg-primary/90"
-        )}
-      >
-        <Download className="size-4" />
-        {iconOnly ? null : <span>{downloadCaption}</span>}
-      </button>
+      />
     </div>
   )
 }
