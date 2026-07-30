@@ -145,7 +145,9 @@ export function DataSafetyDialog({
         </div>
 
         <DialogFooter className="shrink-0 border-t border-border/60 px-4 py-3 sm:px-5">
-          <DialogClose render={<Button variant="outline">Got it</Button>} />
+          <DialogClose
+            render={<Button variant="outline" size="default">Got it</Button>}
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>

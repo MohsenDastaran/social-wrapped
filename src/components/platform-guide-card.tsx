@@ -147,7 +147,9 @@ function PlatformGuideDialogBody({ platform }: { platform: PlatformConfig }) {
       </div>
 
       <DialogFooter className="shrink-0 border-t border-border/60 px-5 py-3 sm:px-7">
-        <DialogClose render={<Button variant="outline">Close</Button>} />
+        <DialogClose
+          render={<Button variant="outline" size="default">Close</Button>}
+        />
       </DialogFooter>
     </DialogContent>
   )

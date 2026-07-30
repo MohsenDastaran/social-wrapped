@@ -78,20 +78,26 @@ export function PlatformImportView({
       )}
     >
       <div className="mb-4 flex items-center justify-between gap-3">
-        <Link
-          to="/"
-          className="inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        <Button
+          variant="ghost"
+          size="default"
+          className="text-muted-foreground"
+          render={<Link to="/" />}
+          nativeButton={false}
         >
-          <ArrowLeft className="size-3.5" />
+          <ArrowLeft data-icon="inline-start" />
           Back
-        </Link>
-        <Link
-          to={platformDocsPath(platform.id)}
-          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-primary ring-1 ring-primary/25 transition-colors hover:bg-primary/10"
+        </Button>
+        <Button
+          variant="outline"
+          size="default"
+          className="rounded-full text-primary"
+          render={<Link to={platformDocsPath(platform.id)} />}
+          nativeButton={false}
         >
-          <CircleHelp className="size-3.5" aria-hidden />
+          <CircleHelp data-icon="inline-start" />
           Need help?
-        </Link>
+        </Button>
       </div>
 
       <header className="mb-8 flex flex-col items-center text-center">
@@ -178,7 +184,7 @@ export function PlatformImportView({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="default"
             onClick={() => {
               setFile(null)
               if (inputRef.current) inputRef.current.value = ""
@@ -191,6 +197,7 @@ export function PlatformImportView({
 
       <Button
         type="button"
+        size="lg"
         className="mt-6 w-full"
         disabled={!file}
         onClick={() => {
