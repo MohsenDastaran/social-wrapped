@@ -66,8 +66,8 @@ export function AboutPage() {
         <CanvasCrowd />
       </div>
 
-      <div className="relative z-10 flex w-full max-w-2xl flex-col items-center rounded-3xl bg-background/75 px-3 py-6 shadow-[0_0_80px_24px] shadow-background/80 backdrop-blur-[2px] sm:px-6 dark:bg-background/70 dark:shadow-background/90">
-        <p className="mb-4 text-center text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:mb-6 sm:text-sm sm:tracking-[0.2em]">
+      <div className="relative z-10 flex w-full max-w-2xl flex-col items-center rounded-3xl bg-transparent px-3 py-6 sm:px-6">
+        <p className="mb-4 text-center text-[0.7rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase sm:mb-6 sm:text-sm sm:tracking-[0.2em]">
           Why Social Wrapped
         </p>
 
@@ -91,7 +91,7 @@ export function AboutPage() {
           blur="6px"
           y={8}
           once={false}
-          className="w-full max-w-lg px-1 text-center text-sm font-medium leading-relaxed text-muted-foreground sm:px-0 sm:text-base md:text-lg"
+          className="w-full max-w-lg px-1 text-center text-sm leading-relaxed font-medium text-muted-foreground sm:px-0 sm:text-base md:text-lg"
         />
 
         <div className="mt-8 flex w-full max-w-lg flex-col items-center gap-4">
@@ -114,9 +114,7 @@ export function AboutPage() {
             </CraftButton>
 
             <CraftButton
-              render={
-                <a href={SOURCE_URL} target="_blank" rel="noreferrer" />
-              }
+              render={<a href={SOURCE_URL} target="_blank" rel="noreferrer" />}
             >
               <Code2
                 className="relative z-2 size-3.5 shrink-0 opacity-70 transition-colors duration-500 group-hover/button:text-foreground group-hover/button:opacity-100"
