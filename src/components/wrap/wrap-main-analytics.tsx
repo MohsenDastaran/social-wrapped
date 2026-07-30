@@ -147,6 +147,7 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
           title="Sent vs received"
           description="Outbound vs inbound share"
           exportName="main-sent-vs-received"
+          exportSize="compact"
           exportLines={[
             `Sent ${fmt(a.sentMessages)}`,
             `Received ${fmt(a.receivedMessages)}`,
@@ -178,6 +179,7 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
                 : "Text and voice memo mix"
             }
             exportName="main-voice-vs-text"
+            exportSize="compact"
             exportLines={[
               `Text ${fmt(a.voiceText.totalText)}`,
               `Voice ${fmt(a.voiceText.totalVoice)}`,
@@ -207,6 +209,7 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
           title="Message dominance"
           description="Who sent the most across your export"
           exportName="main-dominance"
+          exportSize="compact"
           exportLines={a.volume.participants
             .slice(0, 5)
             .map((p) => `${p.name} ${p.pct.toFixed(1)}%`)}

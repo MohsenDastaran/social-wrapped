@@ -98,6 +98,7 @@ export function ActivityOverTimeChart({
           : `${sentLabel} vs ${receivedLabel} by month — drag the brush to zoom`
       }
       exportName={exportName}
+      exportSize="wide"
       exportLines={[
         `Mode ${mode}`,
         `${sentLabel} ${fmt(totalSent)}`,

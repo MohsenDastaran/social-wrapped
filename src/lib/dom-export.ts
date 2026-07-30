@@ -4,12 +4,15 @@ import { downloadBlob } from "@/lib/mock-export"
 
 export type DomExportOptions = {
   /**
-   * Target CSS width for narrow viewports. Mobile cards are temporarily
-   * laid out at this width so the PNG is share-sized (not phone-narrow).
-   * @default 1280
+   * CSS layout width used while capturing (and floor when expanding narrow cards).
+   * Keep this modest — HD comes from `pixelRatio`, not a huge layout width.
+   * @default 720
    */
   minWidth?: number
-  /** Extra scale after layout width. @default 2 */
+  /**
+   * Backing-store scale for HD output. Final PNG width ≈ minWidth × pixelRatio.
+   * @default 3
+   */
   pixelRatio?: number
   /** Solid fill behind transparent areas. */
   backgroundColor?: string
@@ -42,12 +45,12 @@ export async function elementToPngBlob(
   element: HTMLElement,
   options: DomExportOptions = {}
 ): Promise<Blob> {
-  const minWidth = options.minWidth ?? 1280
-  const pixelRatio = options.pixelRatio ?? 2
+  const minWidth = options.minWidth ?? 720
+  const pixelRatio = options.pixelRatio ?? 3
 
   const layoutRestore = await expandForExport(element, minWidth)
   const hidden = hideExcluded(element, options.excludeSelector)
-  const canvasSwaps = await swapCanvasesForImages(element)
+  const canvasSwaps = await swapCanvasesForImages(element, pixelRatio)
 
   try {
     await nextFrame()
@@ -194,17 +197,14 @@ function restoreHidden(hidden: HiddenNode[]) {
 }
 
 async function swapCanvasesForImages(
-  root: HTMLElement
+  root: HTMLElement,
+  pixelRatio: number
 ): Promise<CanvasSwap[]> {
   const swaps: CanvasSwap[] = []
 
   for (const canvas of root.querySelectorAll("canvas")) {
-    let dataUrl: string
-    try {
-      dataUrl = canvas.toDataURL("image/png")
-    } catch {
-      continue
-    }
+    const dataUrl = snapshotChartCanvas(canvas, pixelRatio)
+    if (!dataUrl) continue
 
     const img = document.createElement("img")
     img.src = dataUrl
@@ -251,6 +251,34 @@ async function swapCanvasesForImages(
   )
 
   return swaps
+}
+
+/** Prefer ECharts hi-res export so charts stay sharp after layout scale. */
+function snapshotChartCanvas(
+  canvas: HTMLCanvasElement,
+  pixelRatio: number
+): string | null {
+  let node: HTMLElement | null = canvas.parentElement
+  while (node) {
+    const instance = echarts.getInstanceByDom(node)
+    if (instance) {
+      try {
+        return instance.getDataURL({
+          type: "png",
+          pixelRatio: Math.max(pixelRatio, 3),
+          backgroundColor: "transparent",
+        })
+      } catch {
+        break
+      }
+    }
+    node = node.parentElement
+  }
+  try {
+    return canvas.toDataURL("image/png")
+  } catch {
+    return null
+  }
 }
 
 function restoreCanvases(swaps: CanvasSwap[]) {

@@ -5,12 +5,28 @@ import { Button } from "@/components/ui/button"
 import { useDomExport } from "@/hooks/use-dom-export"
 import { cn } from "@/lib/utils"
 
+export type WrapChartExportSize = "compact" | "default" | "wide"
+
+const EXPORT_SIZES: Record<
+  WrapChartExportSize,
+  { minWidth: number; pixelRatio: number }
+> = {
+  /** Pie / square charts — smaller frame, HD backing store. */
+  compact: { minWidth: 480, pixelRatio: 3 },
+  /** Typical bar / area cards. */
+  default: { minWidth: 720, pixelRatio: 3 },
+  /** Full-bleed time series. */
+  wide: { minWidth: 900, pixelRatio: 3 },
+}
+
 export type WrapChartCardProps = {
   title: string
   description?: string
   exportName: string
   /** @deprecated Kept for call-site compatibility; real export captures the card DOM. */
   exportLines?: string[]
+  /** Export frame width preset. Use `compact` for pie charts. @default "default" */
+  exportSize?: WrapChartExportSize
   className?: string
   chartClassName?: string
   children: ReactNode
@@ -64,14 +80,14 @@ export function WrapChartCard({
   title,
   description,
   exportName,
+  exportSize = "default",
   className,
   chartClassName,
   children,
 }: WrapChartCardProps) {
-  const { ref, exporting, exportPng } = useDomExport<HTMLDivElement>({
-    minWidth: 1280,
-    pixelRatio: 2,
-  })
+  const { ref, exporting, exportPng } = useDomExport<HTMLDivElement>(
+    EXPORT_SIZES[exportSize]
+  )
 
   return (
     <div

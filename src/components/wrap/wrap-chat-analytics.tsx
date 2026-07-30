@@ -130,6 +130,7 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
         title="Dominance"
         description="Who sent more in this chat"
         exportName={`chat-${chat.chatId}-dominance`}
+        exportSize="compact"
         exportLines={participants.map(
           (p) => `${p.name} ${fmt(p.count)} (${p.pct.toFixed(1)}%)`
         )}
@@ -243,6 +244,7 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
               : "Voice memos vs text"
           }
           exportName={`chat-${chat.chatId}-voice`}
+          exportSize="compact"
           chartClassName="h-56"
         >
           <EChartsPieChart
