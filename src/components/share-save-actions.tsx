@@ -57,43 +57,61 @@ function ActionButton({
         compact
           ? "size-10 rounded-full"
           : "min-h-11 flex-1 gap-2 rounded-xl px-4 py-2.5 text-sm",
-        overlay && compact && tone === "neutral" && [
-          "text-white hover:bg-white/15",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
-        ],
-        overlay && compact && tone === "primary" && [
-          "bg-primary text-primary-foreground shadow-sm",
-          "hover:bg-primary/90",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
-        ],
-        overlay && compact && tone === "success" && [
-          "bg-emerald-500 text-white",
-          "hover:bg-emerald-500/90",
-        ],
-        overlay && !compact && [
-          "flex-col gap-1.5 border border-white/15 bg-white/10 text-white backdrop-blur-md",
-          "hover:bg-white/15",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
-        ],
-        overlay && !compact && tone === "primary" && [
-          "border-primary/40 bg-primary text-primary-foreground",
-          "hover:bg-primary/90",
-        ],
-        overlay && !compact && tone === "success" && [
-          "border-emerald-400/40 bg-emerald-500 text-white",
-        ],
-        !overlay && compact && [
-          "bg-muted text-foreground ring-1 ring-foreground/10 hover:bg-muted/80",
-        ],
-        !overlay && !compact && tone === "neutral" && [
-          "bg-card text-foreground ring-1 ring-foreground/10 hover:bg-muted/60",
-        ],
-        !overlay && !compact && tone === "primary" && [
-          "bg-primary text-primary-foreground hover:bg-primary/90",
-        ],
-        !overlay && !compact && tone === "success" && [
-          "bg-emerald-600 text-white hover:bg-emerald-600/90",
-        ]
+        overlay &&
+          compact &&
+          tone === "neutral" && [
+            "text-white hover:bg-white/15",
+            "focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none",
+          ],
+        overlay &&
+          compact &&
+          tone === "primary" && [
+            "bg-primary text-primary-foreground shadow-sm",
+            "hover:bg-primary/90",
+            "focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none",
+          ],
+        overlay &&
+          compact &&
+          tone === "success" && [
+            "bg-emerald-500 text-white",
+            "hover:bg-emerald-500/90",
+          ],
+        overlay &&
+          !compact && [
+            "flex-col gap-1.5 border border-white/15 bg-white/10 text-white backdrop-blur-md",
+            "hover:bg-white/15",
+            "focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none",
+          ],
+        overlay &&
+          !compact &&
+          tone === "primary" && [
+            "border-primary/40 bg-primary text-primary-foreground",
+            "hover:bg-primary/90",
+          ],
+        overlay &&
+          !compact &&
+          tone === "success" && [
+            "border-emerald-400/40 bg-emerald-500 text-white",
+          ],
+        !overlay &&
+          compact && [
+            "bg-muted text-foreground ring-1 ring-foreground/10 hover:bg-muted/80",
+          ],
+        !overlay &&
+          !compact &&
+          tone === "neutral" && [
+            "bg-card text-foreground ring-1 ring-foreground/10 hover:bg-muted/60",
+          ],
+        !overlay &&
+          !compact &&
+          tone === "primary" && [
+            "bg-primary text-primary-foreground hover:bg-primary/90",
+          ],
+        !overlay &&
+          !compact &&
+          tone === "success" && [
+            "bg-emerald-600 text-white hover:bg-emerald-600/90",
+          ]
       )}
     >
       {icon}
@@ -178,7 +196,7 @@ export function ShareSaveActions({
     "inline-flex items-center",
     iconOnly
       ? cn(
-          "gap-0.5 rounded-full p-1 shadow-lg backdrop-blur-xl",
+          "rounded-full p-1 shadow-lg backdrop-blur-xl",
           overlay
             ? "border border-white/20 bg-black/50"
             : "border border-border/80 bg-background/90"
@@ -198,16 +216,6 @@ export function ShareSaveActions({
         disabled={busy !== null}
         onClick={() => void handleShare()}
       />
-
-      {iconOnly ? (
-        <span
-          className={cn(
-            "h-5 w-px shrink-0",
-            overlay ? "bg-white/20" : "bg-border"
-          )}
-          aria-hidden
-        />
-      ) : null}
 
       <ActionButton
         label={downloadCaption}
