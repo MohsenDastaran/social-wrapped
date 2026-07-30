@@ -66,7 +66,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     importTitle: "Import Telegram data",
     importDescription:
       "Choose your Telegram Desktop export — typically result.json or the export folder ZIP. Everything is processed on your device.",
-    acceptedFiles: [".json", ".zip"],
+    acceptedFiles: [".json"],
     accept: ".json,.zip,application/json,application/zip",
   },
   {
@@ -176,8 +176,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
       "Import into Social Wrapped when TikTok support ships.",
     ],
     importTitle: "Import TikTok data",
-    importDescription:
-      "Upload your TikTok data download as JSON, TXT, or ZIP.",
+    importDescription: "Upload your TikTok data download as JSON, TXT, or ZIP.",
     acceptedFiles: [".json", ".txt", ".zip"],
     accept: ".json,.txt,.zip,application/json,text/plain,application/zip",
   },
@@ -227,7 +226,9 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   },
 ]
 
-export function getPlatform(id: string | undefined): PlatformConfig | undefined {
+export function getPlatform(
+  id: string | undefined
+): PlatformConfig | undefined {
   if (!id) return undefined
   return HIGH_PRIORITY_PLATFORMS.find((platform) => platform.id === id)
 }

@@ -3,7 +3,10 @@ import { ImageIcon, Images, Video } from "lucide-react"
 
 import { MediaFullscreenChrome } from "@/components/media-fullscreen-chrome"
 import { Skiper67 } from "@/components/ui/animated/skiper67"
-import { StoryCarousel, type StoryItem } from "@/components/ui/story-carousel"
+import {
+  StoryCarousel,
+  type StoryItem,
+} from "@/components/ui/animated/story-carousel"
 import { DEFAULT_APP_SHARE_TEXT } from "@/lib/media-share"
 import type { TelegramExportStats } from "@/platform/import"
 import { cn } from "@/lib/utils"
@@ -79,7 +82,7 @@ export function WrapShareMedia({ displayName, stats }: WrapShareMediaProps) {
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Video className="size-3.5" aria-hidden />
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em]">
+            <p className="text-[0.65rem] font-semibold tracking-[0.14em] uppercase">
               Video
             </p>
           </div>
@@ -95,7 +98,7 @@ export function WrapShareMedia({ displayName, stats }: WrapShareMediaProps) {
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <ImageIcon className="size-3.5" aria-hidden />
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em]">
+            <p className="text-[0.65rem] font-semibold tracking-[0.14em] uppercase">
               Stories
             </p>
           </div>
@@ -117,11 +120,11 @@ export function WrapShareMedia({ displayName, stats }: WrapShareMediaProps) {
             />
             <span className="absolute inset-0 bg-black/25" />
             <span className="absolute inset-0 flex items-center justify-center">
-              <span className="flex size-12 items-center justify-center rounded-full bg-white/25 text-white backdrop-blur-sm ring-1 ring-white/40 sm:size-14">
+              <span className="flex size-12 items-center justify-center rounded-full bg-white/25 text-white ring-1 ring-white/40 backdrop-blur-sm sm:size-14">
                 <Images className="size-5 sm:size-6" aria-hidden />
               </span>
             </span>
-            <span className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 to-transparent px-3 pb-3 pt-10 text-white">
+            <span className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 to-transparent px-3 pt-10 pb-3 text-white">
               <span className="font-heading text-base font-semibold tracking-tight">
                 Story highlights
               </span>
