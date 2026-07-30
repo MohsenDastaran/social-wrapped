@@ -7,13 +7,13 @@ import { CircadianPolarChart } from "@/components/wrap/charts/circadian-polar-ch
 import { ContactVolumeBarChart } from "@/components/wrap/charts/contact-volume-bar-chart"
 import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
 import {
-  EMOJI_AREA,
   fmt,
   fmtResponseTime,
   INITIATOR_AREA,
   LENGTH_AREA,
   RESPONSE_AREA,
 } from "@/components/wrap/chart-theme"
+import { TopEmojisCard } from "@/components/wrap/top-emojis-card"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import type { ChatResult } from "@/platform/analytics-types"
 import { X } from "lucide-react"
@@ -49,11 +49,6 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
       a.initiatorFinisher.initiators.find((p) => p.name === name)?.count ?? 0,
     closes:
       a.initiatorFinisher.finishers.find((p) => p.name === name)?.count ?? 0,
-  }))
-
-  const emojiData = a.emojis.topOverall.slice(0, 10).map((e) => ({
-    name: e.emoji,
-    count: e.count,
   }))
 
   const lateNightData = a.lateNight.participants
@@ -285,41 +280,12 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
         )}
       </div>
 
-      {emojiData.length > 0 && (
-        <WrapChartCard
-          title="Top emojis"
-          description="Most used in this chat"
-          exportName={`chat-${chat.chatId}-emojis`}
-          chartClassName="h-48"
-        >
-          <EChartsAreaChart
-            data={emojiData}
-            config={EMOJI_AREA}
-            xDataKey="name"
-            className="h-full w-full"
-            curveType="monotone"
-            chartOptions={{
-              grid: { left: 8, right: 8, top: 16, bottom: 28 },
-              yAxis: {
-                type: "value",
-                show: false,
-                scale: true,
-                boundaryGap: ["0%", "20%"],
-              },
-            }}
-          >
-            <EChartsAreaChart.Tooltip variant="frosted-glass" />
-            <EChartsAreaChart.Area
-              dataKey="count"
-              variant="gradient"
-              strokeVariant="solid"
-              strokeWidth={2.5}
-            >
-              <EChartsAreaChart.ActiveDot variant="ping" />
-            </EChartsAreaChart.Area>
-          </EChartsAreaChart>
-        </WrapChartCard>
-      )}
+      <TopEmojisCard
+        emojis={a.emojis.topOverall}
+        exportName={`chat-${chat.chatId}-emojis`}
+        description="Most used in this chat"
+        limit={10}
+      />
 
       {a.circadian.participants.length > 0 && (
         <WrapChartCard

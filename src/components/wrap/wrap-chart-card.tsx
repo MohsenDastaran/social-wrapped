@@ -27,6 +27,12 @@ export type WrapChartCardProps = {
   exportLines?: string[]
   /** Export frame width preset. Use `compact` for pie charts. @default "default" */
   exportSize?: WrapChartExportSize
+  /**
+   * `chart` — absolute host for ECharts (needs fixed height via `chartClassName`).
+   * `flow` — normal document flow for non-chart content (emoji grids, lists).
+   * @default "chart"
+   */
+  layout?: "chart" | "flow"
   /** Extra controls next to the export button (e.g. filters). */
   headerExtra?: ReactNode
   className?: string
@@ -83,6 +89,7 @@ export function WrapChartCard({
   description,
   exportName,
   exportSize = "default",
+  layout = "chart",
   headerExtra,
   className,
   chartClassName,
@@ -129,7 +136,11 @@ export function WrapChartCard({
           </Button>
         </div>
       </div>
-      <SizedChartHost className={chartClassName}>{children}</SizedChartHost>
+      {layout === "flow" ? (
+        <div className={cn("w-full", chartClassName)}>{children}</div>
+      ) : (
+        <SizedChartHost className={chartClassName}>{children}</SizedChartHost>
+      )}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 import { CircadianPolarChart } from "@/components/wrap/charts/circadian-polar-chart"
 import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-time-chart"
 import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
+import { TopEmojisCard } from "@/components/wrap/top-emojis-card"
 import {
   fmt,
   SENT_RECEIVED_PIE,
@@ -46,11 +47,6 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
       )}%`,
     },
   ]
-
-  const emojiData = a.emojis.topOverall.slice(0, 12).map((e) => ({
-    name: e.emoji,
-    count: e.count,
-  }))
 
   const reactionData = a.emojis.topReactions.slice(0, 10).map((e) => ({
     name: e.emoji,
@@ -137,79 +133,7 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
         exportName="main-message-types"
       />
 
-      {/* Top emojis */}
-      {emojiData.length > 0 && (
-        <WrapChartCard
-          title="Top emojis"
-          description="Most used emoji characters in messages"
-          exportName="main-emojis"
-          exportLines={a.emojis.topOverall
-            .slice(0, 5)
-            .map((e) => `${e.emoji} ${fmt(e.count)}`)}
-          chartClassName="h-52"
-        >
-          <EChartsAreaChart
-            data={emojiData}
-            config={EMOJI_AREA}
-            xDataKey="name"
-            className="h-full w-full"
-            curveType="monotone"
-            chartOptions={{
-              grid: { left: 8, right: 8, top: 16, bottom: 28 },
-              yAxis: {
-                type: "value",
-                show: false,
-                scale: true,
-                boundaryGap: ["0%", "20%"],
-              },
-            }}
-          >
-            <EChartsAreaChart.Tooltip variant="frosted-glass" />
-            <EChartsAreaChart.Area
-              dataKey="count"
-              variant="gradient"
-              strokeVariant="solid"
-              strokeWidth={2.5}
-            >
-              <EChartsAreaChart.ActiveDot variant="ping" />
-            </EChartsAreaChart.Area>
-          </EChartsAreaChart>
-        </WrapChartCard>
-      )}
-
-      {reactionData.length > 0 && (
-        <WrapChartCard
-          title="Top reactions"
-          description="Most left Telegram reactions"
-          exportName="main-reactions"
-          chartClassName="h-48"
-        >
-          <EChartsAreaChart
-            data={reactionData}
-            config={EMOJI_AREA}
-            xDataKey="name"
-            className="h-full w-full"
-            curveType="monotone"
-            chartOptions={{
-              grid: { left: 8, right: 8, top: 16, bottom: 28 },
-              yAxis: {
-                type: "value",
-                show: false,
-                scale: true,
-                boundaryGap: ["0%", "20%"],
-              },
-            }}
-          >
-            <EChartsAreaChart.Tooltip variant="frosted-glass" />
-            <EChartsAreaChart.Area
-              dataKey="count"
-              variant="gradient"
-              strokeVariant="solid"
-              strokeWidth={2.5}
-            />
-          </EChartsAreaChart>
-        </WrapChartCard>
-      )}
+      <TopEmojisCard emojis={a.emojis.topOverall} exportName="main-emojis" />
 
       {/* Circadian */}
       {a.circadian.participants.length > 0 && (
@@ -280,7 +204,7 @@ function Kpi({
           className={`size-4 shrink-0 sm:size-5 ${KPI_ACCENTS[accent]}`}
         />
       </div>
-      <p className="font-heading mt-2 text-2xl font-semibold tracking-tight text-foreground tabular-nums sm:text-3xl">
+      <p className="mt-2 font-heading text-2xl font-semibold tracking-tight text-foreground tabular-nums sm:text-3xl">
         {value}
       </p>
     </div>
