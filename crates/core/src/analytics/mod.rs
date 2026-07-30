@@ -1,8 +1,9 @@
-//! High-level analytics queries built on top of DuckDB's `read_json_auto`.
+//! Analytics modules.
 //!
-//! Every function in this module pushes all heavy computation into DuckDB — no
-//! row-by-row Rust iteration occurs.  Add a new function here when you need a
-//! new aggregation; the [`crate::storage::engine::AnalyticsEngine`] stays
-//! query-agnostic.
+//! `collectors` is always compiled — it is pure Rust with no external deps.
+//! `queries` requires the `analytics` feature (DuckDB + rayon).
 
+pub mod collectors;
+
+#[cfg(feature = "analytics")]
 pub mod queries;

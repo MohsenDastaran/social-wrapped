@@ -3,7 +3,7 @@
 // Progress messages are posted while the (synchronous) parse is running.
 
 import init, {
-  summarize_telegram_bytes_with_progress,
+  analyze_telegram_bytes_with_progress,
 } from "@/wasm-pkg/social_wrapped_wasm.js"
 
 import type {
@@ -20,14 +20,14 @@ self.onmessage = async (event: MessageEvent<ImportWorkerRequest>) => {
     await init()
 
     const bytes = new Uint8Array(await event.data.file.arrayBuffer())
-    const statsJson = summarize_telegram_bytes_with_progress(
+    const analyticsJson = analyze_telegram_bytes_with_progress(
       bytes,
       (loadedBytes: number, totalBytes: number) => {
         post({ type: "progress", loadedBytes, totalBytes })
       }
     )
 
-    post({ type: "done", statsJson })
+    post({ type: "done", analyticsJson })
   } catch (error) {
     post({
       type: "error",

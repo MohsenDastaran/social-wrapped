@@ -50,18 +50,16 @@ pub async fn load_telegram_mock() -> Result<String, JsValue> {
         .map_err(|error| JsValue::from_str(&error.to_string()))
 }
 
-/// Summarize a Telegram `result.json` already loaded in the browser (file picker).
-/// Returns a camelCase JSON string matching [`TelegramExportSummary`].
+/// Summarise a Telegram `result.json` already loaded in the browser (legacy API).
 #[wasm_bindgen]
 pub fn summarize_telegram_bytes(data: &[u8]) -> Result<String, JsValue> {
     app_core::parsers::telegram::summarize_export_bytes(data)
-        .and_then(|summary| summary.to_json())
-        .map_err(|error| JsValue::from_str(&error.to_string()))
+        .and_then(|s| s.to_json())
+        .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
-/// Like [`summarize_telegram_bytes`], but invokes `on_progress(bytesRead, totalBytes)`
-/// as the parser consumes the input. Intended to run inside a Web Worker so the
-/// synchronous parse never blocks the UI thread.
+/// Like [`summarize_telegram_bytes`], but invokes `on_progress(bytesRead, totalBytes)`.
+/// Returns the legacy basic-stats JSON (backward compat for old workers).
 #[wasm_bindgen]
 pub fn summarize_telegram_bytes_with_progress(
     data: &[u8],
@@ -77,6 +75,31 @@ pub fn summarize_telegram_bytes_with_progress(
             );
         },
     )
-    .and_then(|summary| summary.to_json())
-    .map_err(|error| JsValue::from_str(&error.to_string()))
+    .and_then(|s| s.to_json())
+    .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// Full analytics pass — returns the complete [`WrapAnalytics`] JSON.
+///
+/// Invokes `on_progress(bytesRead, totalBytes)` during parsing.
+/// This is the primary function called by the import worker.
+#[wasm_bindgen]
+pub fn analyze_telegram_bytes_with_progress(
+    data: &[u8],
+    on_progress: &js_sys::Function,
+) -> Result<String, JsValue> {
+    app_core::parsers::telegram::analyze_export_bytes_with_progress(
+        data,
+        |bytes_read, total_bytes| {
+            let _ = on_progress.call2(
+                &JsValue::NULL,
+                &JsValue::from_f64(bytes_read as f64),
+                &JsValue::from_f64(total_bytes as f64),
+            );
+        },
+    )
+    .and_then(|analytics| {
+        serde_json::to_string(&analytics).map_err(app_core::CoreError::from)
+    })
+    .map_err(|e| JsValue::from_str(&e.to_string()))
 }

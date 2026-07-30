@@ -85,11 +85,11 @@ export function PlatformImportView({
     setError("")
     setProgress({ percent: 0, loadedBytes: 0, totalBytes: file.size })
     try {
-      const stats = await importPlatformFile(platform, file, setProgress)
+      const analytics = await importPlatformFile(platform, file, setProgress)
       const wrap = saveWrap({
         platformId: platform.id,
         fileName: file.name,
-        stats,
+        analytics,
       })
       navigate(wrapPath(wrap.id), { replace: true })
     } catch (err) {

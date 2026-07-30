@@ -12,7 +12,6 @@ pub mod models;
 pub mod parsers;
 pub mod progress;
 
-#[cfg(feature = "analytics")]
 pub mod analytics;
 
 #[cfg(feature = "storage")]

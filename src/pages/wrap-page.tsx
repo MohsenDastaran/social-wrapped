@@ -20,11 +20,14 @@ export function WrapPage() {
   const { wrapId } = useParams<{ wrapId: string }>()
   const wrap = wrapId ? getWrap(wrapId) : undefined
 
-  if (!wrap) {
+  if (!wrap?.analytics?.account) {
     return <Navigate to="/history" replace />
   }
 
   const platform = getPlatform(wrap.platformId)
+  const hasFullAnalytics = wrap.analytics.chats.length > 0
+    || wrap.analytics.account.heatmap.days.length > 0
+    || wrap.analytics.account.emojis.topOverall.length > 0
 
   return (
     <div className="-mt-4 flex w-full max-w-2xl flex-col items-stretch gap-6 text-start sm:-mt-6 sm:gap-8">
@@ -49,14 +52,21 @@ export function WrapPage() {
         </div>
       </header>
 
+      {!hasFullAnalytics ? (
+        <p className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-950 ring-1 ring-amber-500/25 dark:text-amber-100">
+          This wrap was saved before full analytics. Re-import the export to unlock
+          heatmaps, circadian charts, and per-chat breakdowns.
+        </p>
+      ) : null}
+
       <WrapShareMedia
         displayName={wrap.stats.displayName}
         stats={wrap.stats}
       />
 
-      <WrapMainAnalytics stats={wrap.stats} />
+      <WrapMainAnalytics analytics={wrap.analytics} />
 
-      <WrapChatAnalytics stats={wrap.stats} />
+      <WrapChatAnalytics analytics={wrap.analytics} />
     </div>
   )
 }

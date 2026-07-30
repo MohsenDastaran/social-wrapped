@@ -1,0 +1,1084 @@
+//! Streaming analytics collectors — platform-agnostic stat computation.
+//!
+//! ## Design
+//!
+//! Parsers produce normalized [`MessageEvent`]s one at a time.  The
+//! [`AnalysisEngine`] drives **all ten collectors** in a single sequential
+//! pass, keeping memory flat even for 300 MB+ exports.  Results are bundled
+//! into [`WrapAnalytics`] which is serialised to camelCase JSON for the WASM
+//! layer.
+//!
+//! | Stat | #  |
+//! |------|----|
+//! | Total volume & dominance | 21 |
+//! | Sent vs received         | 22 |
+//! | Voice vs text            | 23 |
+//! | Message length balance   | 16 |
+//! | Average response time    | 15 |
+//! | Late-night chats (1–5 AM)| 14 |
+//! | Initiator vs finisher    | 12 |
+//! | Top emojis & reactions   |  9 |
+//! | Circadian rhythm + sleep |  4 |
+//! | Activity heatmap         |  5 |
+
+use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
+
+// ── Input event ───────────────────────────────────────────────────────────────
+
+/// Kind of message content — used by multiple collectors.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MessageKind {
+    Text,
+    Voice,
+    /// Telegram "video message" (round-video).
+    VideoMessage,
+    Video,
+    Photo,
+    Sticker,
+    Animation,
+    File,
+    Other,
+}
+
+impl MessageKind {
+    /// Returns `true` for kinds that carry a user-written text body.
+    pub fn is_text(&self) -> bool {
+        matches!(self, MessageKind::Text)
+    }
+    /// Returns `true` for voice/video-message kinds that have a duration.
+    pub fn is_voice_like(&self) -> bool {
+        matches!(self, MessageKind::Voice | MessageKind::VideoMessage)
+    }
+}
+
+/// One reaction left on a message.
+#[derive(Debug, Clone)]
+pub struct ReactionEvent {
+    pub emoji: String,
+    /// `true` when the account owner left this reaction.
+    pub from_me: bool,
+}
+
+/// Normalised representation of one message — the only type parsers must produce.
+///
+/// Ordering by `timestamp_secs` is assumed; out-of-order messages produce
+/// incorrect response-time and initiator/finisher stats but won't panic.
+#[derive(Debug, Clone)]
+pub struct MessageEvent {
+    /// Platform-assigned chat id (used to split per-chat analytics).
+    pub chat_id: i64,
+    pub chat_name: String,
+    /// `true` when the account owner sent this message.
+    pub is_mine: bool,
+    /// Display name of the sender.
+    pub sender_name: String,
+    /// Unix-epoch seconds in *local time* (Telegram exports local timestamps).
+    pub timestamp_secs: i64,
+    /// 0–23 local hour, extracted at parse time to avoid recomputation.
+    pub hour: u8,
+    /// `"YYYY-MM-DD"` local date string, used as a heatmap key.
+    pub date_str: String,
+    pub kind: MessageKind,
+    /// UTF-8 character count (0 for non-text messages).
+    pub char_count: usize,
+    /// Seconds of audio/video content (0 if not applicable).
+    pub voice_duration_secs: u32,
+    /// Base emoji characters extracted from the message text.
+    pub emojis: Vec<String>,
+    pub reactions: Vec<ReactionEvent>,
+}
+
+// ── Output types ─────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParticipantCount {
+    pub name: String,
+    pub count: u64,
+    pub pct: f64,
+}
+
+// stat 21 + 22
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VolumeStats {
+    pub total: u64,
+    pub sent: u64,
+    pub received: u64,
+    /// Sorted descending by count.
+    pub participants: Vec<ParticipantCount>,
+}
+
+// stat 23
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoiceTextParticipant {
+    pub name: String,
+    pub text_count: u64,
+    pub voice_count: u64,
+    /// Total seconds of voice/video-message content.
+    pub voice_duration_secs: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoiceTextStats {
+    pub total_text: u64,
+    pub total_voice: u64,
+    pub total_voice_duration_secs: u64,
+    pub participants: Vec<VoiceTextParticipant>,
+}
+
+// stat 16
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageLengthParticipant {
+    pub name: String,
+    pub avg_chars: f64,
+    pub total_chars: u64,
+    pub count: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageLengthStats {
+    /// Sorted descending by avg_chars.
+    pub participants: Vec<MessageLengthParticipant>,
+}
+
+// stat 15
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResponseTimeParticipant {
+    pub name: String,
+    pub avg_secs: f64,
+    pub median_secs: f64,
+    pub sample_count: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResponseTimeStats {
+    /// Sorted ascending by avg_secs (faster replier first).
+    pub participants: Vec<ResponseTimeParticipant>,
+}
+
+// stat 14
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LateNightParticipant {
+    pub name: String,
+    pub count: u64,
+    /// Late-night messages as a share of this participant's own total.
+    pub pct_of_participant_total: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LateNightStats {
+    pub total_late_night: u64,
+    /// Sorted descending by count.
+    pub participants: Vec<LateNightParticipant>,
+}
+
+// stat 12
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InitiatorFinisherStats {
+    /// Who opens conversations after ≥ 6 h of silence.
+    pub initiators: Vec<ParticipantCount>,
+    /// Who sent the last message before a ≥ 6 h gap.
+    pub finishers: Vec<ParticipantCount>,
+}
+
+// stat 9
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EmojiEntry {
+    pub emoji: String,
+    pub count: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EmojiParticipant {
+    pub name: String,
+    pub top_emojis: Vec<EmojiEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EmojiStats {
+    /// Top 20 emojis across all participants.
+    pub top_overall: Vec<EmojiEntry>,
+    pub by_participant: Vec<EmojiParticipant>,
+    /// Top 10 reactions (emoji + combined count across all messages).
+    pub top_reactions: Vec<EmojiEntry>,
+}
+
+// stat 4
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CircadianParticipant {
+    pub name: String,
+    /// 24 hourly message counts (index = hour 0..23).
+    pub hourly: Vec<u64>,
+    /// Estimated sleep-start hour (0–23).
+    pub sleep_start_hour: u8,
+    /// Estimated sleep-end (wake) hour (0–23).
+    pub sleep_end_hour: u8,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CircadianStats {
+    /// Combined 24-element hourly totals.
+    pub hourly_total: Vec<u64>,
+    pub participants: Vec<CircadianParticipant>,
+}
+
+// stat 5
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HeatmapDay {
+    /// `"YYYY-MM-DD"`.
+    pub date: String,
+    pub count: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HeatmapStats {
+    /// Sorted chronologically.
+    pub days: Vec<HeatmapDay>,
+}
+
+// ── Aggregate result types ────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnalyticsResult {
+    pub total_messages: u64,
+    pub sent_messages: u64,
+    pub received_messages: u64,
+    pub volume: VolumeStats,
+    pub voice_text: VoiceTextStats,
+    pub message_length: MessageLengthStats,
+    pub response_time: ResponseTimeStats,
+    pub late_night: LateNightStats,
+    pub initiator_finisher: InitiatorFinisherStats,
+    pub emojis: EmojiStats,
+    pub circadian: CircadianStats,
+    pub heatmap: HeatmapStats,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatResult {
+    pub chat_id: i64,
+    pub chat_name: String,
+    pub analytics: AnalyticsResult,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WrapAnalytics {
+    pub display_name: String,
+    pub username: Option<String>,
+    pub about_preview: String,
+    pub file_size_bytes: u64,
+    pub chat_count: usize,
+    pub sample_messages: Vec<String>,
+    pub account: AnalyticsResult,
+    /// Top 25 chats by total message volume.
+    pub chats: Vec<ChatResult>,
+}
+
+// ── Internal collector state ──────────────────────────────────────────────────
+
+/// Maximum response-time samples stored per participant to cap memory.
+const MAX_DELAY_SAMPLES: usize = 10_000;
+
+/// Gaps ≥ this many seconds are treated as a new conversation.
+const INITIATOR_GAP_SECS: i64 = 6 * 3_600; // 6 h
+
+/// Top emojis stored per sender.
+const TOP_EMOJIS: usize = 10;
+
+struct EngineState {
+    // ── volume / sent-received (stats 21, 22) ─────────────────────────────
+    volume_counts: HashMap<String, u64>,
+    sent_count: u64,
+    received_count: u64,
+
+    // ── voice vs text (stat 23) ───────────────────────────────────────────
+    text_counts: HashMap<String, u64>,
+    voice_counts: HashMap<String, u64>,
+    voice_secs: HashMap<String, u64>,
+
+    // ── message length (stat 16) ──────────────────────────────────────────
+    msg_chars: HashMap<String, u64>,
+    msg_char_counts: HashMap<String, u64>,
+
+    // ── response time (stat 15) ───────────────────────────────────────────
+    rt_delays: HashMap<String, Vec<u32>>,
+    rt_last_ts: i64,
+    rt_last_sender: String,
+
+    // ── late night (stat 14) ──────────────────────────────────────────────
+    late_counts: HashMap<String, u64>,
+    participant_totals: HashMap<String, u64>,
+
+    // ── initiator / finisher (stat 12) ────────────────────────────────────
+    if_initiations: HashMap<String, u64>,
+    if_finishes: HashMap<String, u64>,
+    if_last_ts: i64,
+    if_last_sender: String,
+    if_first: bool,
+
+    // ── emojis & reactions (stat 9) ───────────────────────────────────────
+    overall_emojis: HashMap<String, u64>,
+    sender_emojis: HashMap<String, HashMap<String, u64>>,
+    reactions_map: HashMap<String, u64>,
+
+    // ── circadian (stat 4) ────────────────────────────────────────────────
+    circ_overall: [u64; 24],
+    circ_by_sender: HashMap<String, [u64; 24]>,
+
+    // ── heatmap (stat 5) ──────────────────────────────────────────────────
+    heatmap_days: HashMap<String, u64>,
+}
+
+impl EngineState {
+    fn new() -> Self {
+        Self {
+            volume_counts: HashMap::new(),
+            sent_count: 0,
+            received_count: 0,
+            text_counts: HashMap::new(),
+            voice_counts: HashMap::new(),
+            voice_secs: HashMap::new(),
+            msg_chars: HashMap::new(),
+            msg_char_counts: HashMap::new(),
+            rt_delays: HashMap::new(),
+            rt_last_ts: 0,
+            rt_last_sender: String::new(),
+            late_counts: HashMap::new(),
+            participant_totals: HashMap::new(),
+            if_initiations: HashMap::new(),
+            if_finishes: HashMap::new(),
+            if_last_ts: 0,
+            if_last_sender: String::new(),
+            if_first: true,
+            overall_emojis: HashMap::new(),
+            sender_emojis: HashMap::new(),
+            reactions_map: HashMap::new(),
+            circ_overall: [0u64; 24],
+            circ_by_sender: HashMap::new(),
+            heatmap_days: HashMap::new(),
+        }
+    }
+
+    fn feed(&mut self, ev: &MessageEvent) {
+        let sender = &ev.sender_name;
+
+        // ── Volume / sent-received ────────────────────────────────────────
+        *self.volume_counts.entry(sender.clone()).or_default() += 1;
+        *self.participant_totals.entry(sender.clone()).or_default() += 1;
+        if ev.is_mine {
+            self.sent_count += 1;
+        } else {
+            self.received_count += 1;
+        }
+
+        // ── Voice vs text ─────────────────────────────────────────────────
+        if ev.kind.is_voice_like() {
+            *self.voice_counts.entry(sender.clone()).or_default() += 1;
+            *self.voice_secs.entry(sender.clone()).or_default() +=
+                ev.voice_duration_secs as u64;
+        } else {
+            *self.text_counts.entry(sender.clone()).or_default() += 1;
+        }
+
+        // ── Message length (text only) ────────────────────────────────────
+        if ev.kind.is_text() && ev.char_count > 0 {
+            *self.msg_chars.entry(sender.clone()).or_default() += ev.char_count as u64;
+            *self.msg_char_counts.entry(sender.clone()).or_default() += 1;
+        }
+
+        // ── Response time ─────────────────────────────────────────────────
+        if ev.timestamp_secs > 0 {
+            if !self.rt_last_sender.is_empty()
+                && self.rt_last_sender != *sender
+                && ev.timestamp_secs > self.rt_last_ts
+            {
+                let gap = ev.timestamp_secs - self.rt_last_ts;
+                // Exclude gaps > 12 h (overnight / days away)
+                if gap > 0 && gap < 43_200 {
+                    let slot = self.rt_delays.entry(sender.clone()).or_default();
+                    if slot.len() < MAX_DELAY_SAMPLES {
+                        slot.push(gap.min(u32::MAX as i64) as u32);
+                    }
+                }
+            }
+            self.rt_last_ts = ev.timestamp_secs;
+            self.rt_last_sender = sender.clone();
+        }
+
+        // ── Late night (01:00–04:59) ──────────────────────────────────────
+        if ev.hour >= 1 && ev.hour < 5 {
+            *self.late_counts.entry(sender.clone()).or_default() += 1;
+        }
+
+        // ── Initiator / finisher ──────────────────────────────────────────
+        if self.if_first {
+            *self.if_initiations.entry(sender.clone()).or_default() += 1;
+            self.if_first = false;
+        } else if !self.if_last_sender.is_empty() && ev.timestamp_secs > 0 && self.if_last_ts > 0 {
+            let gap = ev.timestamp_secs - self.if_last_ts;
+            if gap >= INITIATOR_GAP_SECS {
+                // Previous sender "closed"; current sender "opens"
+                *self
+                    .if_finishes
+                    .entry(self.if_last_sender.clone())
+                    .or_default() += 1;
+                *self.if_initiations.entry(sender.clone()).or_default() += 1;
+            }
+        }
+        if ev.timestamp_secs > 0 || self.if_last_sender.is_empty() {
+            self.if_last_ts = ev.timestamp_secs;
+            self.if_last_sender = sender.clone();
+        }
+
+        // ── Emojis ────────────────────────────────────────────────────────
+        for emoji in &ev.emojis {
+            *self.overall_emojis.entry(emoji.clone()).or_default() += 1;
+            *self
+                .sender_emojis
+                .entry(sender.clone())
+                .or_default()
+                .entry(emoji.clone())
+                .or_default() += 1;
+        }
+
+        // ── Reactions ─────────────────────────────────────────────────────
+        for r in &ev.reactions {
+            *self.reactions_map.entry(r.emoji.clone()).or_default() += 1;
+        }
+
+        // ── Circadian ─────────────────────────────────────────────────────
+        let h = ev.hour as usize;
+        if h < 24 {
+            self.circ_overall[h] += 1;
+            self.circ_by_sender
+                .entry(sender.clone())
+                .or_insert([0u64; 24])[h] += 1;
+        }
+
+        // ── Heatmap ───────────────────────────────────────────────────────
+        if !ev.date_str.is_empty() {
+            *self.heatmap_days.entry(ev.date_str.clone()).or_default() += 1;
+        }
+    }
+
+    fn build(self) -> AnalyticsResult {
+        let total = self.sent_count + self.received_count;
+
+        // ── Volume ────────────────────────────────────────────────────────
+        let mut parts: Vec<ParticipantCount> = self
+            .volume_counts
+            .iter()
+            .map(|(name, &count)| ParticipantCount {
+                name: name.clone(),
+                count,
+                pct: if total > 0 {
+                    count as f64 * 100.0 / total as f64
+                } else {
+                    0.0
+                },
+            })
+            .collect();
+        parts.sort_by(|a, b| b.count.cmp(&a.count));
+        let volume = VolumeStats {
+            total,
+            sent: self.sent_count,
+            received: self.received_count,
+            participants: parts,
+        };
+
+        // ── Voice vs text ─────────────────────────────────────────────────
+        let all_senders: std::collections::HashSet<String> = self
+            .text_counts
+            .keys()
+            .chain(self.voice_counts.keys())
+            .cloned()
+            .collect();
+        let mut vt_parts: Vec<VoiceTextParticipant> = all_senders
+            .iter()
+            .map(|name| VoiceTextParticipant {
+                name: name.clone(),
+                text_count: *self.text_counts.get(name).unwrap_or(&0),
+                voice_count: *self.voice_counts.get(name).unwrap_or(&0),
+                voice_duration_secs: *self.voice_secs.get(name).unwrap_or(&0),
+            })
+            .collect();
+        vt_parts
+            .sort_by_key(|p| std::cmp::Reverse(p.text_count + p.voice_count));
+        let total_voice_dur: u64 = self.voice_secs.values().sum();
+        let voice_text = VoiceTextStats {
+            total_text: self.text_counts.values().sum(),
+            total_voice: self.voice_counts.values().sum(),
+            total_voice_duration_secs: total_voice_dur,
+            participants: vt_parts,
+        };
+
+        // ── Message length ────────────────────────────────────────────────
+        let mut ml_parts: Vec<MessageLengthParticipant> = self
+            .msg_char_counts
+            .iter()
+            .filter(|(_, &c)| c > 0)
+            .map(|(name, &count)| {
+                let tc = *self.msg_chars.get(name).unwrap_or(&0);
+                MessageLengthParticipant {
+                    name: name.clone(),
+                    avg_chars: tc as f64 / count as f64,
+                    total_chars: tc,
+                    count,
+                }
+            })
+            .collect();
+        ml_parts.sort_by(|a, b| {
+            b.avg_chars
+                .partial_cmp(&a.avg_chars)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        let message_length = MessageLengthStats {
+            participants: ml_parts,
+        };
+
+        // ── Response time ─────────────────────────────────────────────────
+        let mut rt_parts: Vec<ResponseTimeParticipant> = self
+            .rt_delays
+            .iter()
+            .filter(|(_, v)| !v.is_empty())
+            .map(|(name, delays)| {
+                let mut sorted = delays.clone();
+                sorted.sort_unstable();
+                let avg =
+                    sorted.iter().map(|&d| d as f64).sum::<f64>() / sorted.len() as f64;
+                let median = sorted[sorted.len() / 2] as f64;
+                ResponseTimeParticipant {
+                    name: name.clone(),
+                    avg_secs: avg,
+                    median_secs: median,
+                    sample_count: sorted.len() as u64,
+                }
+            })
+            .collect();
+        rt_parts.sort_by(|a, b| {
+            a.avg_secs
+                .partial_cmp(&b.avg_secs)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        let response_time = ResponseTimeStats {
+            participants: rt_parts,
+        };
+
+        // ── Late night ────────────────────────────────────────────────────
+        let total_ln: u64 = self.late_counts.values().sum();
+        let mut ln_parts: Vec<LateNightParticipant> = self
+            .participant_totals
+            .iter()
+            .map(|(name, &pt)| {
+                let late = *self.late_counts.get(name).unwrap_or(&0);
+                LateNightParticipant {
+                    name: name.clone(),
+                    count: late,
+                    pct_of_participant_total: if pt > 0 {
+                        late as f64 * 100.0 / pt as f64
+                    } else {
+                        0.0
+                    },
+                }
+            })
+            .collect();
+        ln_parts.sort_by(|a, b| b.count.cmp(&a.count));
+        let late_night = LateNightStats {
+            total_late_night: total_ln,
+            participants: ln_parts,
+        };
+
+        // ── Initiator / finisher ──────────────────────────────────────────
+        let all_if: std::collections::HashSet<String> = self
+            .if_initiations
+            .keys()
+            .chain(self.if_finishes.keys())
+            .cloned()
+            .collect();
+        let total_init: u64 = self.if_initiations.values().sum();
+        let total_fin: u64 = self.if_finishes.values().sum();
+        let mut initiators: Vec<ParticipantCount> = all_if
+            .iter()
+            .map(|name| {
+                let c = *self.if_initiations.get(name).unwrap_or(&0);
+                ParticipantCount {
+                    name: name.clone(),
+                    count: c,
+                    pct: if total_init > 0 {
+                        c as f64 * 100.0 / total_init as f64
+                    } else {
+                        0.0
+                    },
+                }
+            })
+            .collect();
+        initiators.sort_by(|a, b| b.count.cmp(&a.count));
+        let mut finishers: Vec<ParticipantCount> = all_if
+            .iter()
+            .map(|name| {
+                let c = *self.if_finishes.get(name).unwrap_or(&0);
+                ParticipantCount {
+                    name: name.clone(),
+                    count: c,
+                    pct: if total_fin > 0 {
+                        c as f64 * 100.0 / total_fin as f64
+                    } else {
+                        0.0
+                    },
+                }
+            })
+            .collect();
+        finishers.sort_by(|a, b| b.count.cmp(&a.count));
+        let initiator_finisher = InitiatorFinisherStats {
+            initiators,
+            finishers,
+        };
+
+        // ── Emojis ────────────────────────────────────────────────────────
+        let mut overall_vec: Vec<EmojiEntry> = self
+            .overall_emojis
+            .iter()
+            .map(|(e, &c)| EmojiEntry {
+                emoji: e.clone(),
+                count: c,
+            })
+            .collect();
+        overall_vec.sort_by(|a, b| b.count.cmp(&a.count));
+        overall_vec.truncate(20);
+
+        let mut by_participant: Vec<EmojiParticipant> = self
+            .sender_emojis
+            .iter()
+            .map(|(name, map)| {
+                let mut entries: Vec<EmojiEntry> = map
+                    .iter()
+                    .map(|(e, &c)| EmojiEntry {
+                        emoji: e.clone(),
+                        count: c,
+                    })
+                    .collect();
+                entries.sort_by(|a, b| b.count.cmp(&a.count));
+                entries.truncate(TOP_EMOJIS);
+                EmojiParticipant {
+                    name: name.clone(),
+                    top_emojis: entries,
+                }
+            })
+            .collect();
+        by_participant.sort_by(|a, b| a.name.cmp(&b.name));
+
+        let mut top_reactions: Vec<EmojiEntry> = self
+            .reactions_map
+            .iter()
+            .map(|(e, &c)| EmojiEntry {
+                emoji: e.clone(),
+                count: c,
+            })
+            .collect();
+        top_reactions.sort_by(|a, b| b.count.cmp(&a.count));
+        top_reactions.truncate(10);
+
+        let emojis = EmojiStats {
+            top_overall: overall_vec,
+            by_participant,
+            top_reactions,
+        };
+
+        // ── Circadian ─────────────────────────────────────────────────────
+        let hourly_total = self.circ_overall.to_vec();
+        let mut circ_parts: Vec<CircadianParticipant> = self
+            .circ_by_sender
+            .iter()
+            .map(|(name, hourly)| {
+                let (sleep_start, sleep_end) = estimate_sleep_window(hourly);
+                CircadianParticipant {
+                    name: name.clone(),
+                    hourly: hourly.to_vec(),
+                    sleep_start_hour: sleep_start,
+                    sleep_end_hour: sleep_end,
+                }
+            })
+            .collect();
+        circ_parts.sort_by(|a, b| a.name.cmp(&b.name));
+        let circadian = CircadianStats {
+            hourly_total,
+            participants: circ_parts,
+        };
+
+        // ── Heatmap ───────────────────────────────────────────────────────
+        let mut days: Vec<HeatmapDay> = self
+            .heatmap_days
+            .iter()
+            .map(|(date, &count)| HeatmapDay {
+                date: date.clone(),
+                count,
+            })
+            .collect();
+        days.sort_by(|a, b| a.date.cmp(&b.date));
+        let heatmap = HeatmapStats { days };
+
+        AnalyticsResult {
+            total_messages: total,
+            sent_messages: self.sent_count,
+            received_messages: self.received_count,
+            volume,
+            voice_text,
+            message_length,
+            response_time,
+            late_night,
+            initiator_finisher,
+            emojis,
+            circadian,
+            heatmap,
+        }
+    }
+}
+
+// ── Analysis engine ───────────────────────────────────────────────────────────
+
+/// Drives all ten collectors in a single sequential message pass.
+///
+/// Feed events in timestamp order via [`AnalysisEngine::feed`]; call
+/// [`AnalysisEngine::finish`] once to consume the engine and produce
+/// [`WrapAnalytics`].
+pub struct AnalysisEngine {
+    account: EngineState,
+    chats: HashMap<i64, (String, EngineState)>,
+    display_name: String,
+    username: Option<String>,
+    about_preview: String,
+    file_size_bytes: u64,
+    sample_messages: Vec<String>,
+}
+
+impl AnalysisEngine {
+    pub fn new(
+        display_name: String,
+        username: Option<String>,
+        about_preview: String,
+        file_size_bytes: u64,
+    ) -> Self {
+        Self {
+            account: EngineState::new(),
+            chats: HashMap::new(),
+            display_name,
+            username,
+            about_preview,
+            file_size_bytes,
+            sample_messages: Vec::with_capacity(5),
+        }
+    }
+
+    /// Feed one normalised message event.
+    pub fn feed(&mut self, ev: &MessageEvent) {
+        // Account-level
+        self.account.feed(ev);
+
+        // Per-chat
+        let (_, state) = self
+            .chats
+            .entry(ev.chat_id)
+            .or_insert_with(|| (ev.chat_name.clone(), EngineState::new()));
+        state.feed(ev);
+
+        // Sample messages (first 5 non-empty text snippets)
+        if self.sample_messages.len() < 5 && ev.kind.is_text() && ev.char_count > 0 {
+            // We don't have the raw text here; callers should push samples themselves
+            // via add_sample — this branch is kept for future use.
+        }
+    }
+
+    /// Push a sample message snippet (called by parser, not from MessageEvent).
+    pub fn add_sample(&mut self, snippet: String) {
+        if self.sample_messages.len() < 5 {
+            self.sample_messages.push(snippet);
+        }
+    }
+
+    /// Consume the engine and return the complete analytics result.
+    pub fn finish(self) -> WrapAnalytics {
+        let chat_count = self.chats.len();
+        let account = self.account.build();
+
+        // Build per-chat results, cap to top 25 by total volume
+        let mut chat_results: Vec<ChatResult> = self
+            .chats
+            .into_iter()
+            .map(|(chat_id, (chat_name, state))| {
+                let analytics = state.build();
+                ChatResult {
+                    chat_id,
+                    chat_name,
+                    analytics,
+                }
+            })
+            .collect();
+        chat_results.sort_by(|a, b| {
+            b.analytics
+                .total_messages
+                .cmp(&a.analytics.total_messages)
+        });
+        chat_results.truncate(25);
+
+        WrapAnalytics {
+            display_name: self.display_name,
+            username: self.username,
+            about_preview: self.about_preview,
+            file_size_bytes: self.file_size_bytes,
+            chat_count,
+            sample_messages: self.sample_messages,
+            account,
+            chats: chat_results,
+        }
+    }
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+/// Estimates sleep window as the longest consecutive ≤30%-of-avg quiet stretch.
+fn estimate_sleep_window(hourly: &[u64; 24]) -> (u8, u8) {
+    let total: u64 = hourly.iter().sum();
+    if total == 0 {
+        return (0, 7);
+    }
+    let avg = total as f64 / 24.0;
+    let threshold = (avg * 0.3).max(0.5);
+
+    // Scan a doubled 48-hour window to handle wrap-around (e.g. sleep 23–07).
+    let mut best_start = 0u8;
+    let mut best_len = 0u8;
+    let mut cur_start = 0u8;
+    let mut cur_len = 0u8;
+
+    for i in 0u8..48 {
+        let h = (i % 24) as usize;
+        if (hourly[h] as f64) <= threshold {
+            if cur_len == 0 {
+                cur_start = i % 24;
+            }
+            cur_len += 1;
+            if cur_len > best_len {
+                best_len = cur_len;
+                best_start = cur_start;
+            }
+        } else {
+            cur_len = 0;
+        }
+    }
+
+    let sleep_end = (best_start as u16 + best_len as u16) as u8 % 24;
+    (best_start, sleep_end)
+}
+
+/// Parses a Telegram local-time date string `"YYYY-MM-DDTHH:MM:SS"` into
+/// `(unix_epoch_secs, hour, "YYYY-MM-DD")`.
+///
+/// Telegram exports local timestamps without a timezone offset, so this is
+/// intentionally *not* UTC-corrected — all collectors treat timestamps
+/// consistently as local time.
+pub fn parse_telegram_date(s: &str) -> Option<(i64, u8, String)> {
+    if s.len() < 10 {
+        return None;
+    }
+    let year: i64 = s[0..4].parse().ok()?;
+    let month: i64 = s[5..7].parse().ok()?;
+    let day: i64 = s[8..10].parse().ok()?;
+    let hour: u8 = if s.len() >= 13 {
+        s[11..13].parse().ok()?
+    } else {
+        0
+    };
+    let minute: u8 = if s.len() >= 16 {
+        s[14..16].parse().unwrap_or(0)
+    } else {
+        0
+    };
+    let second: u8 = if s.len() >= 19 {
+        s[17..19].parse().unwrap_or(0)
+    } else {
+        0
+    };
+
+    let days = civil_to_epoch_days(year, month, day);
+    let ts = days * 86_400 + hour as i64 * 3_600 + minute as i64 * 60 + second as i64;
+    let date_str = s[..10].to_string();
+    Some((ts, hour, date_str))
+}
+
+/// Howard Hinnant's algorithm: civil date → days since 1970-01-01.
+fn civil_to_epoch_days(y: i64, m: i64, d: i64) -> i64 {
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = if y >= 0 { y } else { y - 399 } / 400;
+    let yoe = y - era * 400;
+    let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
+/// Extracts individual emoji characters from a string.
+///
+/// Skips skin-tone modifiers, variation selectors, and zero-width joiners so
+/// that 👍🏻 is counted as 👍 rather than two separate entries.
+pub fn extract_emojis(text: &str) -> Vec<String> {
+    text.chars()
+        .filter(|&c| is_significant_emoji(c))
+        .map(|c| c.to_string())
+        .collect()
+}
+
+fn is_significant_emoji(c: char) -> bool {
+    let cp = c as u32;
+    match cp {
+        // Skip modifiers and joiners
+        0x1F3FB..=0x1F3FF => false, // skin tone modifiers
+        0xFE00..=0xFE0F => false,   // variation selectors
+        0x200D => false,            // ZWJ
+        0x20E3 => false,            // combining enclosing keycap
+        // Emoji ranges
+        0x1F600..=0x1F64F => true, // emoticons
+        0x1F300..=0x1F5FF => true, // misc symbols and pictographs
+        0x1F680..=0x1F6FF => true, // transport and map
+        0x1F700..=0x1F77F => true, // alchemical symbols
+        0x1F780..=0x1F7FF => true, // geometric shapes extended
+        0x1F800..=0x1F8FF => true, // supplemental arrows C
+        0x1F900..=0x1F9FF => true, // supplemental symbols and pictographs
+        0x1FA00..=0x1FA6F => true, // chess symbols
+        0x1FA70..=0x1FAFF => true, // symbols and pictographs extended-A
+        0x2600..=0x26FF => true,   // misc symbols
+        0x2700..=0x27BF => true,   // dingbats
+        0x2B50 => true,            // ⭐
+        0x2B55 => true,            // ⭕
+        0x25AA..=0x25FE => true,   // geometric shapes
+        _ => false,
+    }
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_ev(sender: &str, is_mine: bool, ts: i64, hour: u8, date: &str, kind: MessageKind, chars: usize) -> MessageEvent {
+        MessageEvent {
+            chat_id: 1,
+            chat_name: "Test Chat".into(),
+            is_mine,
+            sender_name: sender.into(),
+            timestamp_secs: ts,
+            hour,
+            date_str: date.into(),
+            kind,
+            char_count: chars,
+            voice_duration_secs: 0,
+            emojis: vec![],
+            reactions: vec![],
+        }
+    }
+
+    #[test]
+    fn test_parse_telegram_date() {
+        let (ts, hour, date) = parse_telegram_date("2024-03-15T14:30:00").unwrap();
+        assert_eq!(hour, 14);
+        assert_eq!(date, "2024-03-15");
+        // 2024-03-15 14:30:00 UTC-equivalent
+        assert!(ts > 0);
+    }
+
+    #[test]
+    fn test_extract_emojis() {
+        let emojis = extract_emojis("Hello 😀 world 🎉!");
+        assert_eq!(emojis, vec!["😀", "🎉"]);
+    }
+
+    #[test]
+    fn test_sent_received_counts() {
+        let mut engine = AnalysisEngine::new(
+            "Alice".into(), None, "".into(), 0,
+        );
+        engine.feed(&make_ev("Alice", true, 1000, 10, "2024-01-01", MessageKind::Text, 5));
+        engine.feed(&make_ev("Bob", false, 2000, 11, "2024-01-01", MessageKind::Text, 8));
+        engine.feed(&make_ev("Alice", true, 3000, 12, "2024-01-01", MessageKind::Text, 3));
+        let result = engine.finish();
+        assert_eq!(result.account.sent_messages, 2);
+        assert_eq!(result.account.received_messages, 1);
+        assert_eq!(result.account.total_messages, 3);
+    }
+
+    #[test]
+    fn test_late_night_detection() {
+        let mut engine = AnalysisEngine::new("Me".into(), None, "".into(), 0);
+        engine.feed(&make_ev("Me", true, 1000, 2, "2024-01-01", MessageKind::Text, 5));
+        engine.feed(&make_ev("Me", true, 2000, 10, "2024-01-01", MessageKind::Text, 5));
+        let result = engine.finish();
+        assert_eq!(result.account.late_night.total_late_night, 1);
+    }
+
+    #[test]
+    fn test_sleep_window() {
+        let mut hourly = [10u64; 24];
+        // Simulate silence from 23–06
+        hourly[23] = 0;
+        hourly[0] = 0;
+        hourly[1] = 0;
+        hourly[2] = 0;
+        hourly[3] = 0;
+        hourly[4] = 0;
+        hourly[5] = 0;
+        hourly[6] = 0;
+        let (start, end) = estimate_sleep_window(&hourly);
+        // Should detect the 8-hour quiet window around midnight
+        assert!(start >= 22 || start <= 1, "start={start}");
+        assert!(end >= 4 && end <= 8, "end={end}");
+    }
+
+    #[test]
+    fn test_heatmap_accumulates() {
+        let mut engine = AnalysisEngine::new("Me".into(), None, "".into(), 0);
+        for _ in 0..5 {
+            engine.feed(&make_ev("Me", true, 1000, 10, "2024-01-01", MessageKind::Text, 3));
+        }
+        engine.feed(&make_ev("Me", true, 2000, 11, "2024-01-02", MessageKind::Text, 3));
+        let result = engine.finish();
+        let day1 = result.account.heatmap.days.iter().find(|d| d.date == "2024-01-01").unwrap();
+        assert_eq!(day1.count, 5);
+    }
+
+    #[test]
+    fn test_initiator_finisher() {
+        let mut engine = AnalysisEngine::new("Me".into(), None, "".into(), 0);
+        // First message: Alice initiates
+        engine.feed(&make_ev("Alice", false, 0, 10, "2024-01-01", MessageKind::Text, 5));
+        // Then Bob responds quickly (no gap)
+        engine.feed(&make_ev("Bob", true, 60, 10, "2024-01-01", MessageKind::Text, 5));
+        // 8h gap, then Alice initiates again
+        engine.feed(&make_ev("Alice", false, 60 + 8 * 3600, 18, "2024-01-01", MessageKind::Text, 5));
+        let result = engine.finish();
+        let alice_init = result.account.initiator_finisher.initiators
+            .iter().find(|p| p.name == "Alice");
+        assert!(alice_init.is_some());
+        assert_eq!(alice_init.unwrap().count, 2);
+    }
+}

@@ -18,3 +18,10 @@ export function summarize_telegram_bytes_with_progress(
 ): string {
   throw new Error("WASM module not built. Run: bun run build:wasm:dev")
 }
+
+export function analyze_telegram_bytes_with_progress(
+  _data: Uint8Array,
+  _onProgress: (loadedBytes: number, totalBytes: number) => void
+): string {
+  throw new Error("WASM module not built. Run: bun run build:wasm:dev")
+}

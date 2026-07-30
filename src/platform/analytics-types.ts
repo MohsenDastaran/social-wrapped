@@ -1,0 +1,163 @@
+/**
+ * TypeScript mirror of the Rust `WrapAnalytics` struct tree.
+ * All fields are camelCase (Rust serde `rename_all = "camelCase"`).
+ */
+
+// ── Shared ────────────────────────────────────────────────────────────────────
+
+export type ParticipantCount = {
+  name: string
+  count: number
+  pct: number
+}
+
+// ── Stat 21 + 22: Volume & Dominance / Sent vs Received ──────────────────────
+
+export type VolumeStats = {
+  total: number
+  sent: number
+  received: number
+  participants: ParticipantCount[]
+}
+
+// ── Stat 23: Voice vs Text ────────────────────────────────────────────────────
+
+export type VoiceTextParticipant = {
+  name: string
+  textCount: number
+  voiceCount: number
+  voiceDurationSecs: number
+}
+
+export type VoiceTextStats = {
+  totalText: number
+  totalVoice: number
+  totalVoiceDurationSecs: number
+  participants: VoiceTextParticipant[]
+}
+
+// ── Stat 16: Message Length Balance ──────────────────────────────────────────
+
+export type MessageLengthParticipant = {
+  name: string
+  avgChars: number
+  totalChars: number
+  count: number
+}
+
+export type MessageLengthStats = {
+  participants: MessageLengthParticipant[]
+}
+
+// ── Stat 15: Average Response Time ───────────────────────────────────────────
+
+export type ResponseTimeParticipant = {
+  name: string
+  avgSecs: number
+  medianSecs: number
+  sampleCount: number
+}
+
+export type ResponseTimeStats = {
+  participants: ResponseTimeParticipant[]
+}
+
+// ── Stat 14: Late-Night Chats ─────────────────────────────────────────────────
+
+export type LateNightParticipant = {
+  name: string
+  count: number
+  pctOfParticipantTotal: number
+}
+
+export type LateNightStats = {
+  totalLateNight: number
+  participants: LateNightParticipant[]
+}
+
+// ── Stat 12: Initiator vs Finisher ────────────────────────────────────────────
+
+export type InitiatorFinisherStats = {
+  initiators: ParticipantCount[]
+  finishers: ParticipantCount[]
+}
+
+// ── Stat 9: Top Emojis & Reactions ───────────────────────────────────────────
+
+export type EmojiEntry = {
+  emoji: string
+  count: number
+}
+
+export type EmojiParticipant = {
+  name: string
+  topEmojis: EmojiEntry[]
+}
+
+export type EmojiStats = {
+  topOverall: EmojiEntry[]
+  byParticipant: EmojiParticipant[]
+  topReactions: EmojiEntry[]
+}
+
+// ── Stat 4: Circadian Rhythm & Sleep Estimation ───────────────────────────────
+
+export type CircadianParticipant = {
+  name: string
+  /** 24-element array, index = hour 0..23 */
+  hourly: number[]
+  sleepStartHour: number
+  sleepEndHour: number
+}
+
+export type CircadianStats = {
+  /** 24-element combined hourly totals */
+  hourlyTotal: number[]
+  participants: CircadianParticipant[]
+}
+
+// ── Stat 5: Activity Heatmap ──────────────────────────────────────────────────
+
+export type HeatmapDay = {
+  /** "YYYY-MM-DD" */
+  date: string
+  count: number
+}
+
+export type HeatmapStats = {
+  days: HeatmapDay[]
+}
+
+// ── Result types ──────────────────────────────────────────────────────────────
+
+export type AnalyticsResult = {
+  totalMessages: number
+  sentMessages: number
+  receivedMessages: number
+  volume: VolumeStats
+  voiceText: VoiceTextStats
+  messageLength: MessageLengthStats
+  responseTime: ResponseTimeStats
+  lateNight: LateNightStats
+  initiatorFinisher: InitiatorFinisherStats
+  emojis: EmojiStats
+  circadian: CircadianStats
+  heatmap: HeatmapStats
+}
+
+export type ChatResult = {
+  chatId: number
+  chatName: string
+  analytics: AnalyticsResult
+}
+
+export type WrapAnalytics = {
+  displayName: string
+  username: string | null
+  aboutPreview: string
+  fileSizeBytes: number
+  chatCount: number
+  sampleMessages: string[]
+  account: AnalyticsResult
+  chats: ChatResult[]
+}

@@ -1,4 +1,4 @@
-//! Telegram full-account export parser and summarizer.
+//! Telegram full-account export parser.
 //!
 //! Telegram Desktop's "Export Telegram data" produces a single large
 //! `result.json` whose top-level shape is:
@@ -9,11 +9,16 @@
 //!   "personal_information": { "user_id": 123, "first_name": "...", ... },
 //!   "chats": {
 //!     "list": [
-//!       { "type": "personal_chat", "id": 456, "messages": [
-//!         { "id": 1, "type": "message", "from": "Alice",
-//!           "from_id": "user456", "date": "2024-01-15T10:30:00",
-//!           "text": "hello" }
-//!       ]}
+//!       { "type": "personal_chat", "id": 456, "name": "Alice",
+//!         "messages": [
+//!           { "id": 1, "type": "message", "from": "Alice",
+//!             "from_id": "user456", "date": "2024-01-15T10:30:00",
+//!             "text": "hello",
+//!             "media_type": "voice_message",
+//!             "duration_seconds": 12,
+//!             "reactions": [{"emoji":"❤","count":1,"recent":[{"from":"Bob","from_id":"user789"}]}]
+//!           }
+//!         ]}
 //!     ]
 //!   }
 //! }
@@ -32,6 +37,10 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::analytics::collectors::{
+    extract_emojis, parse_telegram_date, AnalysisEngine, MessageEvent, MessageKind,
+    ReactionEvent, WrapAnalytics,
+};
 use crate::error::CoreError;
 
 // ── Private raw deserialization types ────────────────────────────────────────
@@ -61,6 +70,10 @@ struct RawChatsSection {
 #[derive(Deserialize)]
 struct RawChat {
     #[serde(default)]
+    id: i64,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
     messages: Vec<RawMessage>,
 }
 
@@ -72,14 +85,41 @@ struct RawMessage {
     from: Option<String>,
     #[serde(default)]
     from_id: Option<String>,
+    /// Local-time ISO-8601 string without timezone: `"2024-01-15T10:30:00"`.
+    #[serde(default)]
+    date: Option<String>,
     /// Heterogeneous: `String` or `Array<String|Object>`.
     #[serde(default)]
     text: Value,
+    /// `"voice_message"`, `"video_message"`, `"sticker"`, `"photo"`,
+    /// `"video_file"`, `"animation"`, `"document"`, etc.
+    #[serde(default)]
+    media_type: Option<String>,
+    /// Duration in seconds for voice/video messages.
+    #[serde(default)]
+    duration_seconds: Option<u32>,
+    #[serde(default)]
+    reactions: Vec<RawReaction>,
 }
 
-// ── Public summary type ───────────────────────────────────────────────────────
+#[derive(Deserialize)]
+struct RawReaction {
+    #[serde(default)]
+    emoji: Option<String>,
+    #[serde(default)]
+    recent: Vec<RawReactionPerson>,
+}
 
-/// Statistical summary of a Telegram full-account `result.json` export.
+#[derive(Deserialize)]
+struct RawReactionPerson {
+    #[serde(default)]
+    from_id: Option<String>,
+}
+
+// ── Legacy summary type (kept for backward compat) ────────────────────────────
+
+/// Basic statistical summary — returned by the legacy `summarize_*` functions
+/// which the import UI currently uses.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TelegramExportSummary {
@@ -87,26 +127,18 @@ pub struct TelegramExportSummary {
     pub username: Option<String>,
     /// First line of the export's `about` field, truncated to 200 characters.
     pub about_preview: String,
-    /// Raw file size in bytes (from filesystem metadata).
     pub file_size_bytes: u64,
     pub chat_count: usize,
-    /// Number of entries with `"type": "message"` (excludes service events).
     pub total_messages: u64,
     pub sent_messages: u64,
     pub received_messages: u64,
-    /// Up to 5 `"Sender: text snippet"` strings sampled from early messages.
     pub sample_messages: Vec<String>,
 }
 
 impl TelegramExportSummary {
-    /// Renders the summary as a plain multi-line text report.
     pub fn to_text_report(&self) -> String {
         let size_mb = self.file_size_bytes as f64 / 1_048_576.0;
-        let username_part = self
-            .username
-            .as_deref()
-            .unwrap_or("no username");
-
+        let username_part = self.username.as_deref().unwrap_or("no username");
         let mut lines = vec![
             "Telegram Export Summary".to_string(),
             "=======================".to_string(),
@@ -119,48 +151,30 @@ impl TelegramExportSummary {
             format!("  Sent           : {}", self.sent_messages),
             format!("  Received       : {}", self.received_messages),
         ];
-
         if !self.sample_messages.is_empty() {
             lines.push(String::new());
             lines.push("Sample messages:".to_string());
             for msg in &self.sample_messages {
-                lines.push(format!("  {}", msg));
+                lines.push(format!("  {msg}"));
             }
         }
-
         lines.join("\n")
     }
 
-    /// JSON form used by the web/WASM import UI.
     pub fn to_json(&self) -> Result<String, CoreError> {
         serde_json::to_string(self).map_err(CoreError::from)
     }
 }
 
-/// Parses a Telegram export already loaded into memory (browser file picker / WASM).
-pub fn summarize_export_bytes(bytes: &[u8]) -> Result<TelegramExportSummary, CoreError> {
-    summarize_export_bytes_with_progress(bytes, |_, _| {})
-}
+// ── Progress reader ────────────────────────────────────────────────────────────
 
-/// Like [`summarize_export_bytes`], but invokes `on_progress(bytes_read, total_bytes)`
-/// as the parser consumes the input. Calls are throttled to roughly every 0.5%
-/// of the file (minimum 256 KB), plus a final call at EOF.
-pub fn summarize_export_bytes_with_progress<F: FnMut(u64, u64)>(
-    bytes: &[u8],
-    on_progress: F,
-) -> Result<TelegramExportSummary, CoreError> {
-    let total_bytes = bytes.len() as u64;
-    let reader = ProgressReader::new(std::io::Cursor::new(bytes), total_bytes, on_progress);
-    summarize_export_from_reader(reader, Some(total_bytes))
-}
-
-/// [`Read`] wrapper that reports consumed bytes to a callback at throttled intervals.
+/// [`Read`] wrapper that reports consumed bytes to a callback at throttled
+/// intervals (~every 0.5% of the file, minimum 256 KB).
 struct ProgressReader<R: Read, F: FnMut(u64, u64)> {
     inner: R,
     total_bytes: u64,
     bytes_read: u64,
     last_reported: u64,
-    /// Minimum bytes between progress reports.
     report_step: u64,
     on_progress: F,
 }
@@ -182,9 +196,7 @@ impl<R: Read, F: FnMut(u64, u64)> Read for ProgressReader<R, F> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let n = self.inner.read(buf)?;
         self.bytes_read += n as u64;
-
-        let at_eof = n == 0;
-        if at_eof || self.bytes_read - self.last_reported >= self.report_step {
+        if n == 0 || self.bytes_read - self.last_reported >= self.report_step {
             self.last_reported = self.bytes_read;
             (self.on_progress)(self.bytes_read, self.total_bytes);
         }
@@ -194,33 +206,51 @@ impl<R: Read, F: FnMut(u64, u64)> Read for ProgressReader<R, F> {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-/// Parses a Telegram full-account `result.json` and returns a
-/// [`TelegramExportSummary`].
-///
-/// Uses a 256 KB read buffer and skips all unknown JSON fields without
-/// allocating, so memory usage stays well below the raw file size even for
-/// large (300+ MB) exports.
-///
-/// # Errors
-///
-/// Returns [`CoreError::Io`] on file-open or read failure, or
-/// [`CoreError::Json`] if the JSON is malformed.
-pub fn summarize_export(path: &Path) -> Result<TelegramExportSummary, CoreError> {
+/// Parses a Telegram export file from disk and returns full [`WrapAnalytics`].
+pub fn analyze_export(path: &Path) -> Result<WrapAnalytics, CoreError> {
     let file_size_bytes = std::fs::metadata(path)?.len();
     let file = File::open(path)?;
     let reader = BufReader::with_capacity(256 * 1024, file);
-    summarize_export_from_reader(reader, Some(file_size_bytes))
+    analyze_export_from_reader(reader, Some(file_size_bytes), |_, _| {})
 }
 
-/// Parses a Telegram full-account export from any [`Read`] source.
-pub fn summarize_export_from_reader<R: Read>(
+/// Like [`analyze_export`], but invokes `on_progress(bytes_read, total_bytes)`
+/// as the parser consumes the input.
+pub fn analyze_export_with_progress<F: FnMut(u64, u64)>(
+    path: &Path,
+    on_progress: F,
+) -> Result<WrapAnalytics, CoreError> {
+    let file_size_bytes = std::fs::metadata(path)?.len();
+    let file = File::open(path)?;
+    let reader = BufReader::with_capacity(256 * 1024, file);
+    analyze_export_from_reader(reader, Some(file_size_bytes), on_progress)
+}
+
+/// Parses a Telegram export already loaded into memory and returns full
+/// [`WrapAnalytics`] (used by WASM).
+pub fn analyze_export_bytes(bytes: &[u8]) -> Result<WrapAnalytics, CoreError> {
+    analyze_export_bytes_with_progress(bytes, |_, _| {})
+}
+
+/// Like [`analyze_export_bytes`], but invokes `on_progress(bytes_read, total_bytes)`.
+pub fn analyze_export_bytes_with_progress<F: FnMut(u64, u64)>(
+    bytes: &[u8],
+    on_progress: F,
+) -> Result<WrapAnalytics, CoreError> {
+    let total_bytes = bytes.len() as u64;
+    let reader = ProgressReader::new(std::io::Cursor::new(bytes), total_bytes, on_progress);
+    analyze_export_from_reader(reader, Some(total_bytes), |_, _| {})
+}
+
+/// Core parsing logic — works from any [`Read`] source.
+pub fn analyze_export_from_reader<R: Read, F: FnMut(u64, u64)>(
     reader: R,
     file_size_bytes: Option<u64>,
-) -> Result<TelegramExportSummary, CoreError> {
-    let reader = BufReader::with_capacity(256 * 1024, reader);
-    let export: RawExport = serde_json::from_reader(reader)?;
+    _on_progress: F,
+) -> Result<WrapAnalytics, CoreError> {
+    let buf_reader = BufReader::with_capacity(256 * 1024, reader);
+    let export: RawExport = serde_json::from_reader(buf_reader)?;
 
-    // ── Identity ──────────────────────────────────────────────────────────────
     let info = export.personal_information.as_ref();
 
     let display_name = info
@@ -235,8 +265,6 @@ pub fn summarize_export_from_reader<R: Read>(
         .unwrap_or_else(|| "Unknown".to_string());
 
     let username = info.and_then(|p| p.username.clone());
-
-    // The `from_id` on outgoing messages looks like "user302402513".
     let me_id: Option<String> = info.map(|p| format!("user{}", p.user_id));
 
     let about_preview: String = export
@@ -250,67 +278,186 @@ pub fn summarize_export_from_reader<R: Read>(
         .take(200)
         .collect();
 
-    // ── Aggregate ─────────────────────────────────────────────────────────────
+    let mut engine = AnalysisEngine::new(
+        display_name,
+        username,
+        about_preview,
+        file_size_bytes.unwrap_or(0),
+    );
+
     let chat_list = export.chats.map(|c| c.list).unwrap_or_default();
-    let chat_count = chat_list.len();
 
-    let mut total_messages: u64 = 0;
-    let mut sent_messages: u64 = 0;
-    let mut sample_messages: Vec<String> = Vec::with_capacity(5);
+    for (chat_index, chat) in chat_list.iter().enumerate() {
+        let chat_id = if chat.id != 0 {
+            chat.id
+        } else {
+            chat_index as i64
+        };
+        let chat_name = chat
+            .name
+            .clone()
+            .unwrap_or_else(|| format!("Chat {}", chat_index + 1));
 
-    for chat in &chat_list {
         for msg in &chat.messages {
             if msg.msg_type != "message" {
                 continue;
             }
-            total_messages += 1;
 
-            let is_mine = me_id.as_deref().zip(msg.from_id.as_deref())
+            let from_name = msg.from.clone().unwrap_or_else(|| "Unknown".to_string());
+            let is_mine = me_id
+                .as_deref()
+                .zip(msg.from_id.as_deref())
                 .map(|(me, fid)| fid == me)
                 .unwrap_or(false);
-            if is_mine {
-                sent_messages += 1;
-            }
 
-            if sample_messages.len() < 5 {
-                let text = value_to_plain_text(&msg.text);
-                if !text.is_empty() {
-                    let sender = msg.from.as_deref().unwrap_or("?");
-                    let capped: String = text.chars().take(80).collect();
-                    let snippet = if text.chars().count() > 80 {
-                        format!("{}…", capped)
+            let (timestamp_secs, hour, date_str) = msg
+                .date
+                .as_deref()
+                .and_then(parse_telegram_date)
+                .unwrap_or((0, 0, String::new()));
+
+            let kind = message_kind(&msg.media_type);
+            let plain_text = value_to_plain_text(&msg.text);
+            let char_count = if kind.is_text() {
+                plain_text.chars().count()
+            } else {
+                0
+            };
+            let emojis = if kind.is_text() {
+                extract_emojis(&plain_text)
+            } else {
+                vec![]
+            };
+            let voice_duration_secs = msg.duration_seconds.unwrap_or(0);
+
+            let reactions: Vec<ReactionEvent> = msg
+                .reactions
+                .iter()
+                .flat_map(|r| {
+                    let emoji = r.emoji.clone().unwrap_or_default();
+                    if emoji.is_empty() {
+                        vec![]
+                    } else if r.recent.is_empty() {
+                        // No per-user attribution — attribute to "unknown"
+                        vec![ReactionEvent {
+                            emoji: emoji.clone(),
+                            from_me: false,
+                        }]
                     } else {
-                        capped
-                    };
-                    sample_messages.push(format!("{}: {}", sender, snippet));
-                }
+                        r.recent
+                            .iter()
+                            .map(|p| {
+                                let from_me = me_id
+                                    .as_deref()
+                                    .zip(p.from_id.as_deref())
+                                    .map(|(me, fid)| fid == me)
+                                    .unwrap_or(false);
+                                ReactionEvent {
+                                    emoji: emoji.clone(),
+                                    from_me,
+                                }
+                            })
+                            .collect()
+                    }
+                })
+                .collect();
+
+            let ev = MessageEvent {
+                chat_id,
+                chat_name: chat_name.clone(),
+                is_mine,
+                sender_name: from_name.clone(),
+                timestamp_secs,
+                hour,
+                date_str,
+                kind,
+                char_count,
+                voice_duration_secs,
+                emojis,
+                reactions,
+            };
+
+            engine.feed(&ev);
+
+            // Collect early text snippets for the sample messages list.
+            if ev.char_count > 0 {
+                let capped: String = plain_text.chars().take(80).collect();
+                let snippet = if plain_text.chars().count() > 80 {
+                    format!("{}…", capped)
+                } else {
+                    capped
+                };
+                engine.add_sample(format!("{from_name}: {snippet}"));
             }
         }
     }
 
-    let received_messages = total_messages.saturating_sub(sent_messages);
+    Ok(engine.finish())
+}
 
-    Ok(TelegramExportSummary {
-        display_name,
-        username,
-        about_preview,
-        file_size_bytes: file_size_bytes.unwrap_or(0),
-        chat_count,
-        total_messages,
-        sent_messages,
-        received_messages,
-        sample_messages,
-    })
+// ── Legacy summarize functions (backward compat) ──────────────────────────────
+
+/// Parses a Telegram export file and returns a basic summary (legacy API).
+pub fn summarize_export(path: &Path) -> Result<TelegramExportSummary, CoreError> {
+    let analytics = analyze_export(path)?;
+    Ok(wrap_analytics_to_summary(analytics))
+}
+
+/// Parses Telegram export bytes and returns a basic summary.
+pub fn summarize_export_bytes(bytes: &[u8]) -> Result<TelegramExportSummary, CoreError> {
+    summarize_export_bytes_with_progress(bytes, |_, _| {})
+}
+
+/// Like [`summarize_export_bytes`], but invokes `on_progress(bytes_read, total_bytes)`.
+pub fn summarize_export_bytes_with_progress<F: FnMut(u64, u64)>(
+    bytes: &[u8],
+    on_progress: F,
+) -> Result<TelegramExportSummary, CoreError> {
+    let analytics = analyze_export_bytes_with_progress(bytes, on_progress)?;
+    Ok(wrap_analytics_to_summary(analytics))
+}
+
+/// Parses a Telegram full-account export from any [`Read`] source (legacy API).
+pub fn summarize_export_from_reader<R: Read>(
+    reader: R,
+    file_size_bytes: Option<u64>,
+) -> Result<TelegramExportSummary, CoreError> {
+    let analytics = analyze_export_from_reader(reader, file_size_bytes, |_, _| {})?;
+    Ok(wrap_analytics_to_summary(analytics))
+}
+
+fn wrap_analytics_to_summary(a: WrapAnalytics) -> TelegramExportSummary {
+    TelegramExportSummary {
+        display_name: a.display_name,
+        username: a.username,
+        about_preview: a.about_preview,
+        file_size_bytes: a.file_size_bytes,
+        chat_count: a.chat_count,
+        total_messages: a.account.total_messages,
+        sent_messages: a.account.sent_messages,
+        received_messages: a.account.received_messages,
+        sample_messages: a.sample_messages,
+    }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/// Maps Telegram's `media_type` string to a [`MessageKind`].
+fn message_kind(media_type: &Option<String>) -> MessageKind {
+    match media_type.as_deref() {
+        None | Some("") => MessageKind::Text,
+        Some("voice_message") => MessageKind::Voice,
+        Some("video_message") => MessageKind::VideoMessage,
+        Some("video_file") => MessageKind::Video,
+        Some("photo") => MessageKind::Photo,
+        Some("sticker") => MessageKind::Sticker,
+        Some("animation") | Some("animated_sticker") => MessageKind::Animation,
+        Some("document") | Some("audio_file") => MessageKind::File,
+        _ => MessageKind::Other,
+    }
+}
+
 /// Flattens Telegram's heterogeneous `text` field into a plain string.
-///
-/// - `String` → returned as-is.
-/// - `Array` → each element is either a bare string or an entity object with
-///   a `"text"` key; both are concatenated in order.
-/// - Anything else → empty string.
 fn value_to_plain_text(v: &Value) -> String {
     match v {
         Value::String(s) => s.clone(),

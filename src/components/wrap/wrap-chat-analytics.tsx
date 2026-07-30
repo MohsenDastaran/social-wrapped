@@ -1,245 +1,453 @@
 import { useMemo, useState } from "react"
 
 import {
-  EChartsAreaChart,
-  type ChartConfig as AreaConfig,
-} from "@/components/evilcharts/charts/echarts-area-chart"
-import {
   EChartsPieChart,
   type ChartConfig as PieConfig,
 } from "@/components/evilcharts/charts/echarts-pie-chart"
+import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
+import { CircadianPolarChart } from "@/components/wrap/charts/circadian-polar-chart"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
-import type { TelegramExportStats } from "@/platform/import"
+import type { AnalyticsResult, WrapAnalytics } from "@/platform/analytics-types"
+import {
+  Clock,
+  MessageSquare,
+  Mic,
+  Moon,
+  Shuffle,
+  Users,
+  Zap,
+} from "lucide-react"
 
-function formatCount(n: number): string {
-  return new Intl.NumberFormat().format(n)
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmt(n: number): string {
+  return new Intl.NumberFormat().format(Math.round(n))
 }
 
-type MockChat = {
-  id: string
+function fmtDuration(secs: number): string {
+  const h = Math.floor(secs / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  if (h > 0) return `${h}h ${m}m`
+  if (m > 0) return `${m}m`
+  return `${secs}s`
+}
+
+function fmtResponseTime(secs: number): string {
+  const min = Math.round(secs / 60)
+  if (min < 60) return `${min}m`
+  const h = (secs / 3600).toFixed(1)
+  return `${h}h`
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function SectionLabel({
+  icon: Icon,
+  label,
+}: {
+  icon: typeof MessageSquare
+  label: string
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <Icon className="size-3.5 text-muted-foreground" />
+      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </p>
+    </div>
+  )
+}
+
+type ParticipantBarProps = {
   name: string
-  you: number
-  them: number
-  responseYouMin: number
-  responseThemMin: number
+  value: string
+  pct?: number
+  accent?: "teal" | "amber" | "violet"
+}
+function ParticipantBar({ name, value, pct, accent = "teal" }: ParticipantBarProps) {
+  const barColor = {
+    teal: "bg-teal-500",
+    amber: "bg-amber-500",
+    violet: "bg-violet-500",
+  }[accent]
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between gap-2 text-sm">
+        <span className="truncate font-medium">{name}</span>
+        <span className="shrink-0 tabular-nums text-muted-foreground">
+          {value}
+        </span>
+      </div>
+      {pct !== undefined ? (
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className={`h-full rounded-full ${barColor} transition-[width]`}
+            style={{ width: `${Math.min(100, pct)}%` }}
+          />
+        </div>
+      ) : null}
+    </div>
+  )
 }
 
-/** Placeholder chats until per-chat parsing is wired. */
-function mockChats(stats: TelegramExportStats): MockChat[] {
-  const base = Math.max(120, Math.round(stats.totalMessages / Math.max(stats.chatCount, 1)))
-  const names = [
-    "Alex Rivera",
-    "Sam Chen",
-    "Family group",
-    "Work standup",
-    "Jordan Lee",
-  ]
-  return names.slice(0, Math.min(5, Math.max(2, stats.chatCount))).map((name, index) => {
-    const total = Math.round(base * (1.35 - index * 0.18))
-    const youShare = 0.42 + (index % 3) * 0.08
-    return {
-      id: `mock-chat-${index}`,
-      name,
-      you: Math.round(total * youShare),
-      them: Math.round(total * (1 - youShare)),
-      responseYouMin: 4 + index * 3,
-      responseThemMin: 7 + index * 2,
-    }
-  })
-}
+// ── Pie config helpers ────────────────────────────────────────────────────────
 
-const duelAreaConfig = {
-  you: {
-    label: "You",
-    colors: {
-      light: ["#14b8a6", "#0d9488"],
-      dark: ["#2dd4bf", "#14b8a6"],
-    },
-  },
-  them: {
-    label: "Them",
-    colors: {
-      light: ["#f59e0b", "#d97706"],
-      dark: ["#fbbf24", "#f59e0b"],
-    },
-  },
-} satisfies AreaConfig
-
-const duelPieConfig = {
-  you: {
-    label: "You",
-    colors: {
+function makeDominancePieConfig(participants: string[]): PieConfig {
+  const palettes = [
+    {
       light: ["#99f6e4", "#14b8a6", "#0f766e"],
       dark: ["#5eead4", "#2dd4bf", "#0d9488"],
     },
-  },
-  them: {
-    label: "Them",
-    colors: {
-      light: ["#fed7aa", "#fb923c", "#c2410c"],
-      dark: ["#fdba74", "#fb923c", "#ea580c"],
+    {
+      light: ["#fde68a", "#f59e0b", "#b45309"],
+      dark: ["#fcd34d", "#fbbf24", "#d97706"],
     },
-  },
-} satisfies PieConfig
-
-type WrapChatAnalyticsProps = {
-  stats: TelegramExportStats
+    {
+      light: ["#ddd6fe", "#8b5cf6", "#5b21b6"],
+      dark: ["#c4b5fd", "#a78bfa", "#7c3aed"],
+    },
+    {
+      light: ["#fbcfe8", "#ec4899", "#9d174d"],
+      dark: ["#f9a8d4", "#f472b6", "#be185d"],
+    },
+  ]
+  return Object.fromEntries(
+    participants.map((name, i) => [
+      name,
+      { label: name, colors: palettes[i % palettes.length] },
+    ])
+  )
 }
 
-/** Per-chat (user vs user) analytics — mock until chat-level data exists. */
-export function WrapChatAnalytics({ stats }: WrapChatAnalyticsProps) {
-  const chats = useMemo(() => mockChats(stats), [stats])
-  const [chatId, setChatId] = useState(chats[0]?.id ?? "")
-  const chat = chats.find((item) => item.id === chatId) ?? chats[0]
+// ── Chat analytics panel ──────────────────────────────────────────────────────
 
-  const weekly = useMemo(() => {
-    if (!chat) return []
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    return days.map((day, index) => {
-      const wave = 0.7 + Math.sin(index * 1.1) * 0.25
-      return {
-        day,
-        you: Math.round((chat.you / 7) * wave),
-        them: Math.round((chat.them / 7) * (1.4 - wave)),
-      }
-    })
-  }, [chat])
+function ChatAnalyticsPanel({ chatName, a }: { chatName: string; a: AnalyticsResult }) {
+  const dominancePieConfig = useMemo(
+    () => makeDominancePieConfig(a.volume.participants.map((p) => p.name)),
+    [a.volume.participants]
+  )
+  const dominanceData = a.volume.participants.map((p) => ({
+    name: p.name,
+    count: p.count,
+  }))
 
-  if (!chat) return null
-
-  const pieData = [
-    { side: "you", count: chat.you },
-    { side: "them", count: chat.them },
+  const vtPieConfig: PieConfig = {
+    text: {
+      label: "Text",
+      colors: {
+        light: ["#99f6e4", "#14b8a6"],
+        dark: ["#5eead4", "#2dd4bf"],
+      },
+    },
+    voice: {
+      label: "Voice",
+      colors: {
+        light: ["#fde68a", "#f59e0b"],
+        dark: ["#fcd34d", "#fbbf24"],
+      },
+    },
+  }
+  const vtData = [
+    { kind: "text", count: a.voiceText.totalText },
+    { kind: "voice", count: a.voiceText.totalVoice },
   ]
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* ── Volume totals ─────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3">
+        {a.volume.participants.slice(0, 4).map((p, i) => {
+          const accents = ["teal", "amber", "violet", "teal"] as const
+          return (
+            <div
+              key={p.name}
+              className={`rounded-xl px-4 py-3 ring-1 bg-linear-to-br ${
+                i === 0
+                  ? "from-teal-500/15 to-teal-500/5 ring-teal-500/25"
+                  : i === 1
+                    ? "from-amber-500/15 to-amber-500/5 ring-amber-500/25"
+                    : i === 2
+                      ? "from-violet-500/15 to-violet-500/5 ring-violet-500/25"
+                      : "from-rose-500/15 to-rose-500/5 ring-rose-500/25"
+              }`}
+            >
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                {p.name}
+              </p>
+              <p className="font-heading mt-1 text-2xl font-semibold tabular-nums">
+                {fmt(p.count)}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {p.pct.toFixed(1)}% of chat
+              </p>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ── Dominance pie ─────────────────────────────────────────────── */}
+      <WrapChartCard
+        title={`${chatName} · dominance`}
+        description="Who sent more in this chat"
+        exportName={`chat-${chatName}-dominance`}
+        exportLines={a.volume.participants.map(
+          (p) => `${p.name} ${fmt(p.count)} (${p.pct.toFixed(1)}%)`
+        )}
+        chartClassName="h-56 sm:h-64"
+      >
+        <EChartsPieChart
+          className="h-full w-full p-3"
+          data={dominanceData}
+          dataKey="count"
+          nameKey="name"
+          config={dominancePieConfig}
+        >
+          <EChartsPieChart.Legend isClickable />
+          <EChartsPieChart.Tooltip />
+          <EChartsPieChart.Pie isClickable innerRadius="40%">
+            <EChartsPieChart.Label dataKey="count" position="inside" />
+          </EChartsPieChart.Pie>
+        </EChartsPieChart>
+      </WrapChartCard>
+
+      {/* ── Response times ────────────────────────────────────────────── */}
+      {a.responseTime.participants.length > 0 ? (
+        <div className="rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10">
+          <SectionLabel icon={Clock} label="Avg response time" />
+          <div className="mt-3 flex flex-col gap-2">
+            {a.responseTime.participants.map((p) => (
+              <ParticipantBar
+                key={p.name}
+                name={p.name}
+                value={`avg ${fmtResponseTime(p.avgSecs)} · median ${fmtResponseTime(p.medianSecs)}`}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Message length ─────────────────────────────────────────────── */}
+      {a.messageLength.participants.length > 0 ? (
+        <div className="rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10">
+          <SectionLabel icon={MessageSquare} label="Avg message length" />
+          <div className="mt-3 flex flex-col gap-2">
+            {a.messageLength.participants.map((p) => {
+              const maxAvg = Math.max(
+                ...a.messageLength.participants.map((x) => x.avgChars)
+              )
+              return (
+                <ParticipantBar
+                  key={p.name}
+                  name={p.name}
+                  value={`${p.avgChars.toFixed(1)} chars/msg`}
+                  pct={(p.avgChars / maxAvg) * 100}
+                  accent="teal"
+                />
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Voice vs text ─────────────────────────────────────────────── */}
+      {a.voiceText.totalVoice > 0 ? (
+        <WrapChartCard
+          title="Voice vs text"
+          description="Voice memos vs text messages in this chat"
+          exportName={`chat-${chatName}-voice-text`}
+          exportLines={[
+            `Voice ${fmt(a.voiceText.totalVoice)} (${fmtDuration(a.voiceText.totalVoiceDurationSecs)})`,
+            `Text ${fmt(a.voiceText.totalText)}`,
+          ]}
+          chartClassName="h-44 sm:h-48"
+        >
+          <EChartsPieChart
+            className="h-full w-full p-3"
+            data={vtData}
+            dataKey="count"
+            nameKey="kind"
+            config={vtPieConfig}
+          >
+            <EChartsPieChart.Legend isClickable />
+            <EChartsPieChart.Tooltip />
+            <EChartsPieChart.Pie isClickable>
+              <EChartsPieChart.Label dataKey="count" position="inside" />
+            </EChartsPieChart.Pie>
+          </EChartsPieChart>
+        </WrapChartCard>
+      ) : null}
+
+      {/* ── Late night ────────────────────────────────────────────────── */}
+      {a.lateNight.totalLateNight > 0 ? (
+        <div className="rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10">
+          <SectionLabel icon={Moon} label={`Late-night (1–5 AM) · ${fmt(a.lateNight.totalLateNight)} msgs`} />
+          <div className="mt-3 flex flex-col gap-2">
+            {a.lateNight.participants
+              .filter((p) => p.count > 0)
+              .map((p) => (
+                <ParticipantBar
+                  key={p.name}
+                  name={p.name}
+                  value={`${fmt(p.count)} (${p.pctOfParticipantTotal.toFixed(1)}%)`}
+                  pct={p.pctOfParticipantTotal}
+                  accent="violet"
+                />
+              ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Initiator / finisher ──────────────────────────────────────── */}
+      {a.initiatorFinisher.initiators.length > 0 ? (
+        <div className="rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10">
+          <SectionLabel icon={Zap} label="Conversation dynamics" />
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
+                Usually starts
+              </p>
+              {a.initiatorFinisher.initiators.slice(0, 3).map((p) => (
+                <div
+                  key={p.name}
+                  className="flex items-center justify-between py-0.5 text-sm"
+                >
+                  <span className="truncate">{p.name}</span>
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    {p.pct.toFixed(0)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted-foreground">
+                Usually closes
+              </p>
+              {a.initiatorFinisher.finishers.slice(0, 3).map((p) => (
+                <div
+                  key={p.name}
+                  className="flex items-center justify-between py-0.5 text-sm"
+                >
+                  <span className="truncate">{p.name}</span>
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    {p.pct.toFixed(0)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Top emojis ───────────────────────────────────────────────── */}
+      {a.emojis.topOverall.length > 0 ? (
+        <div className="rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10">
+          <SectionLabel icon={Shuffle} label="Top emojis" />
+          <div className="mt-3 flex flex-wrap gap-2">
+            {a.emojis.topOverall.slice(0, 10).map((e) => (
+              <div
+                key={e.emoji}
+                className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1"
+              >
+                <span className="text-xl leading-none">{e.emoji}</span>
+                <span className="tabular-nums text-xs text-muted-foreground">
+                  {fmt(e.count)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Circadian ────────────────────────────────────────────────── */}
+      {a.circadian.participants.length > 0 ? (
+        <WrapChartCard
+          title="Activity by hour"
+          description="Circadian rhythm for this chat — estimated sleep windows shown."
+          exportName={`chat-${chatName}-circadian`}
+          exportLines={a.circadian.participants.map(
+            (p) => `${p.name} sleep ${p.sleepStartHour}:00–${p.sleepEndHour}:00`
+          )}
+          chartClassName="h-64 sm:h-72"
+        >
+          <CircadianPolarChart
+            participants={a.circadian.participants}
+            className="h-full w-full"
+          />
+        </WrapChartCard>
+      ) : null}
+
+      {/* ── Heatmap ───────────────────────────────────────────────────── */}
+      {a.heatmap.days.length > 0 ? (
+        <WrapChartCard
+          title="Activity heatmap"
+          description="Messages per day in this chat over the last year."
+          exportName={`chat-${chatName}-heatmap`}
+          exportLines={[
+            `${a.heatmap.days.length} active days`,
+          ]}
+          chartClassName="h-44 sm:h-48"
+        >
+          <CalendarHeatmap days={a.heatmap.days} className="h-full w-full" />
+        </WrapChartCard>
+      ) : null}
+    </div>
+  )
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
+type WrapChatAnalyticsProps = {
+  analytics: WrapAnalytics
+}
+
+export function WrapChatAnalytics({ analytics }: WrapChatAnalyticsProps) {
+  if (!analytics?.account) return null
+  const chats = analytics.chats ?? []
+
+  const [chatId, setChatId] = useState<number>(chats[0]?.chatId ?? -1)
+
+  const chat = useMemo(
+    () => chats.find((c) => c.chatId === chatId) ?? chats[0],
+    [chats, chatId]
+  )
+
+  if (chats.length === 0) {
+    return null
+  }
 
   return (
     <section className="flex flex-col gap-4">
       <header className="text-start">
         <h2 className="font-heading text-xl font-semibold tracking-tight">
-          User vs user
+          Chat breakdown
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pick one chat to compare you against the other person. Names and
-          series are mock for now.
+          Pick a chat to see detailed user-vs-user stats. Showing top{" "}
+          {chats.length} chats by volume.
         </p>
       </header>
 
       <label className="flex flex-col gap-1.5 text-start">
-        <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          Chat
+        <span className="flex items-center gap-2 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <Users className="size-3.5" />
+          Select chat
         </span>
         <select
-          value={chat.id}
-          onChange={(event) => setChatId(event.target.value)}
+          value={chatId}
+          onChange={(e) => setChatId(Number(e.target.value))}
           className="h-10 rounded-md border border-border bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
         >
-          {chats.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
+          {chats.map((c) => (
+            <option key={c.chatId} value={c.chatId}>
+              {c.chatName} · {fmt(c.analytics.totalMessages)} msgs
             </option>
           ))}
         </select>
       </label>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl bg-linear-to-br from-teal-500/15 to-teal-500/5 px-4 py-3 ring-1 ring-teal-500/25">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            You
-          </p>
-          <p className="font-heading mt-1 text-2xl font-semibold tabular-nums">
-            {formatCount(chat.you)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            ~{chat.responseYouMin}m avg reply
-          </p>
-        </div>
-        <div className="rounded-xl bg-linear-to-br from-amber-500/15 to-amber-500/5 px-4 py-3 ring-1 ring-amber-500/25">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Them
-          </p>
-          <p className="font-heading mt-1 text-2xl font-semibold tabular-nums">
-            {formatCount(chat.them)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            ~{chat.responseThemMin}m avg reply
-          </p>
-        </div>
-      </div>
-
-      <WrapChartCard
-        title={`${chat.name} · weekly rhythm`}
-        description="Mock messages per weekday"
-        exportName={`chat-${chat.id}-weekly`}
-        exportLines={[
-          chat.name,
-          `You ${formatCount(chat.you)}`,
-          `Them ${formatCount(chat.them)}`,
-        ]}
-        chartClassName="h-56 sm:h-64"
-      >
-        <EChartsAreaChart
-          data={weekly}
-          config={duelAreaConfig}
-          xDataKey="day"
-          className="h-full w-full"
-          curveType="monotone"
-          chartOptions={{
-            grid: {
-              left: 8,
-              right: 8,
-              top: 16,
-              bottom: 24,
-              outerBoundsMode: "none",
-            },
-            yAxis: {
-              type: "value",
-              show: false,
-              scale: true,
-              boundaryGap: ["8%", "16%"],
-            },
-          }}
-        >
-          <EChartsAreaChart.Tooltip variant="frosted-glass" />
-          <EChartsAreaChart.Legend />
-          <EChartsAreaChart.Area
-            dataKey="you"
-            variant="gradient"
-            strokeVariant="solid"
-            strokeWidth={2}
-          />
-          <EChartsAreaChart.Area
-            dataKey="them"
-            variant="gradient"
-            strokeVariant="solid"
-            strokeWidth={2}
-          />
-        </EChartsAreaChart>
-      </WrapChartCard>
-
-      <WrapChartCard
-        title={`${chat.name} · dominance`}
-        description="Who sent more in this chat"
-        exportName={`chat-${chat.id}-dominance`}
-        exportLines={[
-          `You ${formatCount(chat.you)}`,
-          `Them ${formatCount(chat.them)}`,
-        ]}
-        chartClassName="h-64 sm:h-72"
-      >
-        <EChartsPieChart
-          className="h-full w-full p-3"
-          data={pieData}
-          dataKey="count"
-          nameKey="side"
-          config={duelPieConfig}
-        >
-          <EChartsPieChart.Legend isClickable />
-          <EChartsPieChart.Tooltip />
-          <EChartsPieChart.Pie isClickable>
-            <EChartsPieChart.Label dataKey="count" position="inside" />
-          </EChartsPieChart.Pie>
-        </EChartsPieChart>
-      </WrapChartCard>
+      {chat ? (
+        <ChatAnalyticsPanel chatName={chat.chatName} a={chat.analytics} />
+      ) : null}
     </section>
   )
 }

@@ -1,6 +1,28 @@
 import type { PlatformConfig } from "@/lib/platforms"
+import type { WrapAnalytics } from "@/platform/analytics-types"
 
-/** Parsed stats returned by the Rust core (camelCase JSON). */
+export type { WrapAnalytics } from "@/platform/analytics-types"
+export type {
+  AnalyticsResult,
+  ChatResult,
+  VolumeStats,
+  VoiceTextStats,
+  MessageLengthStats,
+  ResponseTimeStats,
+  LateNightStats,
+  InitiatorFinisherStats,
+  EmojiStats,
+  CircadianStats,
+  HeatmapStats,
+  ParticipantCount,
+  EmojiEntry,
+  HeatmapDay,
+} from "@/platform/analytics-types"
+
+/**
+ * Legacy flat stats shape — derived from WrapAnalytics.account for components
+ * that haven't been migrated yet.
+ */
 export type TelegramExportStats = {
   displayName: string
   username: string | null
@@ -11,6 +33,21 @@ export type TelegramExportStats = {
   sentMessages: number
   receivedMessages: number
   sampleMessages: string[]
+}
+
+/** Derives the legacy stats shape from a full WrapAnalytics object. */
+export function analyticsToStats(a: WrapAnalytics): TelegramExportStats {
+  return {
+    displayName: a.displayName,
+    username: a.username,
+    aboutPreview: a.aboutPreview,
+    fileSizeBytes: a.fileSizeBytes,
+    chatCount: a.chatCount,
+    totalMessages: a.account.totalMessages,
+    sentMessages: a.account.sentMessages,
+    receivedMessages: a.account.receivedMessages,
+    sampleMessages: a.sampleMessages,
+  }
 }
 
 export type ImportProgress = {
@@ -24,20 +61,20 @@ export type ImportWorkerRequest = { file: File }
 
 export type ImportWorkerResponse =
   | { type: "progress"; loadedBytes: number; totalBytes: number }
-  | { type: "done"; statsJson: string }
+  | { type: "done"; analyticsJson: string }
   | { type: "error"; message: string }
 
 function validateFile(platform: PlatformConfig, file: File): void {
   if (platform.id !== "telegram") {
     throw new Error(
-      `${platform.name} import isn’t wired yet. Only Telegram JSON exports can be analyzed right now.`
+      `${platform.name} import isn't wired yet. Only Telegram JSON exports can be analyzed right now.`
     )
   }
 
   const lower = file.name.toLowerCase()
   if (lower.endsWith(".zip")) {
     throw new Error(
-      "ZIP archives aren’t supported yet. Open your Telegram export folder and choose result.json."
+      "ZIP archives aren't supported yet. Open your Telegram export folder and choose result.json."
     )
   }
   if (!lower.endsWith(".json")) {
@@ -52,12 +89,14 @@ function validateFile(platform: PlatformConfig, file: File): void {
  * freezes, even for multi-hundred-MB exports. Works identically in the
  * browser and in Tauri webviews (Linux, Android, …) since both run the
  * same WASM parser off the main thread.
+ *
+ * Returns the full {@link WrapAnalytics} object.
  */
 export function importPlatformFile(
   platform: PlatformConfig,
   file: File,
   onProgress?: (progress: ImportProgress) => void
-): Promise<TelegramExportStats> {
+): Promise<WrapAnalytics> {
   validateFile(platform, file)
 
   return new Promise((resolve, reject) => {
@@ -83,7 +122,7 @@ export function importPlatformFile(
 
       worker.terminate()
       if (message.type === "done") {
-        resolve(JSON.parse(message.statsJson) as TelegramExportStats)
+        resolve(JSON.parse(message.analyticsJson) as WrapAnalytics)
       } else {
         reject(new Error(message.message))
       }
