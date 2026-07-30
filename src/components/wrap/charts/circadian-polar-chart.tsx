@@ -4,13 +4,14 @@
  * Renders a 24-hour polar/radar chart showing message activity by hour,
  * one line per participant, using ECharts RadarChart directly.
  */
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import * as echarts from "echarts/core"
 import { RadarChart } from "echarts/charts"
 import { TooltipComponent, LegendComponent } from "echarts/components"
 import { CanvasRenderer } from "echarts/renderers"
 import type { CircadianParticipant } from "@/platform/analytics-types"
 import { cn } from "@/lib/utils"
+import { useSizedEcharts } from "@/components/wrap/charts/use-sized-echarts"
 
 echarts.use([RadarChart, TooltipComponent, LegendComponent, CanvasRenderer])
 
@@ -33,40 +34,24 @@ type CircadianPolarChartProps = {
   className?: string
 }
 
-export function CircadianPolarChart({ participants, className }: CircadianPolarChartProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<echarts.ECharts | null>(null)
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    chartRef.current = echarts.init(el, undefined, { renderer: "canvas" })
-    const ro = new ResizeObserver(() => chartRef.current?.resize())
-    ro.observe(el)
-    return () => {
-      ro.disconnect()
-      chartRef.current?.dispose()
-      chartRef.current = null
-    }
-  }, [])
+export function CircadianPolarChart({
+  participants,
+  className,
+}: CircadianPolarChartProps) {
+  const { containerRef, chartRef, ready } = useSizedEcharts()
 
   useEffect(() => {
     const chart = chartRef.current
-    if (!chart || participants.length === 0) return
+    if (!chart || !ready || participants.length === 0) return
 
     const isDark = document.documentElement.classList.contains("dark")
     const colors = isDark ? PARTICIPANT_COLORS_DARK : PARTICIPANT_COLORS_LIGHT
-
-    const maxVal = Math.max(
-      ...participants.flatMap((p) => p.hourly),
-      1
-    )
-
+    const maxVal = Math.max(...participants.flatMap((p) => p.hourly), 1)
     const indicators = HOUR_LABELS.map((name) => ({ name, max: maxVal }))
 
     const series = participants.map((p, i) => ({
       name: p.name,
-      type: "radar",
+      type: "radar" as const,
       data: [{ value: p.hourly, name: p.name }],
       lineStyle: {
         color: colors[i % colors.length],
@@ -125,12 +110,12 @@ export function CircadianPolarChart({ participants, className }: CircadianPolarC
       },
       series,
     })
-  }, [participants])
+  }, [participants, ready, chartRef])
 
   return (
     <div
       ref={containerRef}
-      className={cn("w-full", className)}
+      className={cn("h-full w-full", className)}
       aria-label="Circadian rhythm chart"
     />
   )

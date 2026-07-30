@@ -4,7 +4,7 @@
  * Renders a GitHub-style contribution graph using ECharts HeatmapChart
  * directly on echarts/core to keep bundle size minimal.
  */
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import * as echarts from "echarts/core"
 import { HeatmapChart } from "echarts/charts"
 import {
@@ -15,6 +15,7 @@ import {
 import { CanvasRenderer } from "echarts/renderers"
 import type { HeatmapDay } from "@/platform/analytics-types"
 import { cn } from "@/lib/utils"
+import { useSizedEcharts } from "@/components/wrap/charts/use-sized-echarts"
 
 echarts.use([
   HeatmapChart,
@@ -29,45 +30,23 @@ type CalendarHeatmapProps = {
   className?: string
 }
 
-/**
- * Takes the last 365 days of heatmap data and renders a GitHub-style calendar.
- */
+/** Takes the last 365 days of heatmap data and renders a GitHub-style calendar. */
 export function CalendarHeatmap({ days, className }: CalendarHeatmapProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<echarts.ECharts | null>(null)
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-
-    chartRef.current = echarts.init(el, undefined, { renderer: "canvas" })
-
-    const ro = new ResizeObserver(() => chartRef.current?.resize())
-    ro.observe(el)
-
-    return () => {
-      ro.disconnect()
-      chartRef.current?.dispose()
-      chartRef.current = null
-    }
-  }, [])
+  const { containerRef, chartRef, ready } = useSizedEcharts()
 
   useEffect(() => {
     const chart = chartRef.current
-    if (!chart) return
+    if (!chart || !ready) return
 
-    // Take last 365 days
     const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date))
     const recent = sorted.slice(-365)
-
     const isDark = document.documentElement.classList.contains("dark")
-
     const maxCount = Math.max(...recent.map((d) => d.count), 1)
-
-    // Determine date range for the calendar
-    const endDate = recent.length > 0 ? recent[recent.length - 1].date : new Date().toISOString().slice(0, 10)
+    const endDate =
+      recent.length > 0
+        ? recent[recent.length - 1].date
+        : new Date().toISOString().slice(0, 10)
     const startDate = recent.length > 0 ? recent[0].date : endDate
-
     const data = recent.map((d) => [d.date, d.count])
 
     chart.setOption({
@@ -123,12 +102,12 @@ export function CalendarHeatmap({ days, className }: CalendarHeatmapProps) {
         },
       ],
     })
-  }, [days])
+  }, [days, ready, chartRef])
 
   return (
     <div
       ref={containerRef}
-      className={cn("w-full", className)}
+      className={cn("h-full w-full", className)}
       aria-label="Activity heatmap"
     />
   )
