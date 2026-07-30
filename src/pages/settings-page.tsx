@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react"
 
 import { EChartsAudienceAreaChart } from "@/components/evilcharts/blocks/audience-echarts-area-chart"
+import { EChartsExamplePieChart } from "@/components/evilcharts/blocks/example-echarts-pie-chart"
+import { EChartsProgressRingsPieChart } from "@/components/evilcharts/blocks/progress-rings-echarts-pie-chart"
 import { Button } from "@/components/ui/button"
 import { formatInvokeError, greet as greetApi } from "@/platform/api"
 import reactLogo from "@/assets/react.svg"
@@ -62,8 +64,20 @@ export function SettingsPage() {
           Preview of chart components with sample data — not connected to your
           exports yet.
         </p>
-        <div className="h-72 w-full overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 sm:h-80 md:h-96">
-          <EChartsAudienceAreaChart />
+
+        <div className="flex w-full flex-col gap-4">
+          <div className="h-72 w-full overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 sm:h-80 md:h-96">
+            <EChartsAudienceAreaChart />
+          </div>
+
+          <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="h-72 w-full overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 sm:h-80">
+              <EChartsExamplePieChart />
+            </div>
+            <div className="h-72 w-full overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 sm:h-80">
+              <EChartsProgressRingsPieChart />
+            </div>
+          </div>
         </div>
       </section>
     </div>
