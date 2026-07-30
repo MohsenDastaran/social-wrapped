@@ -228,6 +228,8 @@ export interface LegendProps {
   align?: "left" | "center" | "right"; // horizontal placement
   verticalAlign?: "top" | "middle" | "bottom"; // vertical placement
   isClickable?: boolean; // lets each entry toggle selection of its sector
+  /** Split entries across this many rows (e.g. 2 for Message types). @default 1 */
+  lines?: 1 | 2 | 3;
 }
 
 /** Presence enables the HTML legend overlay. Renders nothing. */
@@ -272,6 +274,7 @@ type LegendSlot = {
   align: "left" | "center" | "right";
   verticalAlign: "top" | "middle" | "bottom";
   isClickable: boolean;
+  lines: 1 | 2 | 3;
 };
 type BackgroundSlot = { present: boolean; variant: BackgroundVariant };
 
@@ -297,6 +300,7 @@ function collectConfig(children: ReactNode): CollectedConfig {
     align: "center",
     verticalAlign: "bottom",
     isClickable: false,
+    lines: 1,
   };
   let background: BackgroundSlot = { present: false, variant: "dots" };
 
@@ -344,6 +348,7 @@ function collectConfig(children: ReactNode): CollectedConfig {
         align: props.align ?? "center",
         verticalAlign: props.verticalAlign ?? "bottom",
         isClickable: props.isClickable ?? false,
+        lines: props.lines ?? 1,
       };
     } else if (type === Background) {
       const props = child.props as BackgroundProps;
@@ -609,7 +614,9 @@ type OptionBuildContext = {
 // percentage so it tracks the container size (the legend is fixed-height text).
 function pieCenterY(legendSlot: LegendSlot): string {
   if (!legendSlot.present) return "50%";
-  if (legendSlot.verticalAlign === "bottom") return "45%";
+  if (legendSlot.verticalAlign === "bottom") {
+    return legendSlot.lines >= 2 ? "40%" : "45%";
+  }
   if (legendSlot.verticalAlign === "top") return "55%";
   return "50%";
 }
@@ -1186,6 +1193,7 @@ export function EChartsPieChart<TData extends Record<string, unknown>>({
           variant={legendSlot.variant}
           align={legendSlot.align}
           verticalAlign={legendSlot.verticalAlign}
+          lines={legendSlot.lines}
           selectedKey={selectedSector}
           hoveredKey={null}
           isClickable={legendSlot.isClickable}

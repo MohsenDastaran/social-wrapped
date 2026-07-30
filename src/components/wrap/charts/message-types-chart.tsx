@@ -78,7 +78,7 @@ export function MessageTypesChart({
           </Button>
         ) : null
       }
-      chartClassName="h-64"
+      chartClassName="h-72 sm:h-80"
     >
       {data.length > 0 ? (
         <EChartsPieChart
@@ -88,7 +88,7 @@ export function MessageTypesChart({
           nameKey="kind"
           config={contentMixPieConfig(keys)}
         >
-          <EChartsPieChart.Legend isClickable />
+          <EChartsPieChart.Legend isClickable lines={2} />
           <EChartsPieChart.Tooltip />
           <EChartsPieChart.Pie isClickable>
             <EChartsPieChart.Label dataKey="pctLabel" position="inside" />

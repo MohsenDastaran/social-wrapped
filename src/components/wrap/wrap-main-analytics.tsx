@@ -141,40 +141,37 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
 
       <ActivityOverTimeChart series={a.activityOverTime} />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Sent vs received */}
-        <WrapChartCard
-          title="Sent vs received"
-          description="Outbound vs inbound share"
-          exportName="main-sent-vs-received"
-          exportSize="compact"
-          exportLines={[
-            `Sent ${fmt(a.sentMessages)} (${sentReceived[0]?.pctLabel ?? "0%"})`,
-            `Received ${fmt(a.receivedMessages)} (${sentReceived[1]?.pctLabel ?? "0%"})`,
-          ]}
-          chartClassName="h-64"
+      <WrapChartCard
+        title="Sent vs received"
+        description="Outbound vs inbound share"
+        exportName="main-sent-vs-received"
+        exportSize="compact"
+        exportLines={[
+          `Sent ${fmt(a.sentMessages)} (${sentReceived[0]?.pctLabel ?? "0%"})`,
+          `Received ${fmt(a.receivedMessages)} (${sentReceived[1]?.pctLabel ?? "0%"})`,
+        ]}
+        chartClassName="h-64"
+      >
+        <EChartsPieChart
+          className="h-full w-full p-3"
+          data={sentReceived}
+          dataKey="count"
+          nameKey="side"
+          config={SENT_RECEIVED_PIE}
         >
-          <EChartsPieChart
-            className="h-full w-full p-3"
-            data={sentReceived}
-            dataKey="count"
-            nameKey="side"
-            config={SENT_RECEIVED_PIE}
-          >
-            <EChartsPieChart.Legend isClickable />
-            <EChartsPieChart.Tooltip />
-            <EChartsPieChart.Pie isClickable>
-              <EChartsPieChart.Label dataKey="pctLabel" position="inside" />
-            </EChartsPieChart.Pie>
-          </EChartsPieChart>
-        </WrapChartCard>
+          <EChartsPieChart.Legend isClickable />
+          <EChartsPieChart.Tooltip />
+          <EChartsPieChart.Pie isClickable>
+            <EChartsPieChart.Label dataKey="pctLabel" position="inside" />
+          </EChartsPieChart.Pie>
+        </EChartsPieChart>
+      </WrapChartCard>
 
-        <MessageTypesChart
-          types={a.contentMix?.types ?? []}
-          totalVoiceDurationSecs={a.contentMix?.totalVoiceDurationSecs ?? 0}
-          exportName="main-message-types"
-        />
-      </div>
+      <MessageTypesChart
+        types={a.contentMix?.types ?? []}
+        totalVoiceDurationSecs={a.contentMix?.totalVoiceDurationSecs ?? 0}
+        exportName="main-message-types"
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Message length */}

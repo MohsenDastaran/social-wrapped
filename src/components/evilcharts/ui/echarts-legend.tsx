@@ -80,6 +80,8 @@ type LegendOverlayProps = {
   variant: LegendVariant;
   align: "left" | "center" | "right";
   verticalAlign: "top" | "middle" | "bottom";
+  /** Split legend entries across this many rows. @default 1 */
+  lines?: 1 | 2 | 3;
   selectedKey: string | null;
   hoveredKey: string | null;
   isClickable: boolean;
@@ -87,11 +89,24 @@ type LegendOverlayProps = {
   style: CSSProperties;
 };
 
+function chunkKeys(keys: string[], lines: number): string[][] {
+  if (lines <= 1 || keys.length <= 1) return [keys];
+  const rowCount = Math.min(lines, keys.length);
+  const perRow = Math.ceil(keys.length / rowCount);
+  const rows: string[][] = [];
+  for (let i = 0; i < rowCount; i++) {
+    const slice = keys.slice(i * perRow, (i + 1) * perRow);
+    if (slice.length > 0) rows.push(slice);
+  }
+  return rows;
+}
+
 export function LegendOverlay({
   seriesKeys,
   config,
   variant,
   align,
+  lines = 1,
   selectedKey,
   hoveredKey,
   isClickable,
@@ -100,32 +115,38 @@ export function LegendOverlay({
 }: LegendOverlayProps) {
   const legendJustify =
     align === "left" ? "justify-start" : align === "center" ? "justify-center" : "justify-end";
+  const rows = chunkKeys(seriesKeys, lines);
 
   return (
-    <div style={style} className={`flex items-center gap-4 select-none ${legendJustify}`}>
-      {seriesKeys.map((key) => {
-        const item = config[key];
-        const colorsCount = item ? getColorsCount(item) : 1;
-        const isSelected =
-          (selectedKey === null || selectedKey === key) &&
-          (hoveredKey === null || hoveredKey === key);
-        return (
-          // No entrance here — the Recharts legend appears instantly, and a
-          // fade-in reads as disconnected from the canvas draw-in.
-          <div
-            key={key}
-            className={`flex items-center gap-1.5 transition-opacity ${
-              !isSelected ? "opacity-30" : ""
-            } ${isClickable ? "cursor-pointer" : ""}`}
-            onClick={() => {
-              if (isClickable) onToggle(key);
-            }}
-          >
-            <LegendIndicator variant={variant} dataKey={key} colorsCount={colorsCount} />
-            {item?.label}
-          </div>
-        );
-      })}
+    <div style={style} className={`flex flex-col gap-1.5 select-none ${legendJustify}`}>
+      {rows.map((row, rowIndex) => (
+        <div
+          key={rowIndex}
+          className={`flex flex-wrap items-center gap-x-4 gap-y-1 ${legendJustify}`}
+        >
+          {row.map((key) => {
+            const item = config[key];
+            const colorsCount = item ? getColorsCount(item) : 1;
+            const isSelected =
+              (selectedKey === null || selectedKey === key) &&
+              (hoveredKey === null || hoveredKey === key);
+            return (
+              <div
+                key={key}
+                className={`flex items-center gap-1.5 transition-opacity ${
+                  !isSelected ? "opacity-30" : ""
+                } ${isClickable ? "cursor-pointer" : ""}`}
+                onClick={() => {
+                  if (isClickable) onToggle(key);
+                }}
+              >
+                <LegendIndicator variant={variant} dataKey={key} colorsCount={colorsCount} />
+                {item?.label}
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
