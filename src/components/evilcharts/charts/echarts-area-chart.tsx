@@ -2278,6 +2278,7 @@ export function EChartsAreaChart<TData extends Record<string, unknown>>({
     position: "absolute",
     left: 16,
     right: 16,
+    zIndex: 2,
     pointerEvents: "auto",
     ...(legendSlot.verticalAlign === "top"
       ? { top: 12 }

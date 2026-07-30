@@ -118,7 +118,7 @@ export function LegendOverlay({
   const rows = chunkKeys(seriesKeys, lines);
 
   return (
-    <div style={style} className={`flex flex-col gap-1.5 select-none ${legendJustify}`}>
+    <div style={style} data-export-legend className={`flex flex-col gap-1.5 select-none ${legendJustify}`}>
       {rows.map((row, rowIndex) => (
         <div
           key={rowIndex}

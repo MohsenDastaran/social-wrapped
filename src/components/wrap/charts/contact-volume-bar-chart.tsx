@@ -232,7 +232,7 @@ export function ContactVolumeBarChart({
                 Monthly
               </ModeButton>
             </div>
-            <div className="flex flex-col items-end gap-1.5">
+            <div className="flex flex-col items-end gap-1.5" data-export-legend>
               <LegendSwatch
                 label={youLabel}
                 swatch="bg-[#7c3aed] dark:bg-[#a78bfa]"

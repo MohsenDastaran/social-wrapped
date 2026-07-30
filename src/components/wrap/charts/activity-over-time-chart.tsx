@@ -123,10 +123,27 @@ export function ActivityOverTimeChart({
             </ModeButton>
           </div>
 
-          <p className="text-xs tabular-nums text-muted-foreground">
-            {fmt(totalSent)} {sentLabel.toLowerCase()} · {fmt(totalReceived)}{" "}
-            {receivedLabel.toLowerCase()}
-          </p>
+          <div className="flex items-center gap-2 text-[11px] tabular-nums leading-none">
+            <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+              <span
+                className="size-1.5 shrink-0 rounded-full bg-[#047857] dark:bg-[#10b981]"
+                aria-hidden
+              />
+              <span className="font-medium text-foreground">{fmt(totalSent)}</span>
+              <span className="text-muted-foreground/80">{sentLabel}</span>
+            </span>
+            <span className="text-border" aria-hidden>
+              /
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+              <span
+                className="size-1.5 shrink-0 rounded-full bg-[#be123c] dark:bg-[#f43f5e]"
+                aria-hidden
+              />
+              <span className="font-medium text-foreground">{fmt(totalReceived)}</span>
+              <span className="text-muted-foreground/80">{receivedLabel}</span>
+            </span>
+          </div>
         </div>
 
         {data.length === 0 ? (

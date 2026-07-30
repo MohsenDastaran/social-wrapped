@@ -40,6 +40,9 @@ type StyleSnapshot = {
 /**
  * Rasterize a live DOM node to a PNG blob.
  * On mobile, temporarily reflows the node at `minWidth` so charts export large.
+ *
+ * Charts are captured via ECharts `getDataURL`; HTML chrome (title, legends,
+ * swatches) is painted from the live DOM so overlays are never dropped.
  */
 export async function elementToPngBlob(
   element: HTMLElement,
@@ -63,10 +66,12 @@ export async function elementToPngBlob(
       options.backgroundColor
     )
 
-    const dataUrl = await renderElementViaSvg(element, width, height, pixelRatio, {
-      backgroundColor,
-    }).catch(async () =>
-      renderElementComposite(element, width, height, pixelRatio, backgroundColor)
+    const dataUrl = await renderElementComposite(
+      element,
+      width,
+      height,
+      pixelRatio,
+      backgroundColor
     )
 
     const blob = await dataUrlToBlob(dataUrl)
@@ -288,7 +293,7 @@ function restoreCanvases(swaps: CanvasSwap[]) {
   }
 }
 
-// ── SVG foreignObject rasterize ──────────────────────────────────────────────
+// ── Composite rasterize (charts + HTML overlays) ─────────────────────────────
 
 function resolveBackground(
   element: HTMLElement,
@@ -304,208 +309,9 @@ function resolveBackground(
   return cssColorToRgb(bg)
 }
 
-async function renderElementViaSvg(
-  element: HTMLElement,
-  width: number,
-  height: number,
-  pixelRatio: number,
-  opts: { backgroundColor: string }
-): Promise<string> {
-  const clone = element.cloneNode(true) as HTMLElement
-  inlineStyles(element, clone)
-  clone.style.margin = "0"
-  clone.style.boxSizing = "border-box"
-  clone.querySelectorAll("[data-export-ignore]").forEach((n) => n.remove())
-
-  const wrapper = document.createElement("div")
-  wrapper.setAttribute("xmlns", "http://www.w3.org/1999/xhtml")
-  wrapper.style.cssText = `width:${width}px;height:${height}px;background:${opts.backgroundColor};box-sizing:border-box;overflow:hidden;`
-  wrapper.appendChild(clone)
-
-  const xhtml = new XMLSerializer().serializeToString(wrapper)
-  const svgW = Math.round(width * pixelRatio)
-  const svgH = Math.round(height * pixelRatio)
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${width} ${height}">
-  <foreignObject x="0" y="0" width="100%" height="100%">
-    ${xhtml}
-  </foreignObject>
-</svg>`
-
-  const svgUrl = URL.createObjectURL(
-    new Blob([svg], { type: "image/svg+xml;charset=utf-8" })
-  )
-
-  try {
-    const img = await loadImage(svgUrl)
-    const canvas = document.createElement("canvas")
-    canvas.width = svgW
-    canvas.height = svgH
-    const ctx = canvas.getContext("2d")
-    if (!ctx) throw new Error("Canvas unsupported")
-    ctx.fillStyle = opts.backgroundColor
-    ctx.fillRect(0, 0, svgW, svgH)
-    ctx.drawImage(img, 0, 0, svgW, svgH)
-    return canvas.toDataURL("image/png")
-  } finally {
-    URL.revokeObjectURL(svgUrl)
-  }
-}
-
-const STYLE_PROPS = [
-  "background",
-  "background-color",
-  "background-image",
-  "border",
-  "border-radius",
-  "box-shadow",
-  "box-sizing",
-  "color",
-  "display",
-  "flex",
-  "flex-direction",
-  "flex-grow",
-  "flex-shrink",
-  "flex-wrap",
-  "align-items",
-  "justify-content",
-  "gap",
-  "grid-template-columns",
-  "grid-template-rows",
-  "font",
-  "font-family",
-  "font-size",
-  "font-weight",
-  "font-style",
-  "letter-spacing",
-  "line-height",
-  "text-align",
-  "text-decoration",
-  "text-transform",
-  "white-space",
-  "overflow",
-  "overflow-x",
-  "overflow-y",
-  "opacity",
-  "padding",
-  "margin",
-  "width",
-  "height",
-  "min-width",
-  "min-height",
-  "max-width",
-  "max-height",
-  "position",
-  "top",
-  "right",
-  "bottom",
-  "left",
-  "inset",
-  "z-index",
-  "object-fit",
-  "object-position",
-  "transform",
-  "clip-path",
-  "visibility",
-] as const
-
-/** Copy computed visual styles; convert modern color spaces to rgb for SVG. */
-function inlineStyles(source: Element, clone: Element) {
-  if (
-    source.nodeType !== Node.ELEMENT_NODE ||
-    clone.nodeType !== Node.ELEMENT_NODE
-  ) {
-    return
-  }
-  const srcEl = source as HTMLElement
-  const dstEl = clone as HTMLElement
-  const computed = getComputedStyle(srcEl)
-  let css = ""
-  for (const prop of STYLE_PROPS) {
-    let value = computed.getPropertyValue(prop)
-    if (!value) continue
-    if (
-      prop.includes("color") ||
-      prop === "background" ||
-      prop === "background-image" ||
-      prop === "border" ||
-      prop === "box-shadow"
-    ) {
-      value = sanitizeCssColors(value)
-    }
-    css += `${prop}:${value};`
-  }
-  dstEl.setAttribute("style", css)
-
-  const srcChildren = srcEl.children
-  const dstChildren = dstEl.children
-  const n = Math.min(srcChildren.length, dstChildren.length)
-  for (let i = 0; i < n; i++) {
-    inlineStyles(srcChildren[i]!, dstChildren[i]!)
-  }
-}
-
-function sanitizeCssColors(value: string): string {
-  // Replace oklch/lab/color() tokens by sampling via canvas fillStyle.
-  return value.replace(
-    /(?:oklch|oklab|lab|lch|color)\([^)]+\)/gi,
-    (match) => cssColorToRgb(match)
-  )
-}
-
-function cssColorToRgb(color: string): string {
-  if (
-    !color ||
-    color === "transparent" ||
-    color.startsWith("#") ||
-    color.startsWith("rgb")
-  ) {
-    return color || "#ffffff"
-  }
-  const canvas = document.createElement("canvas")
-  canvas.width = 1
-  canvas.height = 1
-  const ctx = canvas.getContext("2d")
-  if (!ctx) return "#ffffff"
-  ctx.fillStyle = "#ffffff"
-  ctx.fillStyle = color
-  // If the browser accepted the color, read back pixels.
-  try {
-    ctx.fillRect(0, 0, 1, 1)
-    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data
-    if (a === 0) return "transparent"
-    if (a === 255) return `rgb(${r}, ${g}, ${b})`
-    return `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(3)})`
-  } catch {
-    return "#ffffff"
-  }
-}
-
-function loadImage(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error("Failed to rasterize export SVG"))
-    img.src = url
-  })
-}
-
-async function dataUrlToBlob(dataUrl: string): Promise<Blob | null> {
-  const res = await fetch(dataUrl)
-  return res.blob()
-}
-
-function nextFrame(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()))
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 /**
- * Fallback when SVG foreignObject fails (some WebViews reject oklch/fonts).
- * Paints the card chrome + every chart snapshot image at its on-screen box.
+ * Paint the card from live layout: chart snapshot images, then HTML overlays
+ * (titles, legends, swatches). Avoids fragile SVG foreignObject for legends.
  */
 async function renderElementComposite(
   element: HTMLElement,
@@ -527,39 +333,12 @@ async function renderElementComposite(
 
   const root = element.getBoundingClientRect()
 
-  const title = element.querySelector("h3")
-  if (title?.textContent) {
-    const r = title.getBoundingClientRect()
-    const cs = getComputedStyle(title)
-    ctx.fillStyle = cssColorToRgb(cs.color)
-    ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
-    ctx.textBaseline = "top"
-    ctx.fillText(
-      title.textContent,
-      r.left - root.left,
-      r.top - root.top,
-      width - 32
-    )
-  }
-
-  const desc = element.querySelector("p")
-  if (desc?.textContent) {
-    const r = desc.getBoundingClientRect()
-    const cs = getComputedStyle(desc)
-    ctx.fillStyle = cssColorToRgb(cs.color)
-    ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
-    ctx.textBaseline = "top"
-    ctx.fillText(
-      desc.textContent,
-      r.left - root.left,
-      r.top - root.top,
-      width - 32
-    )
-  }
-
+  // Chart snapshots first (under legends).
   for (const img of element.querySelectorAll("img")) {
     if (!img.complete || img.naturalWidth === 0) continue
+    if (isExportIgnored(img)) continue
     const r = img.getBoundingClientRect()
+    if (r.width < 1 || r.height < 1) continue
     ctx.drawImage(
       img,
       r.left - root.left,
@@ -569,7 +348,161 @@ async function renderElementComposite(
     )
   }
 
+  paintHtmlOverlays(ctx, element, root)
+
   return canvas.toDataURL("image/png")
+}
+
+function isExportIgnored(el: Element): boolean {
+  return Boolean(
+    el.closest("[data-export-ignore]") ||
+      el.closest('[style*="visibility: hidden"]')
+  )
+}
+
+function isHidden(el: HTMLElement, cs: CSSStyleDeclaration): boolean {
+  if (cs.visibility === "hidden" || cs.display === "none") return true
+  if (Number.parseFloat(cs.opacity || "1") === 0) return true
+  if (el.style.visibility === "hidden") return true
+  return false
+}
+
+/** Draw HTML legends/labels/swatches from measured DOM boxes. */
+function paintHtmlOverlays(
+  ctx: CanvasRenderingContext2D,
+  element: HTMLElement,
+  root: DOMRect
+) {
+  // Color swatches (legend indicators, etc.) — small opaque boxes only.
+  for (const el of element.querySelectorAll<HTMLElement>("*")) {
+    if (el.tagName === "IMG" || el.tagName === "CANVAS" || el.tagName === "SVG") {
+      continue
+    }
+    if (el.closest("[data-export-ignore]")) continue
+    if (el.hasAttribute("data-export-canvas-snap")) continue
+
+    const cs = getComputedStyle(el)
+    if (isHidden(el, cs)) continue
+
+    const r = el.getBoundingClientRect()
+    if (r.width < 1 || r.height < 1 || r.width > 28 || r.height > 28) continue
+
+    const fill = solidFillFromStyle(cs)
+    if (!fill) continue
+
+    const alpha = Number.parseFloat(cs.opacity || "1")
+    ctx.save()
+    ctx.globalAlpha = Number.isFinite(alpha) ? alpha : 1
+    ctx.fillStyle = fill
+    const radius = parseCssRadius(cs.borderRadius, r.width, r.height)
+    roundRect(
+      ctx,
+      r.left - root.left,
+      r.top - root.top,
+      r.width,
+      r.height,
+      radius
+    )
+    ctx.fill()
+    ctx.restore()
+  }
+
+  // Text (titles, descriptions, legend labels, summary stats).
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+  let node: Node | null = walker.nextNode()
+  while (node) {
+    const parent = node.parentElement
+    const text = node.textContent?.replace(/\s+/g, " ").trim() ?? ""
+    if (parent && text && !parent.closest("[data-export-ignore]")) {
+      const cs = getComputedStyle(parent)
+      if (!isHidden(parent, cs)) {
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        const r = range.getBoundingClientRect()
+        if (r.width >= 1 && r.height >= 1) {
+          const alpha = Number.parseFloat(cs.opacity || "1")
+          ctx.save()
+          ctx.globalAlpha = Number.isFinite(alpha) ? alpha : 1
+          ctx.fillStyle = cssColorToRgb(cs.color)
+          ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+          ctx.textBaseline = "top"
+          ctx.fillText(text, r.left - root.left, r.top - root.top)
+          ctx.restore()
+        }
+      }
+    }
+    node = walker.nextNode()
+  }
+}
+
+function solidFillFromStyle(cs: CSSStyleDeclaration): string | null {
+  const bg = cs.backgroundColor
+  if (bg && bg !== "transparent" && bg !== "rgba(0, 0, 0, 0)") {
+    return cssColorToRgb(bg)
+  }
+  const image = cs.backgroundImage
+  if (image && image !== "none") {
+    const match = image.match(/rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8}/i)
+    if (match) return cssColorToRgb(match[0]!)
+  }
+  return null
+}
+
+function parseCssRadius(
+  value: string,
+  width: number,
+  height: number
+): number {
+  if (!value || value === "0px") return 0
+  const first = value.split(" ")[0] ?? "0"
+  if (first.endsWith("%")) {
+    const pct = Number.parseFloat(first)
+    return Number.isFinite(pct)
+      ? Math.min(width, height) * (pct / 100)
+      : 0
+  }
+  const px = Number.parseFloat(first)
+  return Number.isFinite(px) ? px : 0
+}
+
+function cssColorToRgb(color: string): string {
+  if (
+    !color ||
+    color === "transparent" ||
+    color.startsWith("#") ||
+    color.startsWith("rgb")
+  ) {
+    return color || "#ffffff"
+  }
+  const canvas = document.createElement("canvas")
+  canvas.width = 1
+  canvas.height = 1
+  const ctx = canvas.getContext("2d")
+  if (!ctx) return "#ffffff"
+  ctx.fillStyle = "#ffffff"
+  ctx.fillStyle = color
+  try {
+    ctx.fillRect(0, 0, 1, 1)
+    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data
+    if (a === 0) return "transparent"
+    if (a === 255) return `rgb(${r}, ${g}, ${b})`
+    return `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(3)})`
+  } catch {
+    return "#ffffff"
+  }
+}
+
+async function dataUrlToBlob(dataUrl: string): Promise<Blob | null> {
+  const res = await fetch(dataUrl)
+  return res.blob()
+}
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()))
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function roundRect(
