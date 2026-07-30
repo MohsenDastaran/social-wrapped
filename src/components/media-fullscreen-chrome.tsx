@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 
 import { ShareSaveActions } from "@/components/share-save-actions"
@@ -14,7 +15,7 @@ export type MediaFullscreenChromeProps = {
   className?: string
 }
 
-/** Shared fullscreen shell: close + share/save always visible. */
+/** Shared fullscreen shell: close + share/save always visible (ported to body). */
 export function MediaFullscreenChrome({
   title,
   shareText,
@@ -24,25 +25,32 @@ export function MediaFullscreenChrome({
   children,
   className,
 }: MediaFullscreenChromeProps) {
-  return (
+  if (typeof document === "undefined") return null
+
+  return createPortal(
     <div
       className={cn(
-        "fixed inset-0 z-[110] flex h-dvh w-screen flex-col bg-black",
+        "fixed inset-0 z-[200] flex h-dvh w-screen flex-col bg-black",
         className
       )}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title ?? "Media viewer"}
     >
-      <div className="relative z-20 flex items-center justify-between gap-3 bg-gradient-to-b from-black/80 to-transparent px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[210] h-28 bg-gradient-to-b from-black via-black/70 to-transparent" />
+
+      <div className="relative z-[220] flex items-center justify-between gap-3 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
         <button
           type="button"
           onClick={onClose}
-          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/20 text-white ring-1 ring-white/40 backdrop-blur-md"
+          className="pointer-events-auto flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-black shadow-lg ring-2 ring-white/80"
           aria-label="Close"
         >
-          <X className="size-5" />
+          <X className="size-5" strokeWidth={2.5} />
         </button>
 
         {title ? (
-          <p className="min-w-0 truncate text-center text-sm font-medium text-white/90">
+          <p className="min-w-0 truncate text-center text-sm font-medium text-white drop-shadow">
             {title}
           </p>
         ) : (
@@ -55,26 +63,14 @@ export function MediaFullscreenChrome({
           mediaUrl={mediaUrl}
           fileName={fileName}
           shareText={shareText}
-          className="shrink-0"
+          className="pointer-events-auto shrink-0"
         />
       </div>
 
-      <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-3">
+      <div className="relative z-[200] flex min-h-0 flex-1 items-center justify-center px-3">
         {children}
       </div>
-
-      <div className="relative z-20 flex flex-col items-center gap-3 bg-gradient-to-t from-black/90 to-transparent px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
-        <ShareSaveActions
-          appearance="overlay"
-          mediaUrl={mediaUrl}
-          fileName={fileName}
-          shareText={shareText}
-          className="w-full max-w-sm justify-center"
-        />
-        <p className="max-w-sm text-center text-xs leading-relaxed text-white/75">
-          {shareText}
-        </p>
-      </div>
-    </div>
+    </div>,
+    document.body
   )
 }

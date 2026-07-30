@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useSpring } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Play } from "lucide-react";
 import {
   MediaControlBar,
@@ -145,21 +145,6 @@ export const Skiper67 = ({
 }: Skiper67Props) => {
   const [showVideoPopOver, setShowVideoPopOver] = useState(false);
 
-  const SPRING = {
-    mass: 0.1,
-  };
-
-  const x = useSpring(0, SPRING);
-  const y = useSpring(0, SPRING);
-  const opacity = useSpring(0, SPRING);
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    opacity.set(1);
-    const bounds = e.currentTarget.getBoundingClientRect();
-    x.set(e.clientX - bounds.left);
-    y.set(e.clientY - bounds.top);
-  };
-
   return (
     <section
       className={cn(
@@ -186,22 +171,12 @@ export const Skiper67 = ({
         )}
       </AnimatePresence>
       <div
-        onMouseMove={handlePointerMove}
-        onMouseLeave={() => {
-          opacity.set(0);
-        }}
         onClick={() => setShowVideoPopOver(true)}
         className={cn(
           "relative cursor-pointer overflow-hidden rounded-xl shadow-md ring-1 ring-black/10",
           compact ? "absolute inset-0 size-auto rounded-2xl" : "size-45",
         )}
       >
-        <motion.div
-          style={{ x, y, opacity }}
-          className="pointer-events-none absolute z-20 flex w-fit select-none items-center justify-center gap-2 p-2 text-sm text-white mix-blend-exclusion"
-        >
-          <Play className="size-4 fill-white" /> Play
-        </motion.div>
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/20">
           <span className="flex size-12 items-center justify-center rounded-full bg-white/25 text-white backdrop-blur-sm sm:size-14">
             <Play className="size-5 fill-white sm:size-6" />
