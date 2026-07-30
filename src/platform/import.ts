@@ -57,8 +57,19 @@ export type ImportProgress = {
   phase: ImportProgressPhase
   /** 0–100 within the current phase. */
   percent: number
+  /** 0–100 across both phases (each phase is half). */
+  overallPercent: number
   current: number
   total: number
+}
+
+/** Maps a phase-local percent onto the full two-phase import (50% + 50%). */
+export function importOverallPercent(
+  phase: ImportProgressPhase,
+  phasePercent: number
+): number {
+  const clamped = Math.min(100, Math.max(0, phasePercent))
+  return Math.round(phase === "computing" ? 50 + clamped / 2 : clamped / 2)
 }
 
 export type ImportWorkerRequest = { file: File }
@@ -123,10 +134,12 @@ export function importPlatformFile(
       if (message.type === "progress") {
         const phase = normalizeProgressPhase(message.phase)
         const { current, total } = message
+        const percent =
+          total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0
         onProgress?.({
           phase,
-          percent:
-            total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0,
+          percent,
+          overallPercent: importOverallPercent(phase, percent),
           current,
           total,
         })

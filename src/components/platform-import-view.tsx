@@ -86,6 +86,7 @@ export function PlatformImportView({
     setProgress({
       phase: "reading",
       percent: 0,
+      overallPercent: 0,
       current: 0,
       total: file.size,
     })
@@ -252,7 +253,7 @@ export function PlatformImportView({
               {progress.phase === "computing"
                 ? "Computing stats…"
                 : "Reading export…"}{" "}
-              {progress.percent}%
+              {progress.overallPercent}%
             </span>
           </>
         ) : (
