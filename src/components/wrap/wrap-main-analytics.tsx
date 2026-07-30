@@ -1,9 +1,6 @@
-import { EChartsAreaChart } from "@/components/evilcharts/charts/echarts-area-chart"
-import { EChartsPieChart } from "@/components/evilcharts/charts/echarts-pie-chart"
-import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
-import { CircadianPolarChart } from "@/components/wrap/charts/circadian-polar-chart"
 import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-time-chart"
 import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
+import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import { TopEmojisCard } from "@/components/wrap/top-emojis-card"
 import {
   fmt,
@@ -20,6 +17,9 @@ import {
   Hash,
   type LucideIcon,
 } from "lucide-react"
+import { EChartsAreaChart } from "@/components/evilcharts/charts/echarts-area-chart"
+import { EChartsPieChart } from "@/components/evilcharts/charts/echarts-pie-chart"
+import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 
 type WrapMainAnalyticsProps = {
   analytics: WrapAnalytics
@@ -135,26 +135,10 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
 
       <TopEmojisCard emojis={a.emojis.topOverall} exportName="main-emojis" />
 
-      {/* Circadian */}
-      {a.circadian.participants.length > 0 && (
-        <WrapChartCard
-          title="Circadian rhythm"
-          description="Activity by hour · sleep windows from quiet stretches"
-          exportName="main-circadian"
-          exportLines={a.circadian.participants
-            .slice(0, 4)
-            .map(
-              (p) =>
-                `${p.name} sleep ~${p.sleepStartHour}:00–${p.sleepEndHour}:00`
-            )}
-          chartClassName="h-80"
-        >
-          <CircadianPolarChart
-            participants={a.circadian.participants.slice(0, 4)}
-            className="h-full w-full"
-          />
-        </WrapChartCard>
-      )}
+      <CircadianRhythmCard
+        participants={a.circadian.participants}
+        exportName="main-circadian"
+      />
 
       {/* Heatmap */}
       {a.heatmap.days.length > 0 && (

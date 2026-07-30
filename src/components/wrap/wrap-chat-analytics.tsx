@@ -3,9 +3,9 @@ import {
 } from "@/components/evilcharts/charts/echarts-area-chart"
 import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-time-chart"
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
-import { CircadianPolarChart } from "@/components/wrap/charts/circadian-polar-chart"
 import { ContactVolumeBarChart } from "@/components/wrap/charts/contact-volume-bar-chart"
 import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
+import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import {
   fmt,
   fmtResponseTime,
@@ -287,25 +287,10 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
         limit={10}
       />
 
-      {a.circadian.participants.length > 0 && (
-        <WrapChartCard
-          title="Activity by hour"
-          description={a.circadian.participants
-            .slice(0, 2)
-            .map(
-              (p) =>
-                `${p.name} sleep ${p.sleepStartHour}:00–${p.sleepEndHour}:00`
-            )
-            .join(" · ")}
-          exportName={`chat-${chat.chatId}-circadian`}
-          chartClassName="h-72"
-        >
-          <CircadianPolarChart
-            participants={a.circadian.participants}
-            className="h-full w-full"
-          />
-        </WrapChartCard>
-      )}
+      <CircadianRhythmCard
+        participants={a.circadian.participants}
+        exportName={`chat-${chat.chatId}-circadian`}
+      />
 
       {a.heatmap.days.length > 0 && (
         <WrapChartCard
