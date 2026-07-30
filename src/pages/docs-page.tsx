@@ -3,8 +3,8 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 
 import {
   HIGH_PRIORITY_PLATFORMS,
-  PlatformGuideCard,
-} from "@/components/platform-guide-card"
+} from "@/lib/platforms"
+import { PlatformGuideCard } from "@/components/platform-guide-card"
 import { PlatformSearchInput } from "@/components/platform-search-input"
 
 export function DocsPage() {

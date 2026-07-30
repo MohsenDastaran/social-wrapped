@@ -1,10 +1,9 @@
 import type { ReactNode } from "react"
-import { ChevronRight, Lock } from "lucide-react"
+import { ArrowUpRight, FileArchive, Lock } from "lucide-react"
+import { Link } from "react-router"
 
-import {
-  PlatformLogo,
-  type PlatformLogoId,
-} from "@/components/platform-logo"
+import { PlatformCardFace } from "@/components/platform-card-face"
+import { PlatformLogo } from "@/components/platform-logo"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -21,160 +20,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  isPlatformEnabled,
+  platformImportPath,
+  type PlatformConfig,
+} from "@/lib/platforms"
 import { cn } from "@/lib/utils"
-
-export type PlatformGuide = {
-  id: PlatformLogoId
-  name: string
-  enabled: boolean
-  accentClass: string
-  /** Short card blurb */
-  summary: string
-  exportPath: string
-  formats: string
-  extractable: string
-  steps: string[]
-  importHint?: string
-}
-
-/** Tier 1 high-priority platforms from docs/target-platforms.md */
-export const HIGH_PRIORITY_PLATFORMS: PlatformGuide[] = [
-  {
-    id: "telegram",
-    name: "Telegram",
-    enabled: true,
-    accentClass: "border-sky-500/50",
-    summary:
-      "Export chats from Telegram Desktop as JSON, then import them locally.",
-    exportPath: "Telegram Desktop → Settings → Advanced → Export Telegram Data",
-    formats: "JSON, HTML",
-    extractable:
-      "Complete message history for DMs, groups, and channels — including media metadata, stickers, reactions, polls, and timestamps.",
-    steps: [
-      "Open Telegram Desktop (export is most complete from the desktop app).",
-      "Go to Settings → Advanced → Export Telegram Data.",
-      "Choose Machine-readable JSON (preferred). Optionally include media.",
-      "Select the chats you want, then start the export and wait for the folder to finish.",
-      "In Social Wrapped, import that export folder (or its result.json) from Home / Settings.",
-    ],
-    importHint:
-      "Prefer JSON over HTML. Keep the export folder intact if you included media.",
-  },
-  {
-    id: "whatsapp",
-    name: "WhatsApp",
-    enabled: false,
-    accentClass: "border-emerald-500/50",
-    summary: "Export a chat as a .txt file (with optional media attachments).",
-    exportPath: "Chat → ⋮ / Settings → Export Chat",
-    formats: ".txt (+ optional media)",
-    extractable:
-      "Timestamped message logs with sender names, system events, and media references.",
-    steps: [
-      "Open an individual or group chat.",
-      "Use Export Chat and choose whether to include media.",
-      "Save the .txt (and media folder if included).",
-      "Import into Social Wrapped when WhatsApp support ships.",
-    ],
-  },
-  {
-    id: "x",
-    name: "X (Twitter)",
-    enabled: false,
-    accentClass: "border-zinc-500/50",
-    summary: "Request your full archive ZIP from account settings.",
-    exportPath: "Account Settings → Download an archive of your data",
-    formats: "JSON + HTML (ZIP)",
-    extractable:
-      "Tweets, DMs, likes, bookmarks, followers, following, and engagement history.",
-    steps: [
-      "Request your archive from X settings and wait for the email.",
-      "Download and unzip the archive.",
-      "Import into Social Wrapped when X support ships.",
-    ],
-  },
-  {
-    id: "google",
-    name: "Google Ecosystem",
-    enabled: false,
-    accentClass: "border-blue-500/50",
-    summary: "Use Google Takeout to package Chat, Maps, Chrome, and more.",
-    exportPath: "Google Takeout (takeout.google.com)",
-    formats: "JSON, CSV, GeoJSON, KML",
-    extractable:
-      "Chat/Hangouts, location history, Keep, Chrome history, Calendar, Maps places, and more.",
-    steps: [
-      "Open Google Takeout and select the services you want.",
-      "Export and download the archive when ready.",
-      "Import into Social Wrapped when Google support ships.",
-    ],
-  },
-  {
-    id: "instagram",
-    name: "Instagram",
-    enabled: false,
-    accentClass: "border-fuchsia-500/50",
-    summary: "Download your information from Meta Accounts Center.",
-    exportPath:
-      "Accounts Center → Your information and permissions → Download your information",
-    formats: "JSON or HTML",
-    extractable:
-      "DMs, posts, stories metadata, comments, likes, saved posts, and search history.",
-    steps: [
-      "Request a download from Meta Accounts Center.",
-      "Choose JSON when available, then download the archive.",
-      "Import into Social Wrapped when Instagram support ships.",
-    ],
-  },
-  {
-    id: "tiktok",
-    name: "TikTok",
-    enabled: false,
-    accentClass: "border-cyan-500/50",
-    summary: "Request a copy of your TikTok account data from settings.",
-    exportPath: "Settings → Account → Download your data",
-    formats: "JSON or TXT",
-    extractable:
-      "Watch history, likes, comments, DMs, favorites, and profile details.",
-    steps: [
-      "Request your data download in TikTok settings.",
-      "Download the archive when TikTok notifies you.",
-      "Import into Social Wrapped when TikTok support ships.",
-    ],
-  },
-  {
-    id: "spotify",
-    name: "Spotify",
-    enabled: false,
-    accentClass: "border-green-500/50",
-    summary: "Download your listening history and library as JSON.",
-    exportPath: "Account → Privacy settings → Download your data",
-    formats: "JSON",
-    extractable:
-      "Extended streaming history, playlists, library, and listening timestamps.",
-    steps: [
-      "Request your data (and extended streaming history if offered).",
-      "Download the ZIP when Spotify emails you.",
-      "Import into Social Wrapped when Spotify support ships.",
-    ],
-  },
-  {
-    id: "youtube",
-    name: "YouTube",
-    enabled: false,
-    accentClass: "border-red-500/50",
-    summary: "Pull watch and search history via Google Takeout.",
-    exportPath: "Google Takeout → YouTube and YouTube Music",
-    formats: "JSON, CSV",
-    extractable:
-      "Watch history, search history, playlists, comments, subscriptions, and more.",
-    steps: [
-      "Use Google Takeout and include YouTube.",
-      "Download the archive when ready.",
-      "Import into Social Wrapped when YouTube support ships.",
-    ],
-  },
-]
 
 function SectionHeading({ children }: { children: ReactNode }) {
   return (
@@ -185,87 +36,21 @@ function SectionHeading({ children }: { children: ReactNode }) {
 }
 
 type PlatformGuideCardProps = {
-  platform: PlatformGuide
+  platform: PlatformConfig
   className?: string
 }
 
+/** Docs card — opens export/import instructions in a dialog. */
 export function PlatformGuideCard({
   platform,
   className,
 }: PlatformGuideCardProps) {
-  const disabled = !platform.enabled
-
-  const card = (
-    <Card
-      className={cn(
-        "flex flex-row items-center gap-4 bg-card py-5 pe-4 ps-5 shadow-lg ring-1",
-        platform.accentClass,
-        disabled
-          ? "cursor-not-allowed opacity-55 saturate-50"
-          : "transition-[box-shadow,transform] duration-300 group-hover/platform:shadow-xl group-hover/platform:ring-foreground/20 group-active/platform:scale-[0.99]",
-        className
-      )}
-    >
-      <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-background ring-1 ring-foreground/10">
-        <PlatformLogo id={platform.id} title={platform.name} className="size-7" />
-      </span>
-
-      <div className="min-w-0 flex-1">
-        <div className="mb-1 flex flex-wrap items-center gap-2">
-          <CardTitle className="font-heading text-base font-semibold tracking-tight sm:text-lg">
-            {platform.name}
-          </CardTitle>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide",
-              platform.enabled
-                ? "bg-primary/15 text-primary ring-1 ring-primary/25"
-                : "bg-muted text-muted-foreground ring-1 ring-border"
-            )}
-          >
-            {platform.enabled ? (
-              "Available"
-            ) : (
-              <>
-                <Lock className="size-2.5" aria-hidden />
-                Soon
-              </>
-            )}
-          </span>
-        </div>
-        <CardDescription className="line-clamp-2 text-sm leading-relaxed">
-          {platform.summary}
-        </CardDescription>
-      </div>
-
-      {!disabled ? (
-        <span
-          className={cn(
-            "relative flex size-10 shrink-0 items-center justify-center rounded-full",
-            "bg-muted text-foreground ring-1 ring-foreground/10",
-            "transition-colors duration-300",
-            "group-hover/platform:bg-primary group-hover/platform:text-primary-foreground group-hover/platform:ring-primary/30"
-          )}
-          aria-hidden
-        >
-          <ChevronRight className="size-4 transition-transform duration-300 ease-out group-hover/platform:translate-x-0.5 rtl:rotate-180 rtl:group-hover/platform:-translate-x-0.5" />
-          <ChevronRight className="absolute size-4 opacity-0 transition-all duration-300 ease-out group-hover/platform:translate-x-1 group-hover/platform:opacity-40 rtl:rotate-180 rtl:group-hover/platform:-translate-x-1" />
-        </span>
-      ) : (
-        <span
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted/60 text-muted-foreground ring-1 ring-border"
-          aria-hidden
-        >
-          <Lock className="size-3.5" />
-        </span>
-      )}
-    </Card>
-  )
+  const disabled = !isPlatformEnabled(platform.id)
 
   if (disabled) {
     return (
       <div aria-disabled="true" className="w-full">
-        {card}
+        <PlatformCardFace platform={platform} className={className} />
       </div>
     )
   }
@@ -281,7 +66,7 @@ export function PlatformGuideCard({
               "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             )}
           >
-            {card}
+            <PlatformCardFace platform={platform} className={className} />
           </button>
         }
       />
@@ -375,5 +160,143 @@ export function PlatformGuideCard({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+type PlatformImportCardProps = {
+  platform: PlatformConfig
+  /** Optional card description override. */
+  description?: string
+  /** Richer composition intended for the main platform picker. */
+  featured?: boolean
+  className?: string
+}
+
+/** Home card — navigates to the shared import page for this platform. */
+export function PlatformImportCard({
+  platform,
+  description,
+  featured = false,
+  className,
+}: PlatformImportCardProps) {
+  const disabled = !isPlatformEnabled(platform.id)
+  const cardDescription =
+    description ?? `Ready for ${platform.acceptedFiles.join(" or ")} exports.`
+
+  if (!featured) {
+    if (disabled) {
+      return (
+        <div aria-disabled="true" className="w-full">
+          <PlatformCardFace
+            platform={platform}
+            description={cardDescription}
+            className={className}
+          />
+        </div>
+      )
+    }
+
+    return (
+      <Link
+        to={platformImportPath(platform.id)}
+        className={cn(
+          "group/platform block w-full text-start outline-none",
+          "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        )}
+      >
+        <PlatformCardFace
+          platform={platform}
+          description={cardDescription}
+          className={className}
+        />
+      </Link>
+    )
+  }
+
+  const featuredCard = (
+    <Card
+      className={cn(
+        "group/home-card relative min-h-44 overflow-hidden bg-card p-0 shadow-[0_12px_40px_-24px] shadow-foreground/35 ring-1",
+        platform.accentClass,
+        disabled
+          ? "cursor-not-allowed opacity-55 saturate-50"
+          : "transition-[box-shadow,transform,border-color] duration-500 hover:-translate-y-1 hover:shadow-[0_22px_44px_-22px] hover:shadow-foreground/40",
+        className
+      )}
+    >
+      <div className="pointer-events-none absolute -inset-e-12 -top-14 size-48 rounded-full bg-primary/10 blur-3xl transition-transform duration-700 group-hover/home-card:scale-125" />
+      <div className="pointer-events-none absolute -bottom-20 inset-e-20 size-40 rounded-full bg-muted blur-3xl" />
+
+      <div className="relative flex h-full min-h-44 flex-col justify-between p-5">
+        <div className="flex items-start justify-between gap-4">
+          <span className="flex size-14 items-center justify-center rounded-2xl bg-background/90 shadow-sm ring-1 ring-foreground/10 transition-transform duration-500 group-hover/home-card:-rotate-6 group-hover/home-card:scale-110">
+            <PlatformLogo
+              id={platform.id}
+              title={platform.name}
+              className="size-8 drop-shadow-sm"
+            />
+          </span>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.14em] ring-1",
+              disabled
+                ? "bg-muted text-muted-foreground ring-border"
+                : "bg-primary/15 text-primary ring-primary/25"
+            )}
+          >
+            {disabled ? (
+              <>
+                <Lock className="size-3" aria-hidden />
+                Coming soon
+              </>
+            ) : (
+              "Import ready"
+            )}
+          </span>
+        </div>
+
+        <div className="mt-7">
+          <CardTitle className="font-heading text-xl font-semibold tracking-tight">
+            {platform.name}
+          </CardTitle>
+          <CardDescription className="mt-1.5 max-w-[30ch] text-sm leading-relaxed">
+            {cardDescription}
+          </CardDescription>
+        </div>
+
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <FileArchive className="size-3.5" aria-hidden />
+            {platform.acceptedFiles.join(" · ")}
+          </span>
+          {!disabled ? (
+            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
+              Start import
+              <span className="flex size-7 items-center justify-center rounded-full bg-foreground text-background transition-transform duration-300 group-hover/home-card:translate-x-1 group-hover/home-card:-translate-y-1 rtl:group-hover/home-card:-translate-x-1">
+                <ArrowUpRight className="size-3.5" aria-hidden />
+              </span>
+            </span>
+          ) : (
+            <Lock className="size-4 text-muted-foreground" aria-hidden />
+          )}
+        </div>
+      </div>
+    </Card>
+  )
+
+  if (disabled) {
+    return <div aria-disabled="true">{featuredCard}</div>
+  }
+
+  return (
+    <Link
+      to={platformImportPath(platform.id)}
+      className={cn(
+        "group/home-card block w-full text-start outline-none",
+        "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      )}
+    >
+      {featuredCard}
+    </Link>
   )
 }

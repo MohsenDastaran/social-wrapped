@@ -5,6 +5,7 @@ import { AboutPage } from "@/pages/about-page"
 import { DocsPage } from "@/pages/docs-page"
 import { HistoryPage } from "@/pages/history-page"
 import { HomePage } from "@/pages/home-page"
+import { ImportPage } from "@/pages/import-page"
 import { SettingsPage } from "@/pages/settings-page"
 
 export function App() {
@@ -13,6 +14,7 @@ export function App() {
       <Routes>
         <Route element={<AppLayout />}>
           <Route index element={<HomePage />} />
+          <Route path="import/:platformId" element={<ImportPage />} />
           <Route path="docs" element={<DocsPage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="settings" element={<SettingsPage />} />
