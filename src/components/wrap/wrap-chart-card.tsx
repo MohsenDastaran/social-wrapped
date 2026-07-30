@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import { Download } from "lucide-react"
+import { Download, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { downloadMockPng } from "@/lib/mock-export"
+import { useDomExport } from "@/hooks/use-dom-export"
 import { cn } from "@/lib/utils"
 
 export type WrapChartCardProps = {
   title: string
   description?: string
   exportName: string
+  /** @deprecated Kept for call-site compatibility; real export captures the card DOM. */
   exportLines?: string[]
   className?: string
   chartClassName?: string
@@ -53,35 +54,28 @@ function SizedChartHost({
 
   return (
     <div ref={ref} className={cn("relative w-full shrink-0", className)}>
-      {/* Absolute fill gives ECharts concrete pixel bounds (not % of collapsing flex). */}
       {ready ? <div className="absolute inset-0 min-h-0">{children}</div> : null}
     </div>
   )
 }
 
-/** Chart frame with an individual mock PNG export action. */
+/** Chart frame with a real PNG export of the full card (hi-res on mobile). */
 export function WrapChartCard({
   title,
   description,
   exportName,
-  exportLines,
   className,
   chartClassName,
   children,
 }: WrapChartCardProps) {
-  function handleExport() {
-    downloadMockPng(`${exportName}.png`, {
-      title,
-      subtitle: description ?? "Chart export mock — replace with real render",
-      lines: exportLines,
-      width: 1280,
-      height: 720,
-      gradient: ["#134e4a", "#0e7490", "#65a30d"],
-    })
-  }
+  const { ref, exporting, exportPng } = useDomExport<HTMLDivElement>({
+    minWidth: 1280,
+    pixelRatio: 2,
+  })
 
   return (
     <div
+      ref={ref}
       className={cn(
         "flex flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10",
         className
@@ -100,11 +94,17 @@ export function WrapChartCard({
           type="button"
           variant="outline"
           size="xs"
-          onClick={handleExport}
+          data-export-ignore
+          disabled={exporting}
+          onClick={() => void exportPng(`${exportName}.png`)}
           aria-label={`Export ${title}`}
         >
-          <Download data-icon="inline-start" />
-          Export
+          {exporting ? (
+            <Loader2 data-icon="inline-start" className="animate-spin" />
+          ) : (
+            <Download data-icon="inline-start" />
+          )}
+          {exporting ? "Exporting…" : "Export"}
         </Button>
       </div>
       <SizedChartHost className={chartClassName}>{children}</SizedChartHost>
