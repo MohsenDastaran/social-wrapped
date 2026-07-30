@@ -95,13 +95,35 @@ function normalizeWrap(raw: StoredWrap): WrapRecord | null {
   if (!analytics) return null
 
   // Older wraps may lack newer analytics fields.
+  const emptyActivity = {
+    daily: [],
+    monthly: [],
+    yearly: [],
+    years: [] as number[],
+  }
   if (!analytics.account.activityOverTime) {
     analytics = {
       ...analytics,
       account: {
         ...analytics.account,
-        activityOverTime: { daily: [], monthly: [], yearly: [], years: [] },
+        activityOverTime: emptyActivity,
       },
+    }
+  }
+  if (analytics.chats.some((c) => !c.analytics.activityOverTime)) {
+    analytics = {
+      ...analytics,
+      chats: analytics.chats.map((c) =>
+        c.analytics.activityOverTime
+          ? c
+          : {
+              ...c,
+              analytics: {
+                ...c.analytics,
+                activityOverTime: emptyActivity,
+              },
+            }
+      ),
     }
   }
 

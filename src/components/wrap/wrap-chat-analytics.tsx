@@ -4,8 +4,10 @@ import {
 import {
   EChartsPieChart,
 } from "@/components/evilcharts/charts/echarts-pie-chart"
+import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-time-chart"
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 import { CircadianPolarChart } from "@/components/wrap/charts/circadian-polar-chart"
+import { ContactVolumeBarChart } from "@/components/wrap/charts/contact-volume-bar-chart"
 import {
   EMOJI_AREA,
   fmt,
@@ -105,6 +107,24 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
           </Button>
         ) : null}
       </header>
+
+      <ActivityOverTimeChart
+        series={a.activityOverTime}
+        title={`Messages with ${chat.chatName}`}
+        exportName={`chat-${chat.chatId}-activity-over-time`}
+        sentLabel="You"
+        receivedLabel={chat.chatName}
+      />
+
+      <ContactVolumeBarChart
+        series={a.activityOverTime}
+        youLabel="You"
+        themLabel={chat.chatName}
+        exportName={`chat-${chat.chatId}-volume-bars`}
+        youSent={a.sentMessages}
+        themSent={a.receivedMessages}
+        totalMessages={a.totalMessages}
+      />
 
       <WrapChartCard
         title="Dominance"
