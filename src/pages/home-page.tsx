@@ -67,9 +67,16 @@ export function HomePage() {
           placeholder="Find a platform or file type…"
           className="sm:max-w-md"
         />
-        <p className="px-1 text-xs font-medium text-muted-foreground" aria-live="polite">
-          {filteredPlatforms.length}{" "}
-          {filteredPlatforms.length === 1 ? "platform" : "platforms"}
+        <p
+          className="inline-flex items-baseline gap-2 self-start rounded-full bg-primary/10 px-3 py-1.5 ring-1 ring-primary/25 sm:self-auto"
+          aria-live="polite"
+        >
+          <span className="font-heading text-xl font-semibold tabular-nums leading-none tracking-tight text-primary">
+            {filteredPlatforms.length}
+          </span>
+          <span className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-foreground/75">
+            {filteredPlatforms.length === 1 ? "platform" : "platforms"}
+          </span>
         </p>
       </div>
 

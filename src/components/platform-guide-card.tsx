@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { ArrowUpRight, FileArchive, Lock } from "lucide-react"
+import { ArrowUpRight, FileArchive, Lock, Sparkles } from "lucide-react"
 import { Link } from "react-router"
 
 import { PlatformCardFace } from "@/components/platform-card-face"
@@ -279,10 +279,10 @@ export function PlatformImportCard({
           </span>
           <span
             className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] ring-1",
+              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] shadow-sm",
               disabled
-                ? "bg-muted text-muted-foreground ring-border"
-                : "bg-primary/15 text-primary ring-primary/25"
+                ? "bg-muted text-muted-foreground ring-1 ring-border"
+                : "bg-primary text-primary-foreground shadow-primary/35 ring-1 ring-primary/50"
             )}
           >
             {disabled ? (
@@ -291,7 +291,14 @@ export function PlatformImportCard({
                 Soon
               </>
             ) : (
-              "Ready"
+              <>
+                <span className="relative flex size-1.5" aria-hidden>
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary-foreground/55" />
+                  <span className="relative inline-flex size-1.5 rounded-full bg-primary-foreground" />
+                </span>
+                Ready
+                <Sparkles className="size-3 opacity-90" aria-hidden />
+              </>
             )}
           </span>
         </div>
