@@ -6,6 +6,7 @@ import {
 } from "@/components/evilcharts/charts/echarts-pie-chart"
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 import { CircadianPolarChart } from "@/components/wrap/charts/circadian-polar-chart"
+import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-time-chart"
 import {
   fmt,
   fmtDuration,
@@ -121,6 +122,8 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
         <Kpi label="Total" value={fmt(a.totalMessages)} />
         <Kpi label="Chats" value={fmt(analytics.chatCount)} />
       </div>
+
+      <ActivityOverTimeChart series={a.activityOverTime} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Sent vs received */}

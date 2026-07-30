@@ -128,6 +128,21 @@ export type HeatmapStats = {
   days: HeatmapDay[]
 }
 
+export type ActivityPoint = {
+  /** "YYYY-MM-DD" | "YYYY-MM" | "YYYY" */
+  period: string
+  sent: number
+  received: number
+}
+
+export type ActivityTimeSeries = {
+  daily: ActivityPoint[]
+  monthly: ActivityPoint[]
+  yearly: ActivityPoint[]
+  /** Newest first. */
+  years: number[]
+}
+
 // ── Result types ──────────────────────────────────────────────────────────────
 
 export type AnalyticsResult = {
@@ -143,6 +158,7 @@ export type AnalyticsResult = {
   emojis: EmojiStats
   circadian: CircadianStats
   heatmap: HeatmapStats
+  activityOverTime: ActivityTimeSeries
 }
 
 export type ChatResult = {

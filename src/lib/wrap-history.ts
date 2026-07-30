@@ -54,6 +54,7 @@ function emptyAnalyticsResult(
     emojis: { topOverall: [], byParticipant: [], topReactions: [] },
     circadian: { hourlyTotal: Array.from({ length: 24 }, () => 0), participants: [] },
     heatmap: { days: [] },
+    activityOverTime: { daily: [], monthly: [], yearly: [], years: [] },
   }
 }
 
@@ -84,7 +85,7 @@ function normalizeWrap(raw: StoredWrap): WrapRecord | null {
     return null
   }
 
-  const analytics =
+  let analytics =
     raw.analytics?.account != null
       ? raw.analytics
       : raw.stats
@@ -92,6 +93,17 @@ function normalizeWrap(raw: StoredWrap): WrapRecord | null {
         : null
 
   if (!analytics) return null
+
+  // Older wraps may lack newer analytics fields.
+  if (!analytics.account.activityOverTime) {
+    analytics = {
+      ...analytics,
+      account: {
+        ...analytics.account,
+        activityOverTime: { daily: [], monthly: [], yearly: [], years: [] },
+      },
+    }
+  }
 
   const stats = raw.stats ?? analyticsToStats(analytics)
 

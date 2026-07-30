@@ -255,6 +255,30 @@ pub struct HeatmapStats {
     pub days: Vec<HeatmapDay>,
 }
 
+/// One bucket of sent vs received over a time period.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityPoint {
+    /// `"YYYY-MM-DD"` (daily), `"YYYY-MM"` (monthly), or `"YYYY"` (yearly).
+    pub period: String,
+    pub sent: u64,
+    pub received: u64,
+}
+
+/// Sent vs received volume over time — powers the hero brush chart.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityTimeSeries {
+    /// Per-day buckets, sorted chronologically.
+    pub daily: Vec<ActivityPoint>,
+    /// Per-month buckets (`YYYY-MM`), sorted chronologically.
+    pub monthly: Vec<ActivityPoint>,
+    /// Per-year buckets (`YYYY`), sorted chronologically.
+    pub yearly: Vec<ActivityPoint>,
+    /// Distinct years that have activity (descending, newest first).
+    pub years: Vec<u16>,
+}
+
 // ── Aggregate result types ────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -272,6 +296,7 @@ pub struct AnalyticsResult {
     pub emojis: EmojiStats,
     pub circadian: CircadianStats,
     pub heatmap: HeatmapStats,
+    pub activity_over_time: ActivityTimeSeries,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -349,6 +374,10 @@ struct EngineState {
 
     // ── heatmap (stat 5) ──────────────────────────────────────────────────
     heatmap_days: HashMap<String, u64>,
+
+    // ── activity over time (sent vs received) ─────────────────────────────
+    /// `"YYYY-MM-DD"` → (sent, received)
+    activity_daily: HashMap<String, (u64, u64)>,
 }
 
 impl EngineState {
@@ -378,6 +407,7 @@ impl EngineState {
             circ_overall: [0u64; 24],
             circ_by_sender: HashMap::new(),
             heatmap_days: HashMap::new(),
+            activity_daily: HashMap::new(),
         }
     }
 
@@ -480,6 +510,15 @@ impl EngineState {
         // ── Heatmap ───────────────────────────────────────────────────────
         if !ev.date_str.is_empty() {
             *self.heatmap_days.entry(ev.date_str.clone()).or_default() += 1;
+            let slot = self
+                .activity_daily
+                .entry(ev.date_str.clone())
+                .or_insert((0, 0));
+            if ev.is_mine {
+                slot.0 += 1;
+            } else {
+                slot.1 += 1;
+            }
         }
     }
 
@@ -739,6 +778,9 @@ impl EngineState {
         days.sort_by(|a, b| a.date.cmp(&b.date));
         let heatmap = HeatmapStats { days };
 
+        // ── Activity over time (sent vs received) ─────────────────────────
+        let activity_over_time = build_activity_time_series(&self.activity_daily);
+
         AnalyticsResult {
             total_messages: total,
             sent_messages: self.sent_count,
@@ -752,7 +794,76 @@ impl EngineState {
             emojis,
             circadian,
             heatmap,
+            activity_over_time,
         }
+    }
+}
+
+fn build_activity_time_series(
+    daily_map: &HashMap<String, (u64, u64)>,
+) -> ActivityTimeSeries {
+    let mut daily: Vec<ActivityPoint> = daily_map
+        .iter()
+        .map(|(period, &(sent, received))| ActivityPoint {
+            period: period.clone(),
+            sent,
+            received,
+        })
+        .collect();
+    daily.sort_by(|a, b| a.period.cmp(&b.period));
+
+    let mut monthly_map: HashMap<String, (u64, u64)> = HashMap::new();
+    let mut yearly_map: HashMap<String, (u64, u64)> = HashMap::new();
+    let mut year_set: std::collections::BTreeSet<u16> = std::collections::BTreeSet::new();
+
+    for point in &daily {
+        if point.period.len() < 7 {
+            continue;
+        }
+        let month_key = point.period[..7].to_string(); // YYYY-MM
+        let slot = monthly_map.entry(month_key).or_insert((0, 0));
+        slot.0 += point.sent;
+        slot.1 += point.received;
+
+        if point.period.len() >= 4 {
+            let year_key = point.period[..4].to_string();
+            if let Ok(y) = year_key.parse::<u16>() {
+                year_set.insert(y);
+            }
+            let slot = yearly_map.entry(year_key).or_insert((0, 0));
+            slot.0 += point.sent;
+            slot.1 += point.received;
+        }
+    }
+
+    let mut monthly: Vec<ActivityPoint> = monthly_map
+        .into_iter()
+        .map(|(period, (sent, received))| ActivityPoint {
+            period,
+            sent,
+            received,
+        })
+        .collect();
+    monthly.sort_by(|a, b| a.period.cmp(&b.period));
+
+    let mut yearly: Vec<ActivityPoint> = yearly_map
+        .into_iter()
+        .map(|(period, (sent, received))| ActivityPoint {
+            period,
+            sent,
+            received,
+        })
+        .collect();
+    yearly.sort_by(|a, b| a.period.cmp(&b.period));
+
+    // Newest year first for the UI picker default.
+    let years: Vec<u16> = year_set.into_iter().rev().collect();
+
+    ActivityTimeSeries {
+        daily,
+        monthly,
+        yearly,
+        years,
     }
 }
 
@@ -1064,6 +1175,33 @@ mod tests {
         let result = engine.finish();
         let day1 = result.account.heatmap.days.iter().find(|d| d.date == "2024-01-01").unwrap();
         assert_eq!(day1.count, 5);
+    }
+
+    #[test]
+    fn test_activity_over_time_sent_received() {
+        let mut engine = AnalysisEngine::new("Me".into(), None, "".into(), 0);
+        engine.feed(&make_ev("Me", true, 1000, 10, "2023-06-01", MessageKind::Text, 3));
+        engine.feed(&make_ev("Bob", false, 2000, 11, "2023-06-01", MessageKind::Text, 3));
+        engine.feed(&make_ev("Me", true, 3000, 10, "2023-07-15", MessageKind::Text, 3));
+        engine.feed(&make_ev("Me", true, 4000, 10, "2024-01-01", MessageKind::Text, 3));
+        engine.feed(&make_ev("Bob", false, 5000, 11, "2024-01-02", MessageKind::Text, 3));
+        let result = engine.finish();
+        let ts = &result.account.activity_over_time;
+
+        assert_eq!(ts.daily.len(), 4);
+        let june1 = ts.daily.iter().find(|p| p.period == "2023-06-01").unwrap();
+        assert_eq!(june1.sent, 1);
+        assert_eq!(june1.received, 1);
+
+        let jun = ts.monthly.iter().find(|p| p.period == "2023-06").unwrap();
+        assert_eq!(jun.sent, 1);
+        assert_eq!(jun.received, 1);
+
+        let y2023 = ts.yearly.iter().find(|p| p.period == "2023").unwrap();
+        assert_eq!(y2023.sent, 2);
+        assert_eq!(y2023.received, 1);
+
+        assert_eq!(ts.years, vec![2024, 2023]);
     }
 
     #[test]
