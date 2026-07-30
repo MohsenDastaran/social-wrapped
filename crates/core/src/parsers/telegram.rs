@@ -38,7 +38,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::analytics::collectors::{
-    extract_emojis, parse_telegram_date, AnalysisEngine, MessageEvent, MessageKind,
+    extract_emojis, is_pure_emoji_text, parse_telegram_date, text_has_url, AnalysisEngine,
+    ContentKind, MessageEvent, MessageKind,
     ReactionEvent, WrapAnalytics,
 };
 use crate::error::CoreError;
@@ -328,6 +329,9 @@ pub fn analyze_export_from_reader<R: Read, F: FnMut(u64, u64)>(
             } else {
                 vec![]
             };
+            let has_link = text_contains_link(&msg.text);
+            let is_pure_emoji = kind.is_text() && is_pure_emoji_text(&plain_text);
+            let content_kind = ContentKind::classify(&kind, has_link, is_pure_emoji);
             let voice_duration_secs = msg.duration_seconds.unwrap_or(0);
 
             let reactions: Vec<ReactionEvent> = msg
@@ -371,6 +375,7 @@ pub fn analyze_export_from_reader<R: Read, F: FnMut(u64, u64)>(
                 hour,
                 date_str,
                 kind,
+                content_kind,
                 char_count,
                 voice_duration_secs,
                 emojis,
@@ -474,5 +479,25 @@ fn value_to_plain_text(v: &Value) -> String {
             .collect::<Vec<_>>()
             .join(""),
         _ => String::new(),
+    }
+}
+
+/// True when the export text payload contains a URL entity or URL-looking string.
+fn text_contains_link(v: &Value) -> bool {
+    match v {
+        Value::String(s) => text_has_url(s),
+        Value::Array(items) => items.iter().any(|item| match item {
+            Value::String(s) => text_has_url(s),
+            Value::Object(obj) => {
+                let entity = obj.get("type").and_then(Value::as_str).unwrap_or("");
+                matches!(entity, "link" | "url" | "text_link" | "email")
+                    || obj
+                        .get("text")
+                        .and_then(Value::as_str)
+                        .is_some_and(text_has_url)
+            }
+            _ => false,
+        }),
+        _ => false,
     }
 }

@@ -72,21 +72,102 @@ export const SENT_RECEIVED_PIE: PieConfig = {
   },
 }
 
-export const VOICE_TEXT_PIE: PieConfig = {
-  text: {
-    label: "Text",
+export const CONTENT_MIX_COLORS: Record<
+  string,
+  { label: string; colors: { light: string[]; dark: string[] } }
+> = {
+  normal: {
+    label: "Normal",
     colors: {
       light: ["#99f6e4", "#14b8a6", "#0f766e"],
       dark: ["#5eead4", "#2dd4bf", "#0d9488"],
     },
   },
-  voice: {
-    label: "Voice",
+  link: {
+    label: "Link",
+    colors: {
+      light: ["#bae6fd", "#0ea5e9", "#0369a1"],
+      dark: ["#7dd3fc", "#38bdf8", "#0284c7"],
+    },
+  },
+  emoji: {
+    label: "Emoji",
     colors: {
       light: ["#fde68a", "#f59e0b", "#b45309"],
       dark: ["#fcd34d", "#fbbf24", "#d97706"],
     },
   },
+  image: {
+    label: "Image",
+    colors: {
+      light: ["#ddd6fe", "#8b5cf6", "#5b21b6"],
+      dark: ["#c4b5fd", "#a78bfa", "#7c3aed"],
+    },
+  },
+  video: {
+    label: "Video",
+    colors: {
+      light: ["#fbcfe8", "#ec4899", "#9d174d"],
+      dark: ["#f9a8d4", "#f472b6", "#be185d"],
+    },
+  },
+  videoMessage: {
+    label: "Video note",
+    colors: {
+      light: ["#fecdd3", "#f43f5e", "#9f1239"],
+      dark: ["#fda4af", "#fb7185", "#e11d48"],
+    },
+  },
+  voice: {
+    label: "Voice",
+    colors: {
+      light: ["#bbf7d0", "#22c55e", "#15803d"],
+      dark: ["#86efac", "#4ade80", "#16a34a"],
+    },
+  },
+  sticker: {
+    label: "Sticker",
+    colors: {
+      light: ["#fed7aa", "#f97316", "#c2410c"],
+      dark: ["#fdba74", "#fb923c", "#ea580c"],
+    },
+  },
+  gif: {
+    label: "GIF",
+    colors: {
+      light: ["#a5f3fc", "#06b6d4", "#0e7490"],
+      dark: ["#67e8f9", "#22d3ee", "#0891b2"],
+    },
+  },
+  file: {
+    label: "File",
+    colors: {
+      light: ["#e2e8f0", "#64748b", "#334155"],
+      dark: ["#cbd5e1", "#94a3b8", "#64748b"],
+    },
+  },
+  other: {
+    label: "Other",
+    colors: {
+      light: ["#e7e5e4", "#78716c", "#44403c"],
+      dark: ["#d6d3d1", "#a8a29e", "#78716c"],
+    },
+  },
+}
+
+export function contentMixPieConfig(kinds: string[]): PieConfig {
+  return Object.fromEntries(
+    kinds.map((key, i) => {
+      const preset = CONTENT_MIX_COLORS[key]
+      return [
+        key,
+        preset ?? {
+          label: key,
+          colors: PALETTES[i % PALETTES.length],
+        },
+      ]
+    })
+  )
 }
 
 export const RESPONSE_AREA: AreaConfig = {

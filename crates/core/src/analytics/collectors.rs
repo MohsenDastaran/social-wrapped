@@ -53,6 +53,125 @@ impl MessageKind {
     }
 }
 
+/// Fine-grained content bucket for the message-type mix pie chart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ContentKind {
+    /// Ordinary text (not link-only / emoji-only).
+    Normal,
+    /// Text that contains a URL / link entity.
+    Link,
+    /// Message body is only emoji(s) / whitespace.
+    Emoji,
+    Voice,
+    /// Round video notes.
+    VideoMessage,
+    Video,
+    Image,
+    Sticker,
+    Gif,
+    File,
+    Other,
+}
+
+impl ContentKind {
+    pub fn as_key(self) -> &'static str {
+        match self {
+            ContentKind::Normal => "normal",
+            ContentKind::Link => "link",
+            ContentKind::Emoji => "emoji",
+            ContentKind::Voice => "voice",
+            ContentKind::VideoMessage => "videoMessage",
+            ContentKind::Video => "video",
+            ContentKind::Image => "image",
+            ContentKind::Sticker => "sticker",
+            ContentKind::Gif => "gif",
+            ContentKind::File => "file",
+            ContentKind::Other => "other",
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            ContentKind::Normal => "Normal",
+            ContentKind::Link => "Link",
+            ContentKind::Emoji => "Emoji",
+            ContentKind::Voice => "Voice",
+            ContentKind::VideoMessage => "Video note",
+            ContentKind::Video => "Video",
+            ContentKind::Image => "Image",
+            ContentKind::Sticker => "Sticker",
+            ContentKind::Gif => "GIF",
+            ContentKind::File => "File",
+            ContentKind::Other => "Other",
+        }
+    }
+
+    /// Classify from media kind + text traits (link / pure emoji).
+    pub fn classify(kind: &MessageKind, has_link: bool, is_pure_emoji: bool) -> Self {
+        match kind {
+            MessageKind::Voice => ContentKind::Voice,
+            MessageKind::VideoMessage => ContentKind::VideoMessage,
+            MessageKind::Video => ContentKind::Video,
+            MessageKind::Photo => ContentKind::Image,
+            MessageKind::Sticker => ContentKind::Sticker,
+            MessageKind::Animation => ContentKind::Gif,
+            MessageKind::File => ContentKind::File,
+            MessageKind::Other => ContentKind::Other,
+            MessageKind::Text => {
+                if is_pure_emoji {
+                    ContentKind::Emoji
+                } else if has_link {
+                    ContentKind::Link
+                } else {
+                    ContentKind::Normal
+                }
+            }
+        }
+    }
+}
+
+/// Returns `true` when `text` is empty of non-emoji characters (emoji-only message).
+pub fn is_pure_emoji_text(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    let mut saw_emoji = false;
+    for c in trimmed.chars() {
+        if c.is_whitespace() {
+            continue;
+        }
+        if is_emoji_related_char(c) {
+            saw_emoji = true;
+            continue;
+        }
+        return false;
+    }
+    saw_emoji
+}
+
+fn is_emoji_related_char(c: char) -> bool {
+    let cp = c as u32;
+    match cp {
+        0x1F3FB..=0x1F3FF => true, // skin tone
+        0xFE00..=0xFE0F => true,   // variation selectors
+        0x200D => true,            // ZWJ
+        0x20E3 => true,            // keycap
+        0x1F1E6..=0x1F1FF => true, // regional indicators (flags)
+        _ => is_significant_emoji(c),
+    }
+}
+
+/// Heuristic URL / www detection for plain text.
+pub fn text_has_url(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    lower.contains("http://")
+        || lower.contains("https://")
+        || lower.contains("www.")
+        || lower.contains("t.me/")
+}
+
 /// One reaction left on a message.
 #[derive(Debug, Clone)]
 pub struct ReactionEvent {
@@ -81,6 +200,8 @@ pub struct MessageEvent {
     /// `"YYYY-MM-DD"` local date string, used as a heatmap key.
     pub date_str: String,
     pub kind: MessageKind,
+    /// Fine-grained bucket for the content-mix pie (normal / link / emoji / media…).
+    pub content_kind: ContentKind,
     /// UTF-8 character count (0 for non-text messages).
     pub char_count: usize,
     /// Seconds of audio/video content (0 if not applicable).
@@ -111,24 +232,24 @@ pub struct VolumeStats {
     pub participants: Vec<ParticipantCount>,
 }
 
-// stat 23
+// stat 23 — message content mix (normal / link / emoji / media…)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct VoiceTextParticipant {
-    pub name: String,
-    pub text_count: u64,
-    pub voice_count: u64,
-    /// Total seconds of voice/video-message content.
-    pub voice_duration_secs: u64,
+pub struct ContentTypeCount {
+    /// Stable key: normal | link | emoji | voice | videoMessage | video | image | sticker | gif | file | other
+    pub kind: String,
+    pub label: String,
+    pub count: u64,
+    pub pct: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct VoiceTextStats {
-    pub total_text: u64,
-    pub total_voice: u64,
+pub struct ContentMixStats {
+    pub total: u64,
     pub total_voice_duration_secs: u64,
-    pub participants: Vec<VoiceTextParticipant>,
+    /// Non-zero types only, sorted by count descending.
+    pub types: Vec<ContentTypeCount>,
 }
 
 // stat 16
@@ -288,7 +409,7 @@ pub struct AnalyticsResult {
     pub sent_messages: u64,
     pub received_messages: u64,
     pub volume: VolumeStats,
-    pub voice_text: VoiceTextStats,
+    pub content_mix: ContentMixStats,
     pub message_length: MessageLengthStats,
     pub response_time: ResponseTimeStats,
     pub late_night: LateNightStats,
@@ -338,10 +459,9 @@ struct EngineState {
     sent_count: u64,
     received_count: u64,
 
-    // ── voice vs text (stat 23) ───────────────────────────────────────────
-    text_counts: HashMap<String, u64>,
-    voice_counts: HashMap<String, u64>,
-    voice_secs: HashMap<String, u64>,
+    // ── content mix (stat 23) ─────────────────────────────────────────────
+    content_counts: HashMap<ContentKind, u64>,
+    voice_secs: u64,
 
     // ── message length (stat 16) ──────────────────────────────────────────
     msg_chars: HashMap<String, u64>,
@@ -386,9 +506,8 @@ impl EngineState {
             volume_counts: HashMap::new(),
             sent_count: 0,
             received_count: 0,
-            text_counts: HashMap::new(),
-            voice_counts: HashMap::new(),
-            voice_secs: HashMap::new(),
+            content_counts: HashMap::new(),
+            voice_secs: 0,
             msg_chars: HashMap::new(),
             msg_char_counts: HashMap::new(),
             rt_delays: HashMap::new(),
@@ -423,13 +542,10 @@ impl EngineState {
             self.received_count += 1;
         }
 
-        // ── Voice vs text ─────────────────────────────────────────────────
+        // ── Content mix (normal / link / emoji / media…) ─────────────────
+        *self.content_counts.entry(ev.content_kind).or_default() += 1;
         if ev.kind.is_voice_like() {
-            *self.voice_counts.entry(sender.clone()).or_default() += 1;
-            *self.voice_secs.entry(sender.clone()).or_default() +=
-                ev.voice_duration_secs as u64;
-        } else {
-            *self.text_counts.entry(sender.clone()).or_default() += 1;
+            self.voice_secs += ev.voice_duration_secs as u64;
         }
 
         // ── Message length (text only) ────────────────────────────────────
@@ -547,30 +663,28 @@ impl EngineState {
             participants: parts,
         };
 
-        // ── Voice vs text ─────────────────────────────────────────────────
-        let all_senders: std::collections::HashSet<String> = self
-            .text_counts
-            .keys()
-            .chain(self.voice_counts.keys())
-            .cloned()
-            .collect();
-        let mut vt_parts: Vec<VoiceTextParticipant> = all_senders
+        // ── Content mix ───────────────────────────────────────────────────
+        let mix_total: u64 = self.content_counts.values().sum();
+        let mut types: Vec<ContentTypeCount> = self
+            .content_counts
             .iter()
-            .map(|name| VoiceTextParticipant {
-                name: name.clone(),
-                text_count: *self.text_counts.get(name).unwrap_or(&0),
-                voice_count: *self.voice_counts.get(name).unwrap_or(&0),
-                voice_duration_secs: *self.voice_secs.get(name).unwrap_or(&0),
+            .filter(|(_, &c)| c > 0)
+            .map(|(kind, &count)| ContentTypeCount {
+                kind: kind.as_key().to_string(),
+                label: kind.label().to_string(),
+                count,
+                pct: if mix_total > 0 {
+                    count as f64 / mix_total as f64 * 100.0
+                } else {
+                    0.0
+                },
             })
             .collect();
-        vt_parts
-            .sort_by_key(|p| std::cmp::Reverse(p.text_count + p.voice_count));
-        let total_voice_dur: u64 = self.voice_secs.values().sum();
-        let voice_text = VoiceTextStats {
-            total_text: self.text_counts.values().sum(),
-            total_voice: self.voice_counts.values().sum(),
-            total_voice_duration_secs: total_voice_dur,
-            participants: vt_parts,
+        types.sort_by(|a, b| b.count.cmp(&a.count));
+        let content_mix = ContentMixStats {
+            total: mix_total,
+            total_voice_duration_secs: self.voice_secs,
+            types,
         };
 
         // ── Message length ────────────────────────────────────────────────
@@ -786,7 +900,7 @@ impl EngineState {
             sent_messages: self.sent_count,
             received_messages: self.received_count,
             volume,
-            voice_text,
+            content_mix,
             message_length,
             response_time,
             late_night,
@@ -1101,7 +1215,8 @@ mod tests {
             timestamp_secs: ts,
             hour,
             date_str: date.into(),
-            kind,
+            kind: kind.clone(),
+            content_kind: ContentKind::classify(&kind, false, false),
             char_count: chars,
             voice_duration_secs: 0,
             emojis: vec![],
@@ -1122,6 +1237,33 @@ mod tests {
     fn test_extract_emojis() {
         let emojis = extract_emojis("Hello 😀 world 🎉!");
         assert_eq!(emojis, vec!["😀", "🎉"]);
+    }
+
+    #[test]
+    fn test_pure_emoji_and_content_mix() {
+        assert!(is_pure_emoji_text("😀🎉"));
+        assert!(is_pure_emoji_text(" 👍 "));
+        assert!(!is_pure_emoji_text("hi 😀"));
+        assert!(!is_pure_emoji_text(""));
+
+        let mut engine = AnalysisEngine::new("Me".into(), None, "".into(), 0);
+        let mut normal = make_ev("Me", true, 1000, 10, "2024-01-01", MessageKind::Text, 5);
+        normal.content_kind = ContentKind::Normal;
+        let mut link = make_ev("Me", true, 2000, 10, "2024-01-01", MessageKind::Text, 20);
+        link.content_kind = ContentKind::Link;
+        let mut emoji = make_ev("Bob", false, 3000, 11, "2024-01-01", MessageKind::Text, 2);
+        emoji.content_kind = ContentKind::Emoji;
+        let mut photo = make_ev("Bob", false, 4000, 11, "2024-01-01", MessageKind::Photo, 0);
+        photo.content_kind = ContentKind::Image;
+        engine.feed(&normal);
+        engine.feed(&link);
+        engine.feed(&emoji);
+        engine.feed(&photo);
+        let mix = engine.finish().account.content_mix;
+        assert_eq!(mix.total, 4);
+        assert_eq!(mix.types.len(), 4);
+        let pct_sum: f64 = mix.types.iter().map(|t| t.pct).sum();
+        assert!((pct_sum - 100.0).abs() < 0.01);
     }
 
     #[test]

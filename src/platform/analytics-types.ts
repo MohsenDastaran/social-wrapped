@@ -20,20 +20,19 @@ export type VolumeStats = {
   participants: ParticipantCount[]
 }
 
-// ── Stat 23: Voice vs Text ────────────────────────────────────────────────────
+// ── Stat 23: Message content mix ─────────────────────────────────────────────
 
-export type VoiceTextParticipant = {
-  name: string
-  textCount: number
-  voiceCount: number
-  voiceDurationSecs: number
+export type ContentTypeCount = {
+  kind: string
+  label: string
+  count: number
+  pct: number
 }
 
-export type VoiceTextStats = {
-  totalText: number
-  totalVoice: number
+export type ContentMixStats = {
+  total: number
   totalVoiceDurationSecs: number
-  participants: VoiceTextParticipant[]
+  types: ContentTypeCount[]
 }
 
 // ── Stat 16: Message Length Balance ──────────────────────────────────────────
@@ -150,7 +149,7 @@ export type AnalyticsResult = {
   sentMessages: number
   receivedMessages: number
   volume: VolumeStats
-  voiceText: VoiceTextStats
+  contentMix: ContentMixStats
   messageLength: MessageLengthStats
   responseTime: ResponseTimeStats
   lateNight: LateNightStats

@@ -13,7 +13,7 @@ import {
   pieConfigForKeys,
   RESPONSE_AREA,
   SENT_RECEIVED_PIE,
-  VOICE_TEXT_PIE,
+  contentMixPieConfig,
   EMOJI_AREA,
 } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
@@ -47,10 +47,13 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
     count: p.count,
   }))
 
-  const voiceText = [
-    { kind: "text", count: a.voiceText.totalText },
-    { kind: "voice", count: a.voiceText.totalVoice },
-  ]
+  const mix = a.contentMix
+  const contentMix = (mix?.types ?? []).map((t) => ({
+    kind: t.kind,
+    count: t.count,
+    pctLabel: `${Math.round(t.pct)}%`,
+  }))
+  const contentMixKeys = contentMix.map((t) => t.kind)
 
   const lengthData = a.messageLength.participants.map((p) => ({
     name: truncate(p.name, 12),
@@ -169,38 +172,44 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
           </EChartsPieChart>
         </WrapChartCard>
 
-        {/* Voice vs text */}
-        {(a.voiceText.totalVoice > 0 || a.voiceText.totalText > 0) && (
-          <WrapChartCard
-            title="Voice vs text"
-            description={
-              a.voiceText.totalVoiceDurationSecs > 0
-                ? `${fmtDuration(a.voiceText.totalVoiceDurationSecs)} of voice`
-                : "Text and voice memo mix"
-            }
-            exportName="main-voice-vs-text"
-            exportSize="compact"
-            exportLines={[
-              `Text ${fmt(a.voiceText.totalText)}`,
-              `Voice ${fmt(a.voiceText.totalVoice)}`,
-            ]}
-            chartClassName="h-64"
-          >
+        {/* Message content mix — always visible */}
+        <WrapChartCard
+          title="Message types"
+          description={
+            contentMix.length === 0
+              ? "Re-import your export to unlock the type breakdown"
+              : a.contentMix.totalVoiceDurationSecs > 0
+                ? `${fmtDuration(a.contentMix.totalVoiceDurationSecs)} of voice · share by type`
+                : "Share of messages by content type"
+          }
+          exportName="main-message-types"
+          exportSize="compact"
+          exportLines={(a.contentMix?.types ?? []).map(
+            (t) => `${t.label} ${fmt(t.count)} (${t.pct.toFixed(1)}%)`
+          )}
+          chartClassName="h-64"
+        >
+          {contentMix.length > 0 ? (
             <EChartsPieChart
               className="h-full w-full p-3"
-              data={voiceText}
+              data={contentMix}
               dataKey="count"
               nameKey="kind"
-              config={VOICE_TEXT_PIE}
+              config={contentMixPieConfig(contentMixKeys)}
             >
               <EChartsPieChart.Legend isClickable />
               <EChartsPieChart.Tooltip />
               <EChartsPieChart.Pie isClickable>
-                <EChartsPieChart.Label dataKey="count" position="inside" />
+                <EChartsPieChart.Label dataKey="pctLabel" position="inside" />
               </EChartsPieChart.Pie>
             </EChartsPieChart>
-          </WrapChartCard>
-        )}
+          ) : (
+            <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
+              No type data yet. Re-import after updating to see normal, link,
+              emoji, image, video, and more.
+            </div>
+          )}
+        </WrapChartCard>
       </div>
 
       {/* Dominance */}

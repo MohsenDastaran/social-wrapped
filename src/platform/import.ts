@@ -1,12 +1,13 @@
 import type { PlatformConfig } from "@/lib/platforms"
 import type { WrapAnalytics } from "@/platform/analytics-types"
+import { normalizeContentMix } from "@/lib/normalize-content-mix"
 
 export type { WrapAnalytics } from "@/platform/analytics-types"
 export type {
   AnalyticsResult,
   ChatResult,
   VolumeStats,
-  VoiceTextStats,
+  ContentMixStats,
   MessageLengthStats,
   ResponseTimeStats,
   LateNightStats,
@@ -122,7 +123,19 @@ export function importPlatformFile(
 
       worker.terminate()
       if (message.type === "done") {
-        resolve(JSON.parse(message.analyticsJson) as WrapAnalytics)
+        const analytics = JSON.parse(message.analyticsJson) as WrapAnalytics
+        analytics.account = {
+          ...analytics.account,
+          contentMix: normalizeContentMix(analytics.account),
+        }
+        analytics.chats = (analytics.chats ?? []).map((c) => ({
+          ...c,
+          analytics: {
+            ...c.analytics,
+            contentMix: normalizeContentMix(c.analytics),
+          },
+        }))
+        resolve(analytics)
       } else {
         reject(new Error(message.message))
       }

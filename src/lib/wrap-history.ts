@@ -1,8 +1,10 @@
 import type { PlatformId } from "@/lib/platforms"
 import type {
   AnalyticsResult,
+  ContentMixStats,
   WrapAnalytics,
 } from "@/platform/analytics-types"
+import { normalizeContentMix } from "@/lib/normalize-content-mix"
 import { analyticsToStats, type TelegramExportStats } from "@/platform/import"
 
 const STORAGE_KEY = "social-wrapped:wraps"
@@ -16,6 +18,12 @@ export type WrapRecord = {
   analytics: WrapAnalytics
   /** Derived flat stats for header display — kept for quick access. */
   stats: TelegramExportStats
+}
+
+const EMPTY_CONTENT_MIX: ContentMixStats = {
+  total: 0,
+  totalVoiceDurationSecs: 0,
+  types: [],
 }
 
 /** Pre-analytics wraps stored only `stats`; synthesize a minimal shell so the page doesn't crash. */
@@ -41,18 +49,16 @@ function emptyAnalyticsResult(
         },
       ],
     },
-    voiceText: {
-      totalText: 0,
-      totalVoice: 0,
-      totalVoiceDurationSecs: 0,
-      participants: [],
-    },
+    contentMix: { ...EMPTY_CONTENT_MIX },
     messageLength: { participants: [] },
     responseTime: { participants: [] },
     lateNight: { totalLateNight: 0, participants: [] },
     initiatorFinisher: { initiators: [], finishers: [] },
     emojis: { topOverall: [], byParticipant: [], topReactions: [] },
-    circadian: { hourlyTotal: Array.from({ length: 24 }, () => 0), participants: [] },
+    circadian: {
+      hourlyTotal: Array.from({ length: 24 }, () => 0),
+      participants: [],
+    },
     heatmap: { days: [] },
     activityOverTime: { daily: [], monthly: [], yearly: [], years: [] },
   }
@@ -94,37 +100,33 @@ function normalizeWrap(raw: StoredWrap): WrapRecord | null {
 
   if (!analytics) return null
 
-  // Older wraps may lack newer analytics fields.
-  const emptyActivity = {
-    daily: [],
-    monthly: [],
-    yearly: [],
-    years: [] as number[],
-  }
-  if (!analytics.account.activityOverTime) {
-    analytics = {
-      ...analytics,
-      account: {
-        ...analytics.account,
-        activityOverTime: emptyActivity,
+  analytics = {
+    ...analytics,
+    account: {
+      ...analytics.account,
+      activityOverTime:
+        analytics.account.activityOverTime ?? {
+          daily: [],
+          monthly: [],
+          yearly: [],
+          years: [],
+        },
+      contentMix: normalizeContentMix(analytics.account),
+    },
+    chats: analytics.chats.map((c) => ({
+      ...c,
+      analytics: {
+        ...c.analytics,
+        activityOverTime:
+          c.analytics.activityOverTime ?? {
+            daily: [],
+            monthly: [],
+            yearly: [],
+            years: [],
+          },
+        contentMix: normalizeContentMix(c.analytics),
       },
-    }
-  }
-  if (analytics.chats.some((c) => !c.analytics.activityOverTime)) {
-    analytics = {
-      ...analytics,
-      chats: analytics.chats.map((c) =>
-        c.analytics.activityOverTime
-          ? c
-          : {
-              ...c,
-              analytics: {
-                ...c.analytics,
-                activityOverTime: emptyActivity,
-              },
-            }
-      ),
-    }
+    })),
   }
 
   const stats = raw.stats ?? analyticsToStats(analytics)
@@ -145,40 +147,63 @@ function readAll(): WrapRecord[] {
     if (!raw) return []
     const parsed = JSON.parse(raw) as StoredWrap[]
     if (!Array.isArray(parsed)) return []
-    return parsed
-      .map(normalizeWrap)
-      .filter((wrap): wrap is WrapRecord => wrap != null)
+    return parsed.map(normalizeWrap).filter((w): w is WrapRecord => w != null)
   } catch {
     return []
   }
 }
 
-function writeAll(wraps: WrapRecord[]): void {
+function writeAll(wraps: WrapRecord[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(wraps))
 }
 
-/** Persist a new wrap and return it. Newest first. */
-export function saveWrap(
-  input: Omit<WrapRecord, "id" | "createdAt" | "stats">
-): WrapRecord {
-  const wrap: WrapRecord = {
-    ...input,
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    stats: analyticsToStats(input.analytics),
-  }
-  writeAll([wrap, ...readAll()])
-  return wrap
-}
-
 export function listWraps(): WrapRecord[] {
-  return readAll()
+  return readAll().sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
 }
 
 export function getWrap(id: string): WrapRecord | undefined {
-  return readAll().find((wrap) => wrap.id === id)
+  return readAll().find((w) => w.id === id)
 }
 
+/** Route path for a saved wrap result page. */
 export function wrapPath(id: string): string {
   return `/wrap/${id}`
+}
+
+export function saveWrap(input: {
+  platformId: PlatformId
+  fileName: string
+  analytics: WrapAnalytics
+}): WrapRecord {
+  const wrap: WrapRecord = {
+    id: crypto.randomUUID(),
+    platformId: input.platformId,
+    fileName: input.fileName,
+    createdAt: new Date().toISOString(),
+    analytics: {
+      ...input.analytics,
+      account: {
+        ...input.analytics.account,
+        contentMix: normalizeContentMix(input.analytics.account),
+      },
+      chats: (input.analytics.chats ?? []).map((c) => ({
+        ...c,
+        analytics: {
+          ...c.analytics,
+          contentMix: normalizeContentMix(c.analytics),
+        },
+      })),
+    },
+    stats: analyticsToStats(input.analytics),
+  }
+  const wraps = readAll().filter((w) => w.id !== wrap.id)
+  wraps.unshift(wrap)
+  writeAll(wraps)
+  return wrap
+}
+
+export function deleteWrap(id: string): void {
+  writeAll(readAll().filter((w) => w.id !== id))
 }
