@@ -6,11 +6,6 @@ import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-ti
 import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
 import {
   fmt,
-  fmtResponseTime,
-  INITIATOR_AREA,
-  LATE_NIGHT_AREA,
-  LENGTH_AREA,
-  RESPONSE_AREA,
   SENT_RECEIVED_PIE,
   EMOJI_AREA,
 } from "@/components/wrap/chart-theme"
@@ -51,37 +46,6 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
       )}%`,
     },
   ]
-
-  const lengthData = a.messageLength.participants.map((p) => ({
-    name: truncate(p.name, 12),
-    avgChars: Math.round(p.avgChars),
-  }))
-
-  const responseData = a.responseTime.participants.map((p) => ({
-    name: truncate(p.name, 12),
-    avgMin: Math.round(p.avgSecs / 60),
-    medianMin: Math.round(p.medianSecs / 60),
-  }))
-
-  const lateNightData = a.lateNight.participants
-    .filter((p) => p.count > 0)
-    .slice(0, 10)
-    .map((p) => ({
-      name: truncate(p.name, 12),
-      count: p.count,
-    }))
-
-  const initiatorNames = new Set([
-    ...a.initiatorFinisher.initiators.map((p) => p.name),
-    ...a.initiatorFinisher.finishers.map((p) => p.name),
-  ])
-  const initiatorData = [...initiatorNames].slice(0, 8).map((name) => ({
-    name: truncate(name, 12),
-    starts:
-      a.initiatorFinisher.initiators.find((p) => p.name === name)?.count ?? 0,
-    closes:
-      a.initiatorFinisher.finishers.find((p) => p.name === name)?.count ?? 0,
-  }))
 
   const emojiData = a.emojis.topOverall.slice(0, 12).map((e) => ({
     name: e.emoji,
@@ -172,177 +136,6 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
         totalVoiceDurationSecs={a.contentMix?.totalVoiceDurationSecs ?? 0}
         exportName="main-message-types"
       />
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Message length */}
-        {lengthData.length > 0 && (
-          <WrapChartCard
-            title="Message length"
-            description="Average characters per text message"
-            exportName="main-message-length"
-            exportLines={a.messageLength.participants
-              .slice(0, 5)
-              .map((p) => `${p.name} ${p.avgChars.toFixed(0)} chars`)}
-            chartClassName="h-56"
-          >
-            <EChartsAreaChart
-              data={lengthData}
-              config={LENGTH_AREA}
-              xDataKey="name"
-              className="h-full w-full"
-              curveType="monotone"
-              chartOptions={{
-                grid: { left: 8, right: 8, top: 16, bottom: 28 },
-                yAxis: {
-                  type: "value",
-                  show: true,
-                  scale: true,
-                  boundaryGap: ["0%", "20%"],
-                  axisLabel: { fontSize: 9 },
-                },
-              }}
-            >
-              <EChartsAreaChart.Tooltip variant="frosted-glass" />
-              <EChartsAreaChart.Area
-                dataKey="avgChars"
-                variant="gradient"
-                strokeVariant="solid"
-                strokeWidth={2.5}
-              >
-                <EChartsAreaChart.ActiveDot variant="ping" />
-              </EChartsAreaChart.Area>
-            </EChartsAreaChart>
-          </WrapChartCard>
-        )}
-
-        {/* Response time */}
-        {responseData.length > 0 && (
-          <WrapChartCard
-            title="Response time"
-            description="Average & median reply delay (minutes)"
-            exportName="main-response-time"
-            exportLines={a.responseTime.participants
-              .slice(0, 5)
-              .map((p) => `${p.name} ${fmtResponseTime(p.avgSecs)}`)}
-            chartClassName="h-56"
-          >
-            <EChartsAreaChart
-              data={responseData}
-              config={RESPONSE_AREA}
-              xDataKey="name"
-              className="h-full w-full"
-              curveType="monotone"
-              chartOptions={{
-                grid: { left: 8, right: 8, top: 16, bottom: 28 },
-                yAxis: {
-                  type: "value",
-                  show: true,
-                  scale: true,
-                  boundaryGap: ["0%", "20%"],
-                  axisLabel: { formatter: "{value}m", fontSize: 9 },
-                },
-              }}
-            >
-              <EChartsAreaChart.Tooltip variant="frosted-glass" />
-              <EChartsAreaChart.Legend />
-              <EChartsAreaChart.Area
-                dataKey="avgMin"
-                variant="gradient"
-                strokeVariant="solid"
-                strokeWidth={2}
-              />
-              <EChartsAreaChart.Area
-                dataKey="medianMin"
-                variant="gradient"
-                strokeVariant="solid"
-                strokeWidth={2}
-              />
-            </EChartsAreaChart>
-          </WrapChartCard>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Late night */}
-        {lateNightData.length > 0 && (
-          <WrapChartCard
-            title="Late-night chats"
-            description={`${fmt(a.lateNight.totalLateNight)} messages between 1–5 AM`}
-            exportName="main-late-night"
-            exportLines={[`Total ${fmt(a.lateNight.totalLateNight)}`]}
-            chartClassName="h-56"
-          >
-            <EChartsAreaChart
-              data={lateNightData}
-              config={LATE_NIGHT_AREA}
-              xDataKey="name"
-              className="h-full w-full"
-              curveType="monotone"
-              chartOptions={{
-                grid: { left: 8, right: 8, top: 16, bottom: 28 },
-                yAxis: {
-                  type: "value",
-                  show: false,
-                  scale: true,
-                  boundaryGap: ["0%", "20%"],
-                },
-              }}
-            >
-              <EChartsAreaChart.Tooltip variant="frosted-glass" />
-              <EChartsAreaChart.Area
-                dataKey="count"
-                variant="gradient"
-                strokeVariant="solid"
-                strokeWidth={2.5}
-              >
-                <EChartsAreaChart.ActiveDot variant="ping" />
-              </EChartsAreaChart.Area>
-            </EChartsAreaChart>
-          </WrapChartCard>
-        )}
-
-        {/* Initiator vs finisher */}
-        {initiatorData.length > 0 && (
-          <WrapChartCard
-            title="Initiator vs finisher"
-            description="Who starts and closes after 6h+ silence"
-            exportName="main-initiator-finisher"
-            chartClassName="h-56"
-          >
-            <EChartsAreaChart
-              data={initiatorData}
-              config={INITIATOR_AREA}
-              xDataKey="name"
-              className="h-full w-full"
-              curveType="monotone"
-              chartOptions={{
-                grid: { left: 8, right: 8, top: 16, bottom: 28 },
-                yAxis: {
-                  type: "value",
-                  show: false,
-                  scale: true,
-                  boundaryGap: ["0%", "20%"],
-                },
-              }}
-            >
-              <EChartsAreaChart.Tooltip variant="frosted-glass" />
-              <EChartsAreaChart.Legend />
-              <EChartsAreaChart.Area
-                dataKey="starts"
-                variant="gradient"
-                strokeVariant="solid"
-                strokeWidth={2}
-              />
-              <EChartsAreaChart.Area
-                dataKey="closes"
-                variant="gradient"
-                strokeVariant="solid"
-                strokeWidth={2}
-              />
-            </EChartsAreaChart>
-          </WrapChartCard>
-        )}
-      </div>
 
       {/* Top emojis */}
       {emojiData.length > 0 && (
@@ -492,8 +285,4 @@ function Kpi({
       </p>
     </div>
   )
-}
-
-function truncate(s: string, n: number): string {
-  return s.length > n ? `${s.slice(0, n - 1)}…` : s
 }
