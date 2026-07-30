@@ -65,8 +65,8 @@ export function CircadianRhythmCard({
       title="Activity by hour"
       description={
         sleepHint
-          ? `24-hour clock · peak ${peak} · ${sleepHint}`
-          : `All messages on a 24-hour clock · peak ${peak} · ${fmt(totalMsgs)} total`
+          ? `Peak ${peak} · ${sleepHint}`
+          : `Peak ${peak} · ${fmt(totalMsgs)} messages`
       }
       exportName={exportName}
       exportLines={[

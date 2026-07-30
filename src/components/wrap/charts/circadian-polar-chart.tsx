@@ -27,27 +27,27 @@ echarts.use([
 const AXIS_LABELS = [
   "12am",
   "",
+  "2am",
   "",
-  "3am",
-  "",
+  "4am",
   "",
   "6am",
   "",
+  "8am",
   "",
-  "9am",
-  "",
+  "10am",
   "",
   "12pm",
   "",
+  "2pm",
   "",
-  "3pm",
-  "",
+  "4pm",
   "",
   "6pm",
   "",
+  "8pm",
   "",
-  "9pm",
-  "",
+  "10pm",
   "",
 ]
 
@@ -111,13 +111,22 @@ export function CircadianPolarChart({
     const gridLine = isDark ? "#334155" : "#e2e8f0"
     const maxVal = Math.max(...series.flatMap((s) => s.hourly), 1)
 
+    // ECharts 5.5+ leaves a wedge open when boundaryGap is false so the first
+    // and last categories do not share an angle. Append a blank closer category
+    // and stretch endAngle by one segment so 11pm connects back to 12am.
+    const angleLabels = [...AXIS_LABELS, ""]
+    const startAngle = 90
+    const segmentAngle = 360 / angleLabels.length
+    const endAngle = startAngle - (360 + segmentAngle)
+
     const chartSeries = series.map((s, i) => {
       const color = colors[i % colors.length]!
+      const hours = padHourly(s.hourly)
       return {
         name: s.name,
         type: "line" as const,
         coordinateSystem: "polar" as const,
-        data: padHourly(s.hourly),
+        data: [...hours, hours[0]!],
         smooth: 0.35,
         symbol: "circle",
         symbolSize: 5,
@@ -164,9 +173,17 @@ export function CircadianPolarChart({
               value?: number
               marker?: string
             }>
-            const hour = items[0]?.dataIndex ?? 0
+            const hour = (items[0]?.dataIndex ?? 0) % 24
             const head = `<div style="margin-bottom:4px;font-weight:600">${HOUR_FULL[hour] ?? ""}</div>`
+            // Closing duplicate (index 24) mirrors midnight — skip duplicate rows.
+            const seen = new Set<string>()
             const rows = items
+              .filter((p) => {
+                const key = p.seriesName ?? ""
+                if (seen.has(key)) return false
+                seen.add(key)
+                return true
+              })
               .map((p) => {
                 const label =
                   legendVisible || items.length > 1
@@ -184,8 +201,9 @@ export function CircadianPolarChart({
         },
         angleAxis: {
           type: "category",
-          data: AXIS_LABELS,
-          startAngle: 90,
+          data: angleLabels,
+          startAngle,
+          endAngle,
           clockwise: true,
           boundaryGap: false,
           axisLine: {
