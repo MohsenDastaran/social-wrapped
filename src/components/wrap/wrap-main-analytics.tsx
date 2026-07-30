@@ -140,20 +140,8 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
         exportName="main-circadian"
       />
 
-      {/* Heatmap */}
       {a.heatmap.days.length > 0 && (
-        <WrapChartCard
-          title="Activity heatmap"
-          description="Messages per day · darker = more active"
-          exportName="main-heatmap"
-          exportLines={[
-            `${a.heatmap.days.length} active days`,
-            `Peak ${fmt(Math.max(...a.heatmap.days.map((d) => d.count)))}`,
-          ]}
-          chartClassName="h-48"
-        >
-          <CalendarHeatmap days={a.heatmap.days} className="h-full w-full" />
-        </WrapChartCard>
+        <CalendarHeatmap days={a.heatmap.days} exportName="main-heatmap" />
       )}
     </section>
   )

@@ -293,14 +293,11 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
       />
 
       {a.heatmap.days.length > 0 && (
-        <WrapChartCard
-          title="Activity heatmap"
+        <CalendarHeatmap
+          days={a.heatmap.days}
           description="Messages per day in this chat"
           exportName={`chat-${chat.chatId}-heatmap`}
-          chartClassName="h-44 sm:h-48"
-        >
-          <CalendarHeatmap days={a.heatmap.days} className="h-full w-full" />
-        </WrapChartCard>
+        />
       )}
     </section>
   )
