@@ -16,11 +16,12 @@ import { PlatformLogo } from "@/components/platform-logo"
 import { Button } from "@/components/ui/button"
 import { platformDocsPath, type PlatformConfig } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
+import { formatInvokeError } from "@/platform/api"
 import {
-  formatInvokeError,
-  summarizeTelegramFile,
+  importPlatformFile,
+  type ImportProgress,
   type TelegramExportStats,
-} from "@/platform/api"
+} from "@/platform/import"
 
 export type PlatformImportViewProps = {
   platform: PlatformConfig
@@ -79,8 +80,9 @@ export function PlatformImportView({
   const [file, setFile] = useState<File | null>(null)
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState<ImportProgress | null>(null)
   const [stats, setStats] = useState<TelegramExportStats | null>(null)
+  const loading = progress !== null
 
   function takeFile(next: File | null) {
     if (!next) return
@@ -118,20 +120,15 @@ export function PlatformImportView({
 
   async function handleAnalyze() {
     if (!file) return
-    setLoading(true)
     setError("")
     setStats(null)
+    setProgress({ percent: 0, loadedBytes: 0, totalBytes: file.size })
     try {
-      if (platform.id !== "telegram") {
-        throw new Error(
-          `${platform.name} import isn’t wired yet. Only Telegram JSON exports can be analyzed right now.`
-        )
-      }
-      setStats(await summarizeTelegramFile(file))
+      setStats(await importPlatformFile(platform, file, setProgress))
     } catch (err) {
       setError(formatInvokeError(err))
     } finally {
-      setLoading(false)
+      setProgress(null)
     }
   }
 
@@ -270,15 +267,29 @@ export function PlatformImportView({
         disabled={!file || loading}
         onClick={() => void handleAnalyze()}
       >
-        {loading ? (
+        {progress ? (
           <>
             <AppLoader size="sm" label="Analyzing export" className="shrink-0" />
-            Analyzing…
+            <span className="tabular-nums">Analyzing… {progress.percent}%</span>
           </>
         ) : (
           "Analyze export"
         )}
       </Button>
+
+      {progress ? (
+        <div className="mt-3" aria-hidden>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-150 ease-out"
+              style={{ width: `${progress.percent}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-center text-xs tabular-nums text-muted-foreground">
+            Parsing on your device — {progress.percent}%
+          </p>
+        </div>
+      ) : null}
 
       {stats ? (
         <section className="mt-8 flex flex-col gap-4">

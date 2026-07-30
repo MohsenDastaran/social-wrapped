@@ -139,9 +139,57 @@ impl TelegramExportSummary {
 
 /// Parses a Telegram export already loaded into memory (browser file picker / WASM).
 pub fn summarize_export_bytes(bytes: &[u8]) -> Result<TelegramExportSummary, CoreError> {
-    let file_size_bytes = bytes.len() as u64;
-    let reader = std::io::Cursor::new(bytes);
-    summarize_export_from_reader(reader, Some(file_size_bytes))
+    summarize_export_bytes_with_progress(bytes, |_, _| {})
+}
+
+/// Like [`summarize_export_bytes`], but invokes `on_progress(bytes_read, total_bytes)`
+/// as the parser consumes the input. Calls are throttled to roughly every 0.5%
+/// of the file (minimum 256 KB), plus a final call at EOF.
+pub fn summarize_export_bytes_with_progress<F: FnMut(u64, u64)>(
+    bytes: &[u8],
+    on_progress: F,
+) -> Result<TelegramExportSummary, CoreError> {
+    let total_bytes = bytes.len() as u64;
+    let reader = ProgressReader::new(std::io::Cursor::new(bytes), total_bytes, on_progress);
+    summarize_export_from_reader(reader, Some(total_bytes))
+}
+
+/// [`Read`] wrapper that reports consumed bytes to a callback at throttled intervals.
+struct ProgressReader<R: Read, F: FnMut(u64, u64)> {
+    inner: R,
+    total_bytes: u64,
+    bytes_read: u64,
+    last_reported: u64,
+    /// Minimum bytes between progress reports.
+    report_step: u64,
+    on_progress: F,
+}
+
+impl<R: Read, F: FnMut(u64, u64)> ProgressReader<R, F> {
+    fn new(inner: R, total_bytes: u64, on_progress: F) -> Self {
+        Self {
+            inner,
+            total_bytes,
+            bytes_read: 0,
+            last_reported: 0,
+            report_step: (total_bytes / 200).max(256 * 1024),
+            on_progress,
+        }
+    }
+}
+
+impl<R: Read, F: FnMut(u64, u64)> Read for ProgressReader<R, F> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let n = self.inner.read(buf)?;
+        self.bytes_read += n as u64;
+
+        let at_eof = n == 0;
+        if at_eof || self.bytes_read - self.last_reported >= self.report_step {
+            self.last_reported = self.bytes_read;
+            (self.on_progress)(self.bytes_read, self.total_bytes);
+        }
+        Ok(n)
+    }
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

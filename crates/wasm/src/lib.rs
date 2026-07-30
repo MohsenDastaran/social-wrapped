@@ -54,11 +54,29 @@ pub async fn load_telegram_mock() -> Result<String, JsValue> {
 /// Returns a camelCase JSON string matching [`TelegramExportSummary`].
 #[wasm_bindgen]
 pub fn summarize_telegram_bytes(data: &[u8]) -> Result<String, JsValue> {
-    summarize_telegram_bytes_json(data)
-}
-
-fn summarize_telegram_bytes_json(bytes: &[u8]) -> Result<String, JsValue> {
-    app_core::parsers::telegram::summarize_export_bytes(bytes)
+    app_core::parsers::telegram::summarize_export_bytes(data)
         .and_then(|summary| summary.to_json())
         .map_err(|error| JsValue::from_str(&error.to_string()))
+}
+
+/// Like [`summarize_telegram_bytes`], but invokes `on_progress(bytesRead, totalBytes)`
+/// as the parser consumes the input. Intended to run inside a Web Worker so the
+/// synchronous parse never blocks the UI thread.
+#[wasm_bindgen]
+pub fn summarize_telegram_bytes_with_progress(
+    data: &[u8],
+    on_progress: &js_sys::Function,
+) -> Result<String, JsValue> {
+    app_core::parsers::telegram::summarize_export_bytes_with_progress(
+        data,
+        |bytes_read, total_bytes| {
+            let _ = on_progress.call2(
+                &JsValue::NULL,
+                &JsValue::from_f64(bytes_read as f64),
+                &JsValue::from_f64(total_bytes as f64),
+            );
+        },
+    )
+    .and_then(|summary| summary.to_json())
+    .map_err(|error| JsValue::from_str(&error.to_string()))
 }

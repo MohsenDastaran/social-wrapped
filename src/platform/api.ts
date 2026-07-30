@@ -41,38 +41,3 @@ export async function loadTelegramMock(): Promise<string> {
   const wasm = await getWasm()
   return wasm.load_telegram_mock()
 }
-
-export type TelegramExportStats = {
-  displayName: string
-  username: string | null
-  aboutPreview: string
-  fileSizeBytes: number
-  chatCount: number
-  totalMessages: number
-  sentMessages: number
-  receivedMessages: number
-  sampleMessages: string[]
-}
-
-/** Analyze a Telegram `result.json` File from the picker. Stays on-device. */
-export async function summarizeTelegramFile(
-  file: File
-): Promise<TelegramExportStats> {
-  const lower = file.name.toLowerCase()
-  if (lower.endsWith(".zip")) {
-    throw new Error(
-      "ZIP archives aren’t supported yet. Open your Telegram export folder and choose result.json."
-    )
-  }
-  if (!lower.endsWith(".json")) {
-    throw new Error("Please choose a Telegram result.json export.")
-  }
-
-  const buffer = await file.arrayBuffer()
-  const bytes = new Uint8Array(buffer)
-
-  // File picker bytes stay in the webview; WASM parses locally (Tauri + browser).
-  const wasm = await getWasm()
-  const json = wasm.summarize_telegram_bytes(bytes)
-  return JSON.parse(json) as TelegramExportStats
-}

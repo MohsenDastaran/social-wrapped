@@ -119,4 +119,9 @@ export default defineConfig(async () => ({
     // Native top-level await — no vite-plugin-top-level-await / esbuild needed
     target: "esnext",
   },
+  worker: {
+    // Import workers (WASM parsing) need ES module format + the same wasm resolution.
+    format: "es" as const,
+    plugins: () => [wasmOptional(), wasm()],
+  },
 }))
