@@ -23,7 +23,7 @@ export function MessageTypesChart({
   totalVoiceDurationSecs = 0,
   exportName,
 }: MessageTypesChartProps) {
-  const [hideNormal, setHideNormal] = useState(false)
+  const [hideNormal, setHideNormal] = useState(true)
 
   const hasNormal = types.some((t) => t.kind === "normal" && t.count > 0)
   const source = useMemo(
@@ -74,7 +74,7 @@ export function MessageTypesChart({
             ) : (
               <EyeOff data-icon="inline-start" />
             )}
-            {hideNormal ? "Show normal" : "Hide normal"}
+            {hideNormal ? "Show normal Messages" : "Hide normal Messages"}
           </Button>
         ) : null
       }
