@@ -24,7 +24,7 @@ export function PlatformSearchInput({
         Search platforms
       </label>
       <Search
-        className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute inset-s-3 top-1/2 z-10 size-4 -translate-y-1/2 text-foreground/55"
         aria-hidden
       />
       <input
@@ -34,11 +34,10 @@ export function PlatformSearchInput({
         autoComplete="off"
         spellCheck={false}
         className={cn(
-          "h-11 w-full rounded-full border border-border/80 bg-card/80 pe-10 ps-10 text-sm text-foreground shadow-sm outline-none backdrop-blur-sm",
+          "relative h-11 w-full rounded-full border border-border bg-background pe-10 ps-10 text-sm text-foreground shadow-sm outline-none",
           "placeholder:text-muted-foreground",
           "transition-[border-color,box-shadow] duration-200",
           "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
-          "dark:bg-input/30",
           "[&::-webkit-search-cancel-button]:hidden",
           className
         )}
@@ -48,7 +47,7 @@ export function PlatformSearchInput({
         <button
           type="button"
           onClick={onClear}
-          className="absolute end-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="absolute inset-e-2 top-1/2 z-10 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-foreground/55 transition-colors hover:bg-muted hover:text-foreground"
           aria-label="Clear search"
         >
           <X className="size-3.5" />
