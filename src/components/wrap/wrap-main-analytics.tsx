@@ -19,6 +19,13 @@ import {
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import type { WrapAnalytics } from "@/platform/analytics-types"
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  MessagesSquare,
+  Hash,
+  type LucideIcon,
+} from "lucide-react"
 
 type WrapMainAnalyticsProps = {
   analytics: WrapAnalytics
@@ -104,28 +111,32 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
         </p>
       </header>
 
-      <div className="rounded-xl bg-muted/40 px-4 py-3 ring-1 ring-border/50">
-        <p className="font-heading text-lg font-semibold tracking-tight">
-          {analytics.displayName}
-          {analytics.username ? (
-            <span className="ms-2 text-sm font-medium text-muted-foreground">
-              @{analytics.username}
-            </span>
-          ) : null}
-        </p>
-        {analytics.aboutPreview ? (
-          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-            {analytics.aboutPreview}
-          </p>
-        ) : null}
-      </div>
-
       {/* Overview KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Kpi label="Sent" value={fmt(a.sentMessages)} />
-        <Kpi label="Received" value={fmt(a.receivedMessages)} />
-        <Kpi label="Total" value={fmt(a.totalMessages)} />
-        <Kpi label="Chats" value={fmt(analytics.chatCount)} />
+        <Kpi
+          label="Sent"
+          value={fmt(a.sentMessages)}
+          icon={ArrowUpRight}
+          accent="teal"
+        />
+        <Kpi
+          label="Received"
+          value={fmt(a.receivedMessages)}
+          icon={ArrowDownLeft}
+          accent="amber"
+        />
+        <Kpi
+          label="Total"
+          value={fmt(a.totalMessages)}
+          icon={Hash}
+          accent="emerald"
+        />
+        <Kpi
+          label="Chats"
+          value={fmt(analytics.chatCount)}
+          icon={MessagesSquare}
+          accent="sky"
+        />
       </div>
 
       <ActivityOverTimeChart series={a.activityOverTime} />
@@ -502,13 +513,36 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
   )
 }
 
-function Kpi({ label, value }: { label: string; value: string }) {
+const KPI_ACCENTS = {
+  teal: "text-teal-600 dark:text-teal-400",
+  amber: "text-amber-600 dark:text-amber-400",
+  emerald: "text-emerald-600 dark:text-emerald-400",
+  sky: "text-sky-600 dark:text-sky-400",
+} as const
+
+function Kpi({
+  label,
+  value,
+  icon: Icon,
+  accent,
+}: {
+  label: string
+  value: string
+  icon: LucideIcon
+  accent: keyof typeof KPI_ACCENTS
+}) {
   return (
-    <div className="rounded-xl bg-card px-3 py-2.5 ring-1 ring-foreground/10">
-      <p className="text-[0.65rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-        {label}
-      </p>
-      <p className="mt-1 font-heading text-xl font-semibold tracking-tight tabular-nums">
+    <div className="rounded-2xl bg-card px-4 py-4 ring-1 ring-foreground/10 sm:px-5 sm:py-5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[0.7rem] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+          {label}
+        </p>
+        <Icon
+          aria-hidden
+          className={`size-4 shrink-0 sm:size-5 ${KPI_ACCENTS[accent]}`}
+        />
+      </div>
+      <p className="font-heading mt-2 text-2xl font-semibold tracking-tight text-foreground tabular-nums sm:text-3xl">
         {value}
       </p>
     </div>

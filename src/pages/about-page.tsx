@@ -68,7 +68,7 @@ export function AboutPage() {
 
       <div className="relative z-10 flex w-full max-w-2xl flex-col items-center rounded-3xl bg-transparent px-3 py-6 sm:px-6">
         <p className="mb-4 text-center text-[0.7rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase sm:mb-6 sm:text-sm sm:tracking-[0.2em]">
-          Why Social Wrapped
+          Why Social Wrapped?
         </p>
 
         <AnimatedTextRoller
