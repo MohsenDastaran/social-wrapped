@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react"
 import { Link, Navigate, useParams } from "react-router"
 
 import { Button } from "@/components/ui/button"
+import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import { WrapChatAnalytics } from "@/components/wrap/wrap-chat-analytics"
 import { WrapMainAnalytics } from "@/components/wrap/wrap-main-analytics"
 import { WrapShareMedia } from "@/components/wrap/wrap-share-media"
@@ -67,8 +68,20 @@ export function WrapPage() {
             <ArrowLeft data-icon="inline-start" />
             History
           </Button>
-          <h1 className="font-heading truncate text-xl font-semibold tracking-tight sm:text-2xl">
-            {wrap.stats.displayName}
+          <h1 className="font-heading text-xl font-semibold tracking-tight sm:text-2xl">
+            <MarkerHighlight
+              highlight={platform?.name ?? "Export"}
+              after="Analytics for"
+              className="leading-tight"
+              markerColor="bg-emerald-600"
+              highlightedTextColor="text-gray-950"
+            />{" "}
+            <MarkerHighlight
+              highlight={wrap.stats.displayName}
+              className="leading-tight"
+              markerColor="bg-emerald-600"
+              highlightedTextColor="text-gray-950"
+            />
           </h1>
           <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
             {platform?.name ?? "Export"} wrap · {formatDate(wrap.createdAt)}
@@ -83,10 +96,7 @@ export function WrapPage() {
         </p>
       ) : null}
 
-      <WrapShareMedia
-        displayName={wrap.stats.displayName}
-        stats={wrap.stats}
-      />
+      <WrapShareMedia displayName={wrap.stats.displayName} stats={wrap.stats} />
 
       <WrapMainAnalytics analytics={wrap.analytics} />
 

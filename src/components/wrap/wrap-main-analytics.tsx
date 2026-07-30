@@ -1,9 +1,5 @@
-import {
-  EChartsAreaChart,
-} from "@/components/evilcharts/charts/echarts-area-chart"
-import {
-  EChartsPieChart,
-} from "@/components/evilcharts/charts/echarts-pie-chart"
+import { EChartsAreaChart } from "@/components/evilcharts/charts/echarts-area-chart"
+import { EChartsPieChart } from "@/components/evilcharts/charts/echarts-pie-chart"
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 import { CircadianPolarChart } from "@/components/wrap/charts/circadian-polar-chart"
 import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-time-chart"
@@ -21,6 +17,7 @@ import {
   EMOJI_AREA,
 } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
+import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import type { WrapAnalytics } from "@/platform/analytics-types"
 
 type WrapMainAnalyticsProps = {
@@ -73,8 +70,10 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
   ])
   const initiatorData = [...initiatorNames].slice(0, 8).map((name) => ({
     name: truncate(name, 12),
-    starts: a.initiatorFinisher.initiators.find((p) => p.name === name)?.count ?? 0,
-    closes: a.initiatorFinisher.finishers.find((p) => p.name === name)?.count ?? 0,
+    starts:
+      a.initiatorFinisher.initiators.find((p) => p.name === name)?.count ?? 0,
+    closes:
+      a.initiatorFinisher.finishers.find((p) => p.name === name)?.count ?? 0,
   }))
 
   const emojiData = a.emojis.topOverall.slice(0, 12).map((e) => ({
@@ -91,7 +90,13 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
     <section className="flex flex-col gap-4">
       <header className="text-start">
         <h2 className="font-heading text-xl font-semibold tracking-tight">
-          Main analytics
+          <MarkerHighlight
+            highlight="Main"
+            after="Analytics"
+            className="leading-tight"
+            markerColor="bg-emerald-600"
+            highlightedTextColor="text-gray-950"
+          />
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Across all {fmt(analytics.chatCount)} chats · {fmt(a.totalMessages)}{" "}
@@ -463,10 +468,12 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
           title="Circadian rhythm"
           description="Activity by hour · sleep windows from quiet stretches"
           exportName="main-circadian"
-          exportLines={a.circadian.participants.slice(0, 4).map(
-            (p) =>
-              `${p.name} sleep ~${p.sleepStartHour}:00–${p.sleepEndHour}:00`
-          )}
+          exportLines={a.circadian.participants
+            .slice(0, 4)
+            .map(
+              (p) =>
+                `${p.name} sleep ~${p.sleepStartHour}:00–${p.sleepEndHour}:00`
+            )}
           chartClassName="h-80"
         >
           <CircadianPolarChart
@@ -498,10 +505,10 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl bg-card px-3 py-2.5 ring-1 ring-foreground/10">
-      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+      <p className="text-[0.65rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
         {label}
       </p>
-      <p className="font-heading mt-1 text-xl font-semibold tabular-nums tracking-tight">
+      <p className="mt-1 font-heading text-xl font-semibold tracking-tight tabular-nums">
         {value}
       </p>
     </div>
