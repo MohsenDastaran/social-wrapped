@@ -251,29 +251,35 @@ export function PlatformImportCard({
   const featuredCard = (
     <Card
       className={cn(
-        "group/home-card relative min-h-44 overflow-hidden bg-card p-0 shadow-[0_12px_40px_-24px] shadow-foreground/35 ring-1",
+        "group/home-card relative overflow-hidden bg-card p-0 shadow-[0_12px_40px_-24px] shadow-foreground/35 ring-1",
         platform.accentClass,
         disabled
           ? "cursor-not-allowed opacity-55 saturate-50"
-          : "transition-[box-shadow,transform,border-color] duration-500 hover:-translate-y-1 hover:shadow-[0_22px_44px_-22px] hover:shadow-foreground/40",
+          : "transition-[box-shadow,transform,border-color] duration-500 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-22px] hover:shadow-foreground/40",
         className
       )}
     >
-      <div className="pointer-events-none absolute -inset-e-12 -top-14 size-48 rounded-full bg-primary/10 blur-3xl transition-transform duration-700 group-hover/home-card:scale-125" />
-      <div className="pointer-events-none absolute -bottom-20 inset-e-20 size-40 rounded-full bg-muted blur-3xl" />
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-0 bg-linear-to-br",
+          platform.gradientClass
+        )}
+      />
+      <div className="pointer-events-none absolute -inset-e-10 -top-12 size-36 rounded-full bg-white/40 blur-2xl dark:bg-white/10" />
+      <div className="pointer-events-none absolute -bottom-16 -inset-s-8 size-32 rounded-full bg-foreground/5 blur-2xl" />
 
-      <div className="relative flex h-full min-h-44 flex-col justify-between p-5">
-        <div className="flex items-start justify-between gap-4">
-          <span className="flex size-14 items-center justify-center rounded-2xl bg-background/90 shadow-sm ring-1 ring-foreground/10 transition-transform duration-500 group-hover/home-card:-rotate-6 group-hover/home-card:scale-110">
+      <div className="relative flex flex-col gap-3 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <span className="flex size-11 items-center justify-center rounded-xl bg-background/90 shadow-sm ring-1 ring-foreground/10 transition-transform duration-500 group-hover/home-card:-rotate-6 group-hover/home-card:scale-105">
             <PlatformLogo
               id={platform.id}
               title={platform.name}
-              className="size-8 drop-shadow-sm"
+              className="size-6 drop-shadow-sm"
             />
           </span>
           <span
             className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.14em] ring-1",
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] ring-1",
               disabled
                 ? "bg-muted text-muted-foreground ring-border"
                 : "bg-primary/15 text-primary ring-primary/25"
@@ -282,37 +288,37 @@ export function PlatformImportCard({
             {disabled ? (
               <>
                 <Lock className="size-3" aria-hidden />
-                Coming soon
+                Soon
               </>
             ) : (
-              "Import ready"
+              "Ready"
             )}
           </span>
         </div>
 
-        <div className="mt-7">
-          <CardTitle className="font-heading text-xl font-semibold tracking-tight">
+        <div>
+          <CardTitle className="font-heading text-lg font-semibold tracking-tight">
             {platform.name}
           </CardTitle>
-          <CardDescription className="mt-1.5 max-w-[30ch] text-sm leading-relaxed">
+          <CardDescription className="mt-1 line-clamp-2 text-xs leading-relaxed sm:text-sm">
             {cardDescription}
           </CardDescription>
         </div>
 
-        <div className="mt-5 flex items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <div className="flex items-center justify-between gap-3 pt-0.5">
+          <span className="inline-flex items-center gap-1.5 text-[0.7rem] font-medium text-muted-foreground">
             <FileArchive className="size-3.5" aria-hidden />
             {platform.acceptedFiles.join(" · ")}
           </span>
           {!disabled ? (
             <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
-              Start import
-              <span className="flex size-7 items-center justify-center rounded-full bg-foreground text-background transition-transform duration-300 group-hover/home-card:translate-x-1 group-hover/home-card:-translate-y-1 rtl:group-hover/home-card:-translate-x-1">
-                <ArrowUpRight className="size-3.5" aria-hidden />
+              Import
+              <span className="flex size-6 items-center justify-center rounded-full bg-foreground text-background transition-transform duration-300 group-hover/home-card:translate-x-0.5 group-hover/home-card:-translate-y-0.5 rtl:group-hover/home-card:-translate-x-0.5">
+                <ArrowUpRight className="size-3" aria-hidden />
               </span>
             </span>
           ) : (
-            <Lock className="size-4 text-muted-foreground" aria-hidden />
+            <Lock className="size-3.5 text-muted-foreground" aria-hidden />
           )}
         </div>
       </div>

@@ -22,6 +22,8 @@ export type PlatformConfig = {
   id: PlatformId
   name: string
   accentClass: string
+  /** Soft wash for featured home cards */
+  gradientClass: string
   /** Short blurb on list cards */
   summary: string
   exportPath: string
@@ -44,6 +46,8 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     id: "telegram",
     name: "Telegram",
     accentClass: "border-sky-500/50",
+    gradientClass:
+      "from-sky-500/25 via-sky-400/10 to-transparent dark:from-sky-400/20 dark:via-sky-500/5",
     summary:
       "Export chats from Telegram Desktop as JSON, then import them locally.",
     exportPath: "Telegram Desktop → Settings → Advanced → Export Telegram Data",
@@ -69,6 +73,8 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     id: "whatsapp",
     name: "WhatsApp",
     accentClass: "border-emerald-500/50",
+    gradientClass:
+      "from-emerald-500/25 via-emerald-400/10 to-transparent dark:from-emerald-400/20 dark:via-emerald-500/5",
     summary: "Export a chat as a .txt file (with optional media attachments).",
     exportPath: "Chat → ⋮ / Settings → Export Chat",
     formats: ".txt (+ optional media)",
@@ -90,6 +96,8 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     id: "x",
     name: "X (Twitter)",
     accentClass: "border-zinc-500/50",
+    gradientClass:
+      "from-zinc-500/20 via-zinc-400/10 to-transparent dark:from-zinc-300/15 dark:via-zinc-500/5",
     summary: "Request your full archive ZIP from account settings.",
     exportPath: "Account Settings → Download an archive of your data",
     formats: "JSON + HTML (ZIP)",
@@ -110,6 +118,8 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     id: "google",
     name: "Google Ecosystem",
     accentClass: "border-blue-500/50",
+    gradientClass:
+      "from-blue-500/25 via-blue-400/10 to-transparent dark:from-blue-400/20 dark:via-blue-500/5",
     summary: "Use Google Takeout to package Chat, Maps, Chrome, and more.",
     exportPath: "Google Takeout (takeout.google.com)",
     formats: "JSON, CSV, GeoJSON, KML",
@@ -130,6 +140,8 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     id: "instagram",
     name: "Instagram",
     accentClass: "border-fuchsia-500/50",
+    gradientClass:
+      "from-fuchsia-500/25 via-rose-400/10 to-transparent dark:from-fuchsia-400/20 dark:via-rose-500/5",
     summary: "Download your information from Meta Accounts Center.",
     exportPath:
       "Accounts Center → Your information and permissions → Download your information",
@@ -151,6 +163,8 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     id: "tiktok",
     name: "TikTok",
     accentClass: "border-cyan-500/50",
+    gradientClass:
+      "from-cyan-500/25 via-teal-400/10 to-transparent dark:from-cyan-400/20 dark:via-teal-500/5",
     summary: "Request a copy of your TikTok account data from settings.",
     exportPath: "Settings → Account → Download your data",
     formats: "JSON or TXT",
@@ -171,6 +185,8 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     id: "spotify",
     name: "Spotify",
     accentClass: "border-green-500/50",
+    gradientClass:
+      "from-green-500/25 via-lime-400/10 to-transparent dark:from-green-400/20 dark:via-lime-500/5",
     summary: "Download your listening history and library as JSON.",
     exportPath: "Account → Privacy settings → Download your data",
     formats: "JSON",
@@ -191,6 +207,8 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     id: "youtube",
     name: "YouTube",
     accentClass: "border-red-500/50",
+    gradientClass:
+      "from-red-500/25 via-orange-400/10 to-transparent dark:from-red-400/20 dark:via-orange-500/5",
     summary: "Pull watch and search history via Google Takeout.",
     exportPath: "Google Takeout → YouTube and YouTube Music",
     formats: "JSON, CSV",
