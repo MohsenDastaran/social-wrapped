@@ -1,13 +1,11 @@
 import { ArrowLeft } from "lucide-react"
 import { Link, Navigate, useParams } from "react-router"
 
-import { PlatformLogo } from "@/components/platform-logo"
 import { Button } from "@/components/ui/button"
 import { WrapChatAnalytics } from "@/components/wrap/wrap-chat-analytics"
 import { WrapMainAnalytics } from "@/components/wrap/wrap-main-analytics"
 import { WrapShareMedia } from "@/components/wrap/wrap-share-media"
 import { getPlatform } from "@/lib/platforms"
-import { cn } from "@/lib/utils"
 import { getWrap } from "@/lib/wrap-history"
 
 function formatDate(iso: string): string {
@@ -29,42 +27,26 @@ export function WrapPage() {
   const platform = getPlatform(wrap.platformId)
 
   return (
-    <div className="flex w-full max-w-2xl flex-col items-stretch gap-10 text-start">
-      <div className="flex items-center justify-between gap-3">
-        <Button
-          variant="ghost"
-          size="default"
-          className="text-muted-foreground"
-          render={<Link to="/history" />}
-          nativeButton={false}
-        >
-          <ArrowLeft data-icon="inline-start" />
-          History
-        </Button>
-      </div>
-
-      <header className="flex flex-col items-center text-center">
-        {platform ? (
-          <span
-            className={cn(
-              "mb-4 flex size-16 items-center justify-center rounded-[1.2rem] shadow-sm ring-1 ring-inset",
-              "bg-linear-to-br from-background to-muted/80",
-              platform.accentClass
-            )}
+    <div className="-mt-4 flex w-full max-w-2xl flex-col items-stretch gap-6 text-start sm:-mt-6 sm:gap-8">
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0 text-start">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ms-2 mb-1 h-8 text-muted-foreground"
+            render={<Link to="/history" />}
+            nativeButton={false}
           >
-            <PlatformLogo
-              id={platform.id}
-              title={platform.name}
-              className="size-9 drop-shadow-sm"
-            />
-          </span>
-        ) : null}
-        <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
-          {wrap.stats.displayName}
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {platform?.name ?? "Export"} wrap · {formatDate(wrap.createdAt)}
-        </p>
+            <ArrowLeft data-icon="inline-start" />
+            History
+          </Button>
+          <h1 className="font-heading truncate text-xl font-semibold tracking-tight sm:text-2xl">
+            {wrap.stats.displayName}
+          </h1>
+          <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+            {platform?.name ?? "Export"} wrap · {formatDate(wrap.createdAt)}
+          </p>
+        </div>
       </header>
 
       <WrapShareMedia
