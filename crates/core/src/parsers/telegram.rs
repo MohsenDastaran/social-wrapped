@@ -207,20 +207,40 @@ impl<R: Read, F: FnMut(u64, u64)> Read for ProgressReader<R, F> {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+/// Import / analyze progress stage reported to the UI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AnalyzeProgressPhase {
+    /// Deserializing the export JSON (byte-based).
+    Reading,
+    /// Feeding messages into collectors (message-based).
+    Computing,
+}
+
+impl AnalyzeProgressPhase {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Reading => "reading",
+            Self::Computing => "computing",
+        }
+    }
+}
+
 /// Parses a Telegram export file from disk and returns full [`WrapAnalytics`].
 pub fn analyze_export(path: &Path) -> Result<WrapAnalytics, CoreError> {
     let file_size_bytes = std::fs::metadata(path)?.len();
     let file = File::open(path)?;
     let reader = BufReader::with_capacity(256 * 1024, file);
-    analyze_export_from_reader(reader, Some(file_size_bytes), |_, _| {})
+    analyze_export_from_reader(reader, Some(file_size_bytes), |_, _, _| {})
 }
 
-/// Like [`analyze_export`], but invokes `on_progress(bytes_read, total_bytes)`
-/// as the parser consumes the input.
-pub fn analyze_export_with_progress<F: FnMut(u64, u64)>(
+/// Like [`analyze_export`], with two-phase progress callbacks.
+pub fn analyze_export_with_progress<F>(
     path: &Path,
     on_progress: F,
-) -> Result<WrapAnalytics, CoreError> {
+) -> Result<WrapAnalytics, CoreError>
+where
+    F: FnMut(AnalyzeProgressPhase, u64, u64),
+{
     let file_size_bytes = std::fs::metadata(path)?.len();
     let file = File::open(path)?;
     let reader = BufReader::with_capacity(256 * 1024, file);
@@ -230,27 +250,46 @@ pub fn analyze_export_with_progress<F: FnMut(u64, u64)>(
 /// Parses a Telegram export already loaded into memory and returns full
 /// [`WrapAnalytics`] (used by WASM).
 pub fn analyze_export_bytes(bytes: &[u8]) -> Result<WrapAnalytics, CoreError> {
-    analyze_export_bytes_with_progress(bytes, |_, _| {})
+    analyze_export_bytes_with_progress(bytes, |_, _, _| {})
 }
 
-/// Like [`analyze_export_bytes`], but invokes `on_progress(bytes_read, total_bytes)`.
-pub fn analyze_export_bytes_with_progress<F: FnMut(u64, u64)>(
+/// Two-phase progress: `Reading` while JSON is deserialized, then `Computing`
+/// while chats/messages are fed into the analytics engine.
+pub fn analyze_export_bytes_with_progress<F>(
     bytes: &[u8],
     on_progress: F,
-) -> Result<WrapAnalytics, CoreError> {
+) -> Result<WrapAnalytics, CoreError>
+where
+    F: FnMut(AnalyzeProgressPhase, u64, u64),
+{
     let total_bytes = bytes.len() as u64;
-    let reader = ProgressReader::new(std::io::Cursor::new(bytes), total_bytes, on_progress);
-    analyze_export_from_reader(reader, Some(total_bytes), |_, _| {})
+    analyze_export_from_reader(std::io::Cursor::new(bytes), Some(total_bytes), on_progress)
 }
 
 /// Core parsing logic — works from any [`Read`] source.
-pub fn analyze_export_from_reader<R: Read, F: FnMut(u64, u64)>(
+///
+/// When `file_size_bytes` is `Some`, reading progress is reported while JSON is
+/// deserialized; computing progress is always reported while collecting stats.
+pub fn analyze_export_from_reader<R, F>(
     reader: R,
     file_size_bytes: Option<u64>,
-    _on_progress: F,
-) -> Result<WrapAnalytics, CoreError> {
-    let buf_reader = BufReader::with_capacity(256 * 1024, reader);
-    let export: RawExport = serde_json::from_reader(buf_reader)?;
+    mut on_progress: F,
+) -> Result<WrapAnalytics, CoreError>
+where
+    R: Read,
+    F: FnMut(AnalyzeProgressPhase, u64, u64),
+{
+    let export: RawExport = if let Some(total_bytes) = file_size_bytes {
+        on_progress(AnalyzeProgressPhase::Reading, 0, total_bytes.max(1));
+        let progress_reader = ProgressReader::new(reader, total_bytes, |read, total| {
+            on_progress(AnalyzeProgressPhase::Reading, read, total.max(1));
+        });
+        let buf_reader = BufReader::with_capacity(256 * 1024, progress_reader);
+        serde_json::from_reader(buf_reader)?
+    } else {
+        let buf_reader = BufReader::with_capacity(256 * 1024, reader);
+        serde_json::from_reader(buf_reader)?
+    };
 
     let info = export.personal_information.as_ref();
 
@@ -287,6 +326,15 @@ pub fn analyze_export_from_reader<R: Read, F: FnMut(u64, u64)>(
     );
 
     let chat_list = export.chats.map(|c| c.list).unwrap_or_default();
+    let total_messages: u64 = chat_list
+        .iter()
+        .map(|c| c.messages.len() as u64)
+        .sum();
+    let compute_total = total_messages.max(1);
+    let report_step = (compute_total / 200).max(1);
+    let mut processed: u64 = 0;
+
+    on_progress(AnalyzeProgressPhase::Computing, 0, compute_total);
 
     for (chat_index, chat) in chat_list.iter().enumerate() {
         let chat_id = if chat.id != 0 {
@@ -300,6 +348,15 @@ pub fn analyze_export_from_reader<R: Read, F: FnMut(u64, u64)>(
             .unwrap_or_else(|| format!("Chat {}", chat_index + 1));
 
         for msg in &chat.messages {
+            processed += 1;
+            if processed == compute_total || processed % report_step == 0 {
+                on_progress(
+                    AnalyzeProgressPhase::Computing,
+                    processed.min(compute_total),
+                    compute_total,
+                );
+            }
+
             if msg.msg_type != "message" {
                 continue;
             }
@@ -342,7 +399,6 @@ pub fn analyze_export_from_reader<R: Read, F: FnMut(u64, u64)>(
                     if emoji.is_empty() {
                         vec![]
                     } else if r.recent.is_empty() {
-                        // No per-user attribution — attribute to "unknown"
                         vec![ReactionEvent {
                             emoji: emoji.clone(),
                             from_me: false,
@@ -384,7 +440,6 @@ pub fn analyze_export_from_reader<R: Read, F: FnMut(u64, u64)>(
 
             engine.feed(&ev);
 
-            // Collect early text snippets for the sample messages list.
             if ev.char_count > 0 {
                 let capped: String = plain_text.chars().take(80).collect();
                 let snippet = if plain_text.chars().count() > 80 {
@@ -397,6 +452,7 @@ pub fn analyze_export_from_reader<R: Read, F: FnMut(u64, u64)>(
         }
     }
 
+    on_progress(AnalyzeProgressPhase::Computing, compute_total, compute_total);
     Ok(engine.finish())
 }
 
@@ -410,14 +466,17 @@ pub fn summarize_export(path: &Path) -> Result<TelegramExportSummary, CoreError>
 
 /// Parses Telegram export bytes and returns a basic summary.
 pub fn summarize_export_bytes(bytes: &[u8]) -> Result<TelegramExportSummary, CoreError> {
-    summarize_export_bytes_with_progress(bytes, |_, _| {})
+    summarize_export_bytes_with_progress(bytes, |_, _, _| {})
 }
 
-/// Like [`summarize_export_bytes`], but invokes `on_progress(bytes_read, total_bytes)`.
-pub fn summarize_export_bytes_with_progress<F: FnMut(u64, u64)>(
+/// Like [`summarize_export_bytes`], with two-phase progress callbacks.
+pub fn summarize_export_bytes_with_progress<F>(
     bytes: &[u8],
     on_progress: F,
-) -> Result<TelegramExportSummary, CoreError> {
+) -> Result<TelegramExportSummary, CoreError>
+where
+    F: FnMut(AnalyzeProgressPhase, u64, u64),
+{
     let analytics = analyze_export_bytes_with_progress(bytes, on_progress)?;
     Ok(wrap_analytics_to_summary(analytics))
 }
@@ -427,7 +486,7 @@ pub fn summarize_export_from_reader<R: Read>(
     reader: R,
     file_size_bytes: Option<u64>,
 ) -> Result<TelegramExportSummary, CoreError> {
-    let analytics = analyze_export_from_reader(reader, file_size_bytes, |_, _| {})?;
+    let analytics = analyze_export_from_reader(reader, file_size_bytes, |_, _, _| {})?;
     Ok(wrap_analytics_to_summary(analytics))
 }
 

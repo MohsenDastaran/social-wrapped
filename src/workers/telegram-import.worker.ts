@@ -7,12 +7,17 @@ import init, {
 } from "@/wasm-pkg/social_wrapped_wasm.js"
 
 import type {
+  ImportProgressPhase,
   ImportWorkerRequest,
   ImportWorkerResponse,
 } from "@/platform/import"
 
 function post(message: ImportWorkerResponse): void {
   self.postMessage(message)
+}
+
+function normalizePhase(value: unknown): ImportProgressPhase {
+  return value === "computing" ? "computing" : "reading"
 }
 
 self.onmessage = async (event: MessageEvent<ImportWorkerRequest>) => {
@@ -22,8 +27,13 @@ self.onmessage = async (event: MessageEvent<ImportWorkerRequest>) => {
     const bytes = new Uint8Array(await event.data.file.arrayBuffer())
     const analyticsJson = analyze_telegram_bytes_with_progress(
       bytes,
-      (loadedBytes: number, totalBytes: number) => {
-        post({ type: "progress", loadedBytes, totalBytes })
+      (phase: string, current: number, total: number) => {
+        post({
+          type: "progress",
+          phase: normalizePhase(phase),
+          current,
+          total,
+        })
       }
     )
 

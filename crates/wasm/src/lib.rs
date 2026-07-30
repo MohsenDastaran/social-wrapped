@@ -58,7 +58,8 @@ pub fn summarize_telegram_bytes(data: &[u8]) -> Result<String, JsValue> {
         .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
-/// Like [`summarize_telegram_bytes`], but invokes `on_progress(bytesRead, totalBytes)`.
+/// Like [`summarize_telegram_bytes`], but invokes
+/// `on_progress(phase, current, total)` (`phase` is `"reading"` | `"computing"`).
 /// Returns the legacy basic-stats JSON (backward compat for old workers).
 #[wasm_bindgen]
 pub fn summarize_telegram_bytes_with_progress(
@@ -67,11 +68,12 @@ pub fn summarize_telegram_bytes_with_progress(
 ) -> Result<String, JsValue> {
     app_core::parsers::telegram::summarize_export_bytes_with_progress(
         data,
-        |bytes_read, total_bytes| {
-            let _ = on_progress.call2(
+        |phase, current, total| {
+            let _ = on_progress.call3(
                 &JsValue::NULL,
-                &JsValue::from_f64(bytes_read as f64),
-                &JsValue::from_f64(total_bytes as f64),
+                &JsValue::from_str(phase.as_str()),
+                &JsValue::from_f64(current as f64),
+                &JsValue::from_f64(total as f64),
             );
         },
     )
@@ -81,7 +83,10 @@ pub fn summarize_telegram_bytes_with_progress(
 
 /// Full analytics pass — returns the complete [`WrapAnalytics`] JSON.
 ///
-/// Invokes `on_progress(bytesRead, totalBytes)` during parsing.
+/// Invokes `on_progress(phase, current, total)` in two phases:
+/// - `"reading"` — JSON deserialize progress (bytes)
+/// - `"computing"` — stats collection progress (messages)
+///
 /// This is the primary function called by the import worker.
 #[wasm_bindgen]
 pub fn analyze_telegram_bytes_with_progress(
@@ -90,11 +95,12 @@ pub fn analyze_telegram_bytes_with_progress(
 ) -> Result<String, JsValue> {
     app_core::parsers::telegram::analyze_export_bytes_with_progress(
         data,
-        |bytes_read, total_bytes| {
-            let _ = on_progress.call2(
+        |phase, current, total| {
+            let _ = on_progress.call3(
                 &JsValue::NULL,
-                &JsValue::from_f64(bytes_read as f64),
-                &JsValue::from_f64(total_bytes as f64),
+                &JsValue::from_str(phase.as_str()),
+                &JsValue::from_f64(current as f64),
+                &JsValue::from_f64(total as f64),
             );
         },
     )

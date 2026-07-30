@@ -51,19 +51,31 @@ export function analyticsToStats(a: WrapAnalytics): TelegramExportStats {
   }
 }
 
+export type ImportProgressPhase = "reading" | "computing"
+
 export type ImportProgress = {
-  /** 0–100, integer. */
+  phase: ImportProgressPhase
+  /** 0–100 within the current phase. */
   percent: number
-  loadedBytes: number
-  totalBytes: number
+  current: number
+  total: number
 }
 
 export type ImportWorkerRequest = { file: File }
 
 export type ImportWorkerResponse =
-  | { type: "progress"; loadedBytes: number; totalBytes: number }
+  | {
+      type: "progress"
+      phase: ImportProgressPhase
+      current: number
+      total: number
+    }
   | { type: "done"; analyticsJson: string }
   | { type: "error"; message: string }
+
+function normalizeProgressPhase(value: unknown): ImportProgressPhase {
+  return value === "computing" ? "computing" : "reading"
+}
 
 function validateFile(platform: PlatformConfig, file: File): void {
   if (platform.id !== "telegram") {
@@ -109,14 +121,14 @@ export function importPlatformFile(
     worker.onmessage = (event: MessageEvent<ImportWorkerResponse>) => {
       const message = event.data
       if (message.type === "progress") {
-        const { loadedBytes, totalBytes } = message
+        const phase = normalizeProgressPhase(message.phase)
+        const { current, total } = message
         onProgress?.({
+          phase,
           percent:
-            totalBytes > 0
-              ? Math.min(100, Math.round((loadedBytes / totalBytes) * 100))
-              : 0,
-          loadedBytes,
-          totalBytes,
+            total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0,
+          current,
+          total,
         })
         return
       }

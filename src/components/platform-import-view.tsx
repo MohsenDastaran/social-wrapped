@@ -83,7 +83,12 @@ export function PlatformImportView({
   async function handleAnalyze() {
     if (!file) return
     setError("")
-    setProgress({ percent: 0, loadedBytes: 0, totalBytes: file.size })
+    setProgress({
+      phase: "reading",
+      percent: 0,
+      current: 0,
+      total: file.size,
+    })
     try {
       const analytics = await importPlatformFile(platform, file, setProgress)
       const wrap = saveWrap({
@@ -234,8 +239,21 @@ export function PlatformImportView({
       >
         {progress ? (
           <>
-            <AppLoader size="sm" label="Analyzing export" className="shrink-0" />
-            <span className="tabular-nums">Analyzing… {progress.percent}%</span>
+            <AppLoader
+              size="sm"
+              label={
+                progress.phase === "computing"
+                  ? "Computing stats"
+                  : "Reading export"
+              }
+              className="shrink-0"
+            />
+            <span className="tabular-nums">
+              {progress.phase === "computing"
+                ? "Computing stats…"
+                : "Reading export…"}{" "}
+              {progress.percent}%
+            </span>
           </>
         ) : (
           "Analyze export"
@@ -244,14 +262,24 @@ export function PlatformImportView({
 
       {progress ? (
         <div className="mt-3" aria-hidden>
+          <div className="mb-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>
+              {progress.phase === "computing"
+                ? "Phase 2 of 2 — Computing stats"
+                : "Phase 1 of 2 — Reading export"}
+            </span>
+            <span className="tabular-nums">{progress.percent}%</span>
+          </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-primary transition-[width] duration-150 ease-out"
               style={{ width: `${progress.percent}%` }}
             />
           </div>
-          <p className="mt-1.5 text-center text-xs tabular-nums text-muted-foreground">
-            Parsing on your device — {progress.percent}%
+          <p className="mt-1.5 text-center text-xs text-muted-foreground">
+            {progress.phase === "computing"
+              ? "Building your wrap from chats and messages"
+              : "Parsing JSON on your device"}
           </p>
         </div>
       ) : null}
