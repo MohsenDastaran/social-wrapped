@@ -162,9 +162,7 @@ export function ActivityOverTimeChart({
               <EChartsAreaChart.Grid />
               <EChartsAreaChart.XAxis
                 dataKey="date"
-                tickFormatter={(value) =>
-                  shortenTick(String(value), mode)
-                }
+                tickFormatter={(value) => String(value)}
               />
               <EChartsAreaChart.Brush
                 height={56}
@@ -221,7 +219,7 @@ function formatYearMonth(period: string): string {
   const year = period.slice(0, 4)
   const month = Number(period.slice(5, 7))
   if (!Number.isFinite(month) || month < 1) return period
-  return `${year}/${month}`
+  return `${year}/${String(month).padStart(2, "0")}`
 }
 
 function aggregateYearsFromMonthly(
@@ -239,12 +237,4 @@ function aggregateYearsFromMonthly(
   return [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([period, v]) => ({ period, sent: v.sent, received: v.received }))
-}
-
-function shortenTick(value: string, mode: Mode): string {
-  if (mode === "yearly") return value
-  // "2026/3" → keep as-is; dense ticks can hide via chart auto interval
-  const slash = value.indexOf("/")
-  if (slash < 0) return value
-  return value.slice(slash + 1)
 }
