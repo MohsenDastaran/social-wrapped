@@ -92,10 +92,10 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
 
       <ActivityOverTimeChart
         series={a.activityOverTime}
-        title={`Messages with ${chat.chatName}`}
+        title={`Messages with ${display.title}`}
         exportName={`chat-${chat.chatId}-activity-over-time`}
         sentLabel="You"
-        receivedLabel={chat.chatName}
+        receivedLabel={display.isDeleted ? display.subtitle ?? display.title : chat.chatName}
       />
 
       <ContactVolumeBarChart

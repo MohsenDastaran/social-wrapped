@@ -204,6 +204,9 @@ export interface EChartsBarChartProps<TData extends Record<string, unknown>> {
   // comparison is per COLUMN — the totals across every series at that category —
   // so a whole stack or group lights up together, not one bar inside it.
   enableMaxValueHighlight?: boolean;
+  // Soft outer glow on the tallest column only — does NOT mute the other bars.
+  // Use alone when you want a peak halo while keeping every column fully visible.
+  enableMaxValueGlow?: boolean;
   isLoading?: boolean; // shows the animated loading skeleton
   loadingBars?: number; // number of bars in the loading skeleton
   chartOptions?: Record<string, unknown>; // escape hatch merged over the built ECharts option
@@ -792,7 +795,8 @@ type OptionBuildContext = {
   // Openness per bar index for the expandable variant, plus which one the pointer
   // is on — driven by the hover rAF, read at build.
   expand: { key: string | null; hovered: number | null; progress: Map<number, number> };
-  maxHighlightIndex: number | null; // column to keep colored under enableMaxValueHighlight
+  maxHighlightIndex: number | null; // peak column for glow / optional mute
+  muteNonMaxValues: boolean; // when true, non-peak columns are dimmed
 };
 
 // Grid insets plus the footer band reserved for the brush. ECharts 6 contains
@@ -1166,7 +1170,10 @@ function buildBarSeries(ctx: OptionBuildContext): BarSeriesOption[] {
     // Under enableMaxValueHighlight every column except the tallest is muted, so a
     // single flat tone replaces whatever fill the variant would have painted.
     const mutedFill = withAlpha(resolved.tokens.mutedForeground, MAX_HIGHLIGHT_DIM);
-    const isMuted = (i: number) => ctx.maxHighlightIndex != null && i !== ctx.maxHighlightIndex;
+    const isMuted = (i: number) =>
+      ctx.muteNonMaxValues &&
+      ctx.maxHighlightIndex != null &&
+      i !== ctx.maxHighlightIndex;
 
     // Openness per datum, driven by the hover rAF. Bars not in the map are shut.
     const expandOf = (i: number) =>
@@ -1432,6 +1439,7 @@ export function EChartsBarChart<TData extends Record<string, unknown>>({
   defaultSelectedDataKey = null,
   onSelectionChange,
   enableMaxValueHighlight = false,
+  enableMaxValueGlow = false,
   isLoading = false,
   loadingBars = LOADING_DEFAULT_BARS,
   chartOptions,
@@ -1532,9 +1540,15 @@ export function EChartsBarChart<TData extends Record<string, unknown>>({
   const effectiveAnimation = bars[0]?.animationType ?? animationType;
 
   // The tallest COLUMN, comparing totals across every series so a stack or group
-  // wins together rather than one bar inside it. Null when the flag is off.
+  // wins together rather than one bar inside it. Null when neither peak flag is on.
   const maxHighlightIndex = useMemo(() => {
-    if (!enableMaxValueHighlight || !data.length || !seriesKeys.length) return null;
+    if (
+      (!enableMaxValueHighlight && !enableMaxValueGlow) ||
+      !data.length ||
+      !seriesKeys.length
+    ) {
+      return null;
+    }
     let best = 0;
     let bestTotal = -Infinity;
     data.forEach((row, i) => {
@@ -1545,7 +1559,9 @@ export function EChartsBarChart<TData extends Record<string, unknown>>({
       }
     });
     return best;
-  }, [enableMaxValueHighlight, data, seriesKeys]);
+  }, [enableMaxValueHighlight, enableMaxValueGlow, data, seriesKeys]);
+
+  const muteNonMaxValues = enableMaxValueHighlight;
 
   const css = useMemo(() => buildChartCss(chartId, config), [chartId, config]);
 
@@ -1666,6 +1682,7 @@ export function EChartsBarChart<TData extends Record<string, unknown>>({
       barWidthPx: live.barWidthPx,
       expand: live.expand,
       maxHighlightIndex,
+      muteNonMaxValues,
     };
 
     const { grid, brushBottom } = buildChartLayout(ctx);
@@ -1712,6 +1729,7 @@ export function EChartsBarChart<TData extends Record<string, unknown>>({
     barGap,
     barCategoryGap,
     maxHighlightIndex,
+    muteNonMaxValues,
   ]);
 
   // ── Init + resize + theme observer (once) ────────────────────────────────────
