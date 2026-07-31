@@ -16,6 +16,7 @@ import type {
   EmojiEntry,
   EmojiStats,
 } from "@/platform/analytics-types"
+import { filterEmojiEntries } from "@/lib/emoji"
 
 type WrapChatAnalyticsProps = {
   chat: ChatResult
@@ -264,11 +265,12 @@ function buildEmojiScopes(
   const self = parts.find((p) => namesMatch(p.name, selfName))
   const others = parts.filter((p) => !namesMatch(p.name, selfName))
 
-  const youEmojis = self?.topEmojis ?? []
-  const themEmojis =
+  const youEmojis = filterEmojiEntries(self?.topEmojis ?? [])
+  const themEmojis = filterEmojiEntries(
     others.length === 1
       ? (others[0]?.topEmojis ?? [])
       : mergeEmojiLists(others.map((o) => o.topEmojis))
+  )
 
   const youLabel = truncate(self?.name || selfName || "You", 14)
   const themLabel = truncate(
@@ -279,7 +281,7 @@ function buildEmojiScopes(
   )
 
   const scopes: EmojiScope[] = [
-    { id: "all", label: "All", emojis: stats.topOverall },
+    { id: "all", label: "All", emojis: filterEmojiEntries(stats.topOverall) },
     { id: "you", label: youLabel, emojis: youEmojis },
     { id: "them", label: themLabel, emojis: themEmojis },
   ]

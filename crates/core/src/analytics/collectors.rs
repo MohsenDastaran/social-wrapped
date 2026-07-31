@@ -1661,21 +1661,70 @@ fn civil_to_epoch_days(y: i64, m: i64, d: i64) -> i64 {
     era * 146_097 + doe - 719_468
 }
 
-/// Extracts individual emoji characters from a string.
+/// Extracts complete emoji grapheme clusters from a string.
 ///
-/// Skips skin-tone modifiers, variation selectors, and zero-width joiners so
-/// that 👍🏻 is counted as 👍 rather than two separate entries.
+/// ZWJ sequences stay intact (`🤦‍♀️` is one emoji, not `🤦` + `♀️`).
+/// Skin-tone modifiers and variation selectors are stripped so `👍🏻` / `❤️`
+/// collapse with their base forms for counting.
 pub fn extract_emojis(text: &str) -> Vec<String> {
-    text.chars()
-        .filter(|&c| is_significant_emoji(c))
-        .map(|c| c.to_string())
+    use unicode_segmentation::UnicodeSegmentation;
+
+    text.graphemes(true)
+        .filter(|g| is_emoji_grapheme(g))
+        .map(|g| normalize_emoji_key(g))
+        .filter(|g| !g.is_empty() && is_emoji_grapheme(g))
+        .collect()
+}
+
+/// True when this grapheme is a real emoji (not plain text / lone modifiers).
+fn is_emoji_grapheme(g: &str) -> bool {
+    let chars: Vec<char> = g.chars().collect();
+    if chars.is_empty() {
+        return false;
+    }
+
+    // Flags: paired regional indicators.
+    let regional = chars
+        .iter()
+        .copied()
+        .filter(|&c| is_regional_indicator(c))
+        .count();
+    if regional > 0 {
+        return regional >= 2;
+    }
+
+    // Keycaps: base + U+20E3 (e.g. 1️⃣).
+    if chars.iter().any(|&c| (c as u32) == 0x20E3) {
+        return true;
+    }
+
+    // Must include a pictographic / symbol base — not only ZWJ / VS / skin tone.
+    chars.iter().any(|&c| is_significant_emoji(c))
+}
+
+fn is_regional_indicator(c: char) -> bool {
+    (0x1F1E6..=0x1F1FF).contains(&(c as u32))
+}
+
+/// Strip skin tones + variation selectors for stable counting keys.
+fn normalize_emoji_key(g: &str) -> String {
+    g.chars()
+        .filter(|&c| {
+            let cp = c as u32;
+            !matches!(
+                cp,
+                0x1F3FB..=0x1F3FF // skin tone
+                    | 0xFE0E
+                    | 0xFE0F // text/emoji variation selectors
+            )
+        })
         .collect()
 }
 
 fn is_significant_emoji(c: char) -> bool {
     let cp = c as u32;
     match cp {
-        // Skip modifiers and joiners
+        // Skip modifiers and joiners (they ride along inside graphemes)
         0x1F3FB..=0x1F3FF => false, // skin tone modifiers
         0xFE00..=0xFE0F => false,   // variation selectors
         0x200D => false,            // ZWJ
@@ -1690,7 +1739,7 @@ fn is_significant_emoji(c: char) -> bool {
         0x1F900..=0x1F9FF => true, // supplemental symbols and pictographs
         0x1FA00..=0x1FA6F => true, // chess symbols
         0x1FA70..=0x1FAFF => true, // symbols and pictographs extended-A
-        0x2600..=0x26FF => true,   // misc symbols
+        0x2600..=0x26FF => true,   // misc symbols (includes ♀/♂ used in ZWJ seqs)
         0x2700..=0x27BF => true,   // dingbats
         0x2B50 => true,            // ⭐
         0x2B55 => true,            // ⭕
@@ -1856,6 +1905,23 @@ mod tests {
     fn test_extract_emojis() {
         let emojis = extract_emojis("Hello 😀 world 🎉!");
         assert_eq!(emojis, vec!["😀", "🎉"]);
+    }
+
+    #[test]
+    fn test_extract_emojis_keeps_zwj_sequences() {
+        // Woman facepalming — must stay one emoji, not leak ♀️.
+        let facepalm = "🤦\u{200D}♀\u{FE0F}";
+        let emojis = extract_emojis(&format!("oops {facepalm}"));
+        assert_eq!(emojis.len(), 1);
+        assert!(emojis[0].contains('\u{200D}'));
+        assert!(emojis[0].contains('♀') || emojis[0].contains('🤦'));
+        assert!(!emojis.iter().any(|e| e == "♀" || e == "♀️" || e == "♀\u{FE0F}"));
+    }
+
+    #[test]
+    fn test_extract_emojis_strips_skin_tone() {
+        let emojis = extract_emojis("👍\u{1F3FB} hi 👍");
+        assert_eq!(emojis, vec!["👍", "👍"]);
     }
 
     #[test]

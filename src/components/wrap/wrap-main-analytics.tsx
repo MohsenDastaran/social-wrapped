@@ -11,7 +11,7 @@ import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import type { WrapAnalytics } from "@/platform/analytics-types"
-import { withEmojiPresentation } from "@/lib/emoji"
+import { withEmojiPresentation, filterEmojiEntries } from "@/lib/emoji"
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -49,10 +49,12 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
     },
   ]
 
-  const reactionData = a.emojis.topReactions.slice(0, 10).map((e) => ({
-    name: withEmojiPresentation(e.emoji),
-    count: e.count,
-  }))
+  const reactionData = filterEmojiEntries(a.emojis.topReactions)
+    .slice(0, 10)
+    .map((e) => ({
+      name: withEmojiPresentation(e.emoji),
+      count: e.count,
+    }))
 
   return (
     <section className="flex flex-col gap-4">

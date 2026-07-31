@@ -3,7 +3,7 @@ import { useMemo, useState, type ReactNode } from "react"
 import { fmt } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import type { EmojiEntry } from "@/platform/analytics-types"
-import { withEmojiPresentation } from "@/lib/emoji"
+import { withEmojiPresentation, filterEmojiEntries } from "@/lib/emoji"
 import { cn } from "@/lib/utils"
 
 export type EmojiScope = {
@@ -39,21 +39,21 @@ export function TopEmojisCard({
 }: TopEmojisCardProps) {
   const usableScopes = useMemo(
     () =>
-      (scopes ?? []).filter((s) =>
-        s.emojis.some((e) => e.emoji && e.count > 0)
-      ),
+      (scopes ?? [])
+        .map((s) => ({ ...s, emojis: filterEmojiEntries(s.emojis) }))
+        .filter((s) => s.emojis.some((e) => e.emoji && e.count > 0)),
     [scopes]
   )
   const showToggle = usableScopes.length > 1
 
   const [scopeId, setScopeId] = useState(() => usableScopes[0]?.id ?? "all")
   const activeScope = usableScopes.find((s) => s.id === scopeId) ?? usableScopes[0]
-  const source = activeScope?.emojis ?? emojis
+  const source = filterEmojiEntries(activeScope?.emojis ?? emojis)
 
   const items = source.slice(0, limit).filter((e) => e.emoji && e.count > 0)
   const hasAny =
     items.length > 0 ||
-    emojis.some((e) => e.emoji && e.count > 0) ||
+    filterEmojiEntries(emojis).some((e) => e.emoji && e.count > 0) ||
     usableScopes.length > 0
 
   if (!hasAny) return null

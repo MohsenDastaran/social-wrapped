@@ -71,6 +71,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 2.0.19",
+ "unicode-segmentation",
  "zip 2.4.2",
 ]
 
