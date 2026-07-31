@@ -1,6 +1,5 @@
 import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-time-chart"
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
-import { ContactVolumeBarChart } from "@/components/wrap/charts/contact-volume-bar-chart"
 import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
 import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import { ComparisonKpiCard } from "@/components/wrap/comparison-kpi-card"
@@ -64,16 +63,6 @@ export function WrapChatAnalytics({ chat }: WrapChatAnalyticsProps) {
             ? (display.subtitle ?? display.title)
             : chat.chatName
         }
-      />
-
-      <ContactVolumeBarChart
-        series={a.activityOverTime}
-        youLabel="You"
-        themLabel={chat.chatName}
-        exportName={`chat-${chat.chatId}-volume-bars`}
-        youSent={a.sentMessages}
-        themSent={a.receivedMessages}
-        totalMessages={a.totalMessages}
       />
 
       <MessageTypesChart

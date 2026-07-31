@@ -8,6 +8,7 @@ import {
   EMOJI_AREA,
 } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
+import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import type { WrapAnalytics } from "@/platform/analytics-types"
 import { withEmojiPresentation } from "@/lib/emoji"
@@ -16,7 +17,6 @@ import {
   ArrowUpRight,
   MessagesSquare,
   Hash,
-  type LucideIcon,
 } from "lucide-react"
 import { EChartsAreaChart } from "@/components/evilcharts/charts/echarts-area-chart"
 import { EChartsPieChart } from "@/components/evilcharts/charts/echarts-pie-chart"
@@ -74,25 +74,25 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
 
       {/* Overview KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Kpi
+        <WrapKpi
           label="Sent"
           value={fmt(a.sentMessages)}
           icon={ArrowUpRight}
           accent="teal"
         />
-        <Kpi
+        <WrapKpi
           label="Received"
           value={fmt(a.receivedMessages)}
           icon={ArrowDownLeft}
           accent="amber"
         />
-        <Kpi
+        <WrapKpi
           label="Total"
           value={fmt(a.totalMessages)}
           icon={Hash}
           accent="emerald"
         />
-        <Kpi
+        <WrapKpi
           label="Chats"
           value={fmt(analytics.chatCount)}
           icon={MessagesSquare}
@@ -145,41 +145,5 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
         <CalendarHeatmap days={a.heatmap.days} exportName="main-heatmap" />
       )}
     </section>
-  )
-}
-
-const KPI_ACCENTS = {
-  teal: "text-teal-600 dark:text-teal-400",
-  amber: "text-amber-600 dark:text-amber-400",
-  emerald: "text-emerald-600 dark:text-emerald-400",
-  sky: "text-sky-600 dark:text-sky-400",
-} as const
-
-function Kpi({
-  label,
-  value,
-  icon: Icon,
-  accent,
-}: {
-  label: string
-  value: string
-  icon: LucideIcon
-  accent: keyof typeof KPI_ACCENTS
-}) {
-  return (
-    <div className="rounded-2xl bg-card px-4 py-4 ring-1 ring-foreground/10 sm:px-5 sm:py-5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[0.7rem] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
-          {label}
-        </p>
-        <Icon
-          aria-hidden
-          className={`size-4 shrink-0 sm:size-5 ${KPI_ACCENTS[accent]}`}
-        />
-      </div>
-      <p className="mt-2 font-heading text-2xl font-semibold tracking-tight text-foreground tabular-nums sm:text-3xl">
-        {value}
-      </p>
-    </div>
   )
 }

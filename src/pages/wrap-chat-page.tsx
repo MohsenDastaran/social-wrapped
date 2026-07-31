@@ -1,10 +1,11 @@
-import { ArrowLeft } from "lucide-react"
+import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Hash } from "lucide-react"
 import { Link, Navigate, useParams } from "react-router"
 
 import { Button } from "@/components/ui/button"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import { chatDisplay } from "@/components/wrap/chat-display"
 import { WrapChatAnalytics } from "@/components/wrap/wrap-chat-analytics"
+import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { fmt } from "@/components/wrap/chart-theme"
 import { getWrap, wrapPath } from "@/lib/wrap-history"
 
@@ -63,12 +64,33 @@ export function WrapChatPage() {
             </span>
           ) : null}
         </h1>
-        <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
-          {display.subtitle ? `${display.subtitle} · ` : null}
-          {fmt(a.totalMessages)} messages · sent {fmt(a.sentMessages)} ·
-          received {fmt(a.receivedMessages)}
-        </p>
+        {display.subtitle ? (
+          <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+            {display.subtitle}
+          </p>
+        ) : null}
       </header>
+
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <WrapKpi
+          label="Sent"
+          value={fmt(a.sentMessages)}
+          icon={ArrowUpRight}
+          accent="violet"
+        />
+        <WrapKpi
+          label="Received"
+          value={fmt(a.receivedMessages)}
+          icon={ArrowDownLeft}
+          accent="sky"
+        />
+        <WrapKpi
+          label="Total"
+          value={fmt(a.totalMessages)}
+          icon={Hash}
+          accent="emerald"
+        />
+      </div>
 
       <WrapChatAnalytics chat={chat} />
     </div>
