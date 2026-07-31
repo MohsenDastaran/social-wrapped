@@ -18,9 +18,11 @@ import {
   VisualMapComponent,
 } from "echarts/components"
 import { CanvasRenderer } from "echarts/renderers"
+import { Minus, Plus } from "lucide-react"
 import type { HeatmapDay } from "@/platform/analytics-types"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { fmt } from "@/components/wrap/chart-theme"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
@@ -132,8 +134,38 @@ function YearSelect({
   value: number
   onChange: (year: number) => void
 }) {
+  // Chronological order for − / + (years prop is newest-first for the menu).
+  const ascending = useMemo(
+    () => [...years].sort((a, b) => a - b),
+    [years]
+  )
+  const index = ascending.indexOf(value)
+  const older = index > 0 ? ascending[index - 1] : undefined
+  const newer =
+    index >= 0 && index < ascending.length - 1
+      ? ascending[index + 1]
+      : undefined
+
   return (
-    <div data-export-ignore>
+    <div
+      data-export-ignore
+      className="flex h-7 items-stretch overflow-hidden rounded-md border border-border"
+      role="group"
+      aria-label="Select year"
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        aria-label={older != null ? `Previous year, ${older}` : "Previous year"}
+        disabled={older == null}
+        className="rounded-none border-0"
+        onClick={() => {
+          if (older != null) onChange(older)
+        }}
+      >
+        <Minus />
+      </Button>
       <Select
         value={String(value)}
         onValueChange={(next) => {
@@ -141,13 +173,13 @@ function YearSelect({
         }}
       >
         <SelectTrigger
-          size="sm"
+          size="default"
           aria-label="Select year"
-          className="min-w-20 tabular-nums"
+          className="h-full min-w-16 rounded-none border-0 border-x border-border bg-transparent px-2 tabular-nums shadow-none dark:bg-transparent dark:hover:bg-input/50"
         >
           <SelectValue />
         </SelectTrigger>
-        <SelectContent align="end" alignItemWithTrigger={false}>
+        <SelectContent align="center" alignItemWithTrigger={false}>
           <SelectGroup>
             {years.map((y) => (
               <SelectItem key={y} value={String(y)} className="tabular-nums">
@@ -157,6 +189,19 @@ function YearSelect({
           </SelectGroup>
         </SelectContent>
       </Select>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        aria-label={newer != null ? `Next year, ${newer}` : "Next year"}
+        disabled={newer == null}
+        className="rounded-none border-0"
+        onClick={() => {
+          if (newer != null) onChange(newer)
+        }}
+      >
+        <Plus />
+      </Button>
     </div>
   )
 }
