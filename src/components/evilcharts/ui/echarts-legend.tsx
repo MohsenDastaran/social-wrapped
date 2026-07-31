@@ -87,6 +87,8 @@ type LegendOverlayProps = {
   isClickable: boolean;
   onToggle: (key: string) => void;
   style: CSSProperties;
+  /** Optional secondary text per key (e.g. `"14%"`). */
+  valueByKey?: Record<string, string>;
 };
 
 function chunkKeys(keys: string[], lines: number): string[][] {
@@ -112,6 +114,7 @@ export function LegendOverlay({
   isClickable,
   onToggle,
   style,
+  valueByKey,
 }: LegendOverlayProps) {
   const legendJustify =
     align === "left" ? "justify-start" : align === "center" ? "justify-center" : "justify-end";
@@ -130,6 +133,10 @@ export function LegendOverlay({
             const isSelected =
               (selectedKey === null || selectedKey === key) &&
               (hoveredKey === null || hoveredKey === key);
+            const valueText =
+              selectedKey !== null && selectedKey === key
+                ? valueByKey?.[key]
+                : undefined;
             return (
               <div
                 key={key}
@@ -141,7 +148,14 @@ export function LegendOverlay({
                 }}
               >
                 <LegendIndicator variant={variant} dataKey={key} colorsCount={colorsCount} />
-                {item?.label}
+                <span className="inline-flex items-baseline gap-1.5">
+                  <span>{item?.label}</span>
+                  {valueText ? (
+                    <span className="font-mono text-[0.65rem] tabular-nums text-muted-foreground">
+                      {valueText}
+                    </span>
+                  ) : null}
+                </span>
               </div>
             );
           })}

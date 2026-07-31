@@ -223,6 +223,11 @@ const Pie: FC<PieProps> = () => null
 export interface LabelProps {
   dataKey?: string // data key for the label text — defaults to the pie's value key
   position?: LabelPosition // "inside" (value on the sector) or "outside" (name past the rim, with a leader line)
+  /**
+   * Hide labels on slices smaller than this percent of the total (0–100).
+   * Keeps tiny wedges from stacking unreadable text.
+   */
+  minPercent?: number
 }
 
 /** Declares per-sector labels for the enclosing <Pie>. Renders nothing. */
@@ -273,6 +278,7 @@ type PieSlot = {
   isClickable: boolean
   labelDataKey: string | null // null when no <Label> child is present
   labelPosition: LabelPosition // where the <Label> sits — only meaningful when labelDataKey !== null
+  labelMinPercent: number | null // hide labels below this share of total
 }
 
 type TooltipSlot = {
@@ -327,11 +333,17 @@ function collectConfig(children: ReactNode): CollectedConfig {
       // A <Label> child (if any) declares per-sector labels.
       let labelDataKey: string | null = null
       let labelPosition: LabelPosition = "inside"
+      let labelMinPercent: number | null = null
       Children.forEach(props.children, (labelChild) => {
         if (!isValidElement(labelChild) || labelChild.type !== Label) return
         const labelProps = labelChild.props as LabelProps
         labelDataKey = labelProps.dataKey ?? ""
         labelPosition = labelProps.position ?? "inside"
+        labelMinPercent =
+          typeof labelProps.minPercent === "number" &&
+          Number.isFinite(labelProps.minPercent)
+            ? labelProps.minPercent
+            : null
       })
       pie = {
         variant: props.variant ?? "gradient",
@@ -344,6 +356,7 @@ function collectConfig(children: ReactNode): CollectedConfig {
         isClickable: props.isClickable ?? false,
         labelDataKey,
         labelPosition,
+        labelMinPercent,
       }
     } else if (type === Tooltip) {
       const props = child.props as TooltipProps
@@ -710,14 +723,19 @@ function pieCenterY(legendSlot: LegendSlot): string {
 
 // Tooltip HTML builder, closed over the build context. The pie tooltip is
 // item-triggered, so each hover surfaces exactly one sector — its indicator,
-// label, and value, matching ChartTooltipContent with `hideLabel` (no header).
+// label, value, and share of the whole.
 function createTooltipFormatter(ctx: OptionBuildContext) {
-  const { config, selectedSector, tooltipSlot } = ctx
+  const { config, selectedSector, tooltipSlot, data, dataKey } = ctx
+  const total = data.reduce(
+    (sum, row) => sum + (Number(row[dataKey]) || 0),
+    0
+  )
 
   return (params: unknown): string => {
     const p = (Array.isArray(params) ? params[0] : params) as {
       name?: string
       value?: number | string
+      percent?: number
       seriesId?: string
     } | null
     // The loading skeleton is a `__`-prefixed series and never surfaces a tooltip.
@@ -727,10 +745,15 @@ function createTooltipFormatter(ctx: OptionBuildContext) {
     const item = config[name]
     const colorsCount = item ? getColorsCount(item) : 1
     const labelText = typeof item?.label === "string" ? item.label : name
-    const value =
-      typeof p.value === "number"
-        ? p.value.toLocaleString()
-        : String(p.value ?? "")
+    const raw =
+      typeof p.value === "number" ? p.value : Number(p.value) || 0
+    const pct =
+      typeof p.percent === "number" && Number.isFinite(p.percent)
+        ? Math.round(p.percent)
+        : total > 0
+          ? Math.round((raw / total) * 100)
+          : 0
+    const valueText = `${raw.toLocaleString()} (${pct}%)`
     const dimmed =
       selectedSector != null && selectedSector !== name ? " opacity-30" : ""
 
@@ -742,7 +765,7 @@ function createTooltipFormatter(ctx: OptionBuildContext) {
     const row = tooltipRow({
       indicatorHtml: tooltipIndicatorHtml(name, colorsCount),
       labelText,
-      valueText: value,
+      valueText,
       dimmed,
     })
 
@@ -793,12 +816,23 @@ function buildPieSeries(ctx: OptionBuildContext): PieSeriesOption[] {
   // Selection (dim + pop-out) is only meaningful on a clickable pie.
   const border = sectorBorder(pie.paddingAngle, tokens.background)
 
+  const totalValue = data.reduce(
+    (sum, row) => sum + (Number(row[dataKey]) || 0),
+    0
+  )
+  const minPercent = pie.labelMinPercent
+
   const sectors = data.map((row) => {
     const name = String(row[nameKey])
     const slots = resolved.series[name] ?? [FALLBACK_COLOR]
     // Only a clickable pie dims — a static one never has a selection to dim from.
     const isSelected = pie.isClickable && selectedSector === name
     const isDimmed = pie.isClickable && hasSelection && selectedSector !== name
+    const value = Number(row[dataKey]) || 0
+    const sharePct = totalValue > 0 ? (value / totalValue) * 100 : 0
+    const showSectorLabel =
+      pie.labelDataKey !== null &&
+      (minPercent == null || sharePct >= minPercent)
 
     const itemStyle: PieItemStyle = {
       color: sectorPaint(slots),
@@ -816,9 +850,11 @@ function buildPieSeries(ctx: OptionBuildContext): PieSeriesOption[] {
     // source of truth, re-applied on every notMerge push so it survives rebuilds.
     return {
       name,
-      value: Number(row[dataKey]) || 0,
+      value,
       itemStyle,
       selected: isSelected,
+      label: { show: showSectorLabel },
+      labelLine: { show: showSectorLabel && pie.labelPosition === "outside" },
     }
   })
 
@@ -884,6 +920,8 @@ function buildPieSeries(ctx: OptionBuildContext): PieSeriesOption[] {
       // Neutralize any default select styling — the selected sector keeps its
       // normal paint (inherited via state merge) and only its position moves.
       select: { itemStyle: {} },
+      avoidLabelOverlap: true,
+      minShowLabelAngle: minPercent != null ? (minPercent / 100) * 360 : 0,
       label,
       labelLine: isOutside
         ? {
@@ -1055,6 +1093,21 @@ export function EChartsPieChart<TData extends Record<string, unknown>>({
   )
 
   const css = useMemo(() => buildChartCss(chartId, config), [chartId, config])
+
+  const legendPercents = useMemo(() => {
+    const total = data.reduce(
+      (sum, row) => sum + (Number(row[dataKey as string]) || 0),
+      0
+    )
+    return Object.fromEntries(
+      sectorKeys.map((key) => {
+        const row = data.find((r) => String(r[nameKey as string]) === key)
+        const value = Number(row?.[dataKey as string]) || 0
+        const pct = total > 0 ? Math.round((value / total) * 100) : 0
+        return [key, `${pct}%`]
+      })
+    )
+  }, [data, dataKey, nameKey, sectorKeys])
 
   // Sets selection state and notifies the parent with the sector's value.
   const selectSector = useCallback(
@@ -1339,7 +1392,24 @@ export function EChartsPieChart<TData extends Record<string, unknown>>({
           selectedKey={selectedSector}
           hoveredKey={null}
           isClickable={legendSlot.isClickable}
-          onToggle={(key) => selectSector(selectedSector === key ? null : key)}
+          valueByKey={legendPercents}
+          onToggle={(key) => {
+            const next = selectedSector === key ? null : key
+            selectSector(next)
+            const chart = echartsRef.current
+            if (!chart || !tooltipSlot.present) return
+            if (next == null) {
+              chart.dispatchAction({ type: "hideTip" })
+              return
+            }
+            const dataIndex = sectorKeys.indexOf(next)
+            if (dataIndex < 0) return
+            chart.dispatchAction({
+              type: "showTip",
+              seriesIndex: 0,
+              dataIndex,
+            })
+          }}
           style={legendStyle}
         />
       )}

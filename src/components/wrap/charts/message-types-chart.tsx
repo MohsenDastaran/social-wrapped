@@ -91,7 +91,11 @@ export function MessageTypesChart({
           <EChartsPieChart.Legend isClickable lines={2} />
           <EChartsPieChart.Tooltip />
           <EChartsPieChart.Pie isClickable>
-            <EChartsPieChart.Label dataKey="pctLabel" position="inside" />
+            <EChartsPieChart.Label
+              dataKey="pctLabel"
+              position="inside"
+              minPercent={5}
+            />
           </EChartsPieChart.Pie>
         </EChartsPieChart>
       ) : (
