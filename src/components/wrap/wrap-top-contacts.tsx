@@ -136,32 +136,45 @@ export function WrapTopContacts({ analytics, onSelect }: WrapTopContactsProps) {
 function IconExportButton({
   title,
   exporting,
+  exportError,
   onExport,
 }: {
   title: string
   exporting: boolean
+  exportError?: string | null
   onExport: () => void
 }) {
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="icon-xs"
-      data-export-ignore
-      disabled={exporting}
-      onClick={(e) => {
-        e.stopPropagation()
-        onExport()
-      }}
-      aria-label={`Export ${title}`}
-      className="shrink-0"
-    >
-      {exporting ? (
-        <Loader2 className="animate-spin" />
-      ) : (
-        <Download />
-      )}
-    </Button>
+    <div className="flex flex-col items-end gap-0.5">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon-xs"
+        data-export-ignore
+        disabled={exporting}
+        onClick={(e) => {
+          e.stopPropagation()
+          onExport()
+        }}
+        aria-label={`Export ${title}`}
+        className="shrink-0"
+      >
+        {exporting ? (
+          <Loader2 className="animate-spin" />
+        ) : (
+          <Download />
+        )}
+      </Button>
+      {exportError ? (
+        <p
+          role="alert"
+          className="max-w-28 text-end text-[0.55rem] leading-tight text-destructive"
+          data-export-ignore
+        >
+          {exportError}
+        </p>
+      ) : null}
+    </div>
   )
 }
 
@@ -185,7 +198,8 @@ function InsightListCard({
   valueFn?: (chat: ChatResult) => number
   barClassName?: string
 }) {
-  const { ref, exporting, exportPng } = useDomExport<HTMLDivElement>(CARD_EXPORT)
+  const { ref, exporting, exportError, exportPng } =
+    useDomExport<HTMLDivElement>(CARD_EXPORT)
 
   if (chats.length === 0) return null
 
@@ -211,6 +225,7 @@ function InsightListCard({
         <IconExportButton
           title={title}
           exporting={exporting}
+          exportError={exportError}
           onExport={() => void exportPng(`${exportName}.png`)}
         />
       </div>
@@ -276,7 +291,8 @@ function TopContactsList({
   chats: ChatResult[]
   onSelect: (chatId: number) => void
 }) {
-  const { ref, exporting, exportPng } = useDomExport<HTMLDivElement>(LIST_EXPORT)
+  const { ref, exporting, exportError, exportPng } =
+    useDomExport<HTMLDivElement>(LIST_EXPORT)
   const max = Math.max(...chats.map((c) => c.analytics.totalMessages), 1)
   const title = `Top ${chats.length} contacts`
 
@@ -293,6 +309,7 @@ function TopContactsList({
         <IconExportButton
           title={title}
           exporting={exporting}
+          exportError={exportError}
           onExport={() => void exportPng("top-contacts.png")}
         />
       </div>

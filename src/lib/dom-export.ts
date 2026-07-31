@@ -1,6 +1,6 @@
 import * as echarts from "echarts/core"
 
-import { downloadBlob } from "@/lib/mock-export"
+import { saveBlob } from "@/lib/save-blob"
 
 export type DomExportOptions = {
   /**
@@ -99,7 +99,7 @@ export async function elementToPngBlob(
   }
 }
 
-/** Capture `element` and trigger a browser download. */
+/** Capture `element` and save a PNG (Tauri dialog / file picker / download). */
 export async function downloadElementAsPng(
   element: HTMLElement,
   filename: string,
@@ -109,7 +109,10 @@ export async function downloadElementAsPng(
   const name = filename.toLowerCase().endsWith(".png")
     ? filename
     : `${filename}.png`
-  downloadBlob(blob, name)
+  const result = await saveBlob(blob, name)
+  if (!result.ok && !result.cancelled) {
+    throw new Error(result.error || "Failed to save export")
+  }
 }
 
 // ── Layout expansion (mobile → share size) ───────────────────────────────────

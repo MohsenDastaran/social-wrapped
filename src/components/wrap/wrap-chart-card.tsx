@@ -102,7 +102,7 @@ export function WrapChartCard({
   chartClassName,
   children,
 }: WrapChartCardProps) {
-  const { ref, exporting, exportPng } = useDomExport<HTMLDivElement>({
+  const { ref, exporting, exportError, exportPng } = useDomExport<HTMLDivElement>({
     ...EXPORT_SIZES[exportSize],
     // Flow cards (KPI grids, emoji lists) need full HTML paint — not the chart compositor.
     // Override when a flow card still embeds an ECharts canvas.
@@ -124,6 +124,15 @@ export function WrapChartCard({
           </h3>
           {description ? (
             <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+          ) : null}
+          {exportError ? (
+            <p
+              role="alert"
+              className="mt-1 text-[0.65rem] text-destructive"
+              data-export-ignore
+            >
+              {exportError}
+            </p>
           ) : null}
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">

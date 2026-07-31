@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type RefObject } from "react"
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 
 import {
   downloadElementAsPng,
@@ -10,6 +10,8 @@ type UseDomExportResult<T extends HTMLElement> = {
   ref: RefObject<T | null>
   /** True while a capture is in flight. */
   exporting: boolean
+  /** Last export failure message (clears automatically). */
+  exportError: string | null
   /** Capture the ref node and download a PNG. */
   exportPng: (filename: string, options?: DomExportOptions) => Promise<void>
 }
@@ -26,6 +28,13 @@ export function useDomExport<T extends HTMLElement = HTMLDivElement>(
   optionsRef.current = defaultOptions
   const busyRef = useRef(false)
   const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!exportError) return
+    const id = window.setTimeout(() => setExportError(null), 4_000)
+    return () => window.clearTimeout(id)
+  }, [exportError])
 
   const exportPng = useCallback(
     async (filename: string, options?: DomExportOptions) => {
@@ -33,11 +42,17 @@ export function useDomExport<T extends HTMLElement = HTMLDivElement>(
       if (!node || busyRef.current) return
       busyRef.current = true
       setExporting(true)
+      setExportError(null)
       try {
         await downloadElementAsPng(node, filename, {
           ...optionsRef.current,
           ...options,
         })
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Export failed"
+        setExportError(message)
+        console.error("Export failed:", error)
       } finally {
         busyRef.current = false
         setExporting(false)
@@ -46,5 +61,5 @@ export function useDomExport<T extends HTMLElement = HTMLDivElement>(
     []
   )
 
-  return { ref, exporting, exportPng }
+  return { ref, exporting, exportError, exportPng }
 }

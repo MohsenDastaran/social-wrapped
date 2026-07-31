@@ -1,12 +1,7 @@
-/** Trigger a browser download for a Blob. */
-export function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement("a")
-  anchor.href = url
-  anchor.download = filename
-  anchor.click()
-  URL.revokeObjectURL(url)
-}
+import { saveBlob } from "@/lib/save-blob"
+
+/** @deprecated Use `saveBlob` from `@/lib/save-blob` for proper Tauri/Linux support. */
+export { downloadBlob, saveBlob } from "@/lib/save-blob"
 
 /** Draw a simple branded PNG mock (placeholder until real exports land). */
 export function downloadMockPng(
@@ -75,7 +70,7 @@ export function downloadMockPng(
   }
 
   canvas.toBlob((blob) => {
-    if (blob) downloadBlob(blob, filename)
+    if (blob) void saveBlob(blob, filename)
   }, "image/png")
 }
 
@@ -147,5 +142,5 @@ export async function recordMockVideo(
   })
 
   recorder.stop()
-  downloadBlob(await done, filename)
+  await saveBlob(await done, filename)
 }

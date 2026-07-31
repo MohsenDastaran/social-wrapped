@@ -1,4 +1,4 @@
-import { downloadBlob } from "@/lib/mock-export"
+import { saveBlob } from "@/lib/save-blob"
 
 export const DEFAULT_APP_SHARE_TEXT =
   "This was made with Social Wrapped — your private, on-device social wrap."
@@ -36,7 +36,10 @@ export async function downloadMediaUrl(
     const response = await fetch(url)
     if (!response.ok) throw new Error("fetch failed")
     const blob = await response.blob()
-    downloadBlob(blob, filename)
+    const result = await saveBlob(blob, filename)
+    if (!result.ok && !result.cancelled) {
+      throw new Error(result.error || "Failed to save file")
+    }
     return
   } catch {
     // Cross-origin hosts may block fetch; fall back to a navigation download.
@@ -45,7 +48,9 @@ export async function downloadMediaUrl(
     anchor.download = filename
     anchor.rel = "noopener"
     anchor.target = "_blank"
+    document.body.appendChild(anchor)
     anchor.click()
+    anchor.remove()
   }
 }
 
