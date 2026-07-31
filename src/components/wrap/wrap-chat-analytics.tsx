@@ -5,17 +5,31 @@ import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import { ComparisonKpiCard } from "@/components/wrap/comparison-kpi-card"
 import { chatDisplay } from "@/components/wrap/chat-display"
 import { fmt, fmtResponseTime } from "@/components/wrap/chart-theme"
-import { TopEmojisCard } from "@/components/wrap/top-emojis-card"
-import type { ChatResult } from "@/platform/analytics-types"
+import {
+  TopEmojisCard,
+  type EmojiScope,
+} from "@/components/wrap/top-emojis-card"
+import type {
+  ChatResult,
+  EmojiEntry,
+  EmojiStats,
+} from "@/platform/analytics-types"
 
 type WrapChatAnalyticsProps = {
   chat: ChatResult
+  /** Account display name — used to split “You” vs contact emoji scopes. */
+  selfName: string
 }
 
 /** Per-contact analytics charts — used on the contact detail page. */
-export function WrapChatAnalytics({ chat }: WrapChatAnalyticsProps) {
+export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
   const a = chat.analytics
   const display = chatDisplay(chat)
+  const emojiScopes = buildEmojiScopes(
+    a.emojis,
+    selfName,
+    display.isDeleted ? (display.subtitle ?? "Contact") : display.title
+  )
 
   const responseRows = a.responseTime.participants.map((p) => ({
     name: truncate(p.name, 18),
@@ -149,6 +163,7 @@ export function WrapChatAnalytics({ chat }: WrapChatAnalyticsProps) {
         exportName={`chat-${chat.chatId}-emojis`}
         description="Most used in this chat"
         limit={10}
+        scopes={emojiScopes}
       />
 
       <CircadianRhythmCard
@@ -169,4 +184,62 @@ export function WrapChatAnalytics({ chat }: WrapChatAnalyticsProps) {
 
 function truncate(s: string, n: number): string {
   return s.length > n ? `${s.slice(0, n - 1)}…` : s
+}
+
+function namesMatch(a: string, b: string): boolean {
+  const x = a.trim().toLowerCase()
+  const y = b.trim().toLowerCase()
+  if (!x || !y) return false
+  return x === y || x.includes(y) || y.includes(x)
+}
+
+function mergeEmojiLists(lists: EmojiEntry[][]): EmojiEntry[] {
+  const map = new Map<string, number>()
+  for (const list of lists) {
+    for (const e of list) {
+      if (!e.emoji) continue
+      map.set(e.emoji, (map.get(e.emoji) ?? 0) + e.count)
+    }
+  }
+  return [...map.entries()]
+    .map(([emoji, count]) => ({ emoji, count }))
+    .sort((a, b) => b.count - a.count)
+}
+
+function buildEmojiScopes(
+  stats: EmojiStats,
+  selfName: string,
+  contactName: string
+): EmojiScope[] | undefined {
+  const parts = stats.byParticipant ?? []
+  if (parts.length === 0) return undefined
+
+  const self = parts.find((p) => namesMatch(p.name, selfName))
+  const others = parts.filter((p) => !namesMatch(p.name, selfName))
+
+  const youEmojis = self?.topEmojis ?? []
+  const themEmojis =
+    others.length === 1
+      ? (others[0]?.topEmojis ?? [])
+      : mergeEmojiLists(others.map((o) => o.topEmojis))
+
+  const youLabel = truncate(self?.name || selfName || "You", 14)
+  const themLabel = truncate(
+    others.length === 1
+      ? (others[0]?.name ?? contactName)
+      : contactName || "Contact",
+    14
+  )
+
+  const scopes: EmojiScope[] = [
+    { id: "all", label: "All", emojis: stats.topOverall },
+    { id: "you", label: youLabel, emojis: youEmojis },
+    { id: "them", label: themLabel, emojis: themEmojis },
+  ]
+
+  // Need at least All + one side to make the toggle useful.
+  const withData = scopes.filter((s) =>
+    s.emojis.some((e) => e.emoji && e.count > 0)
+  )
+  return withData.length > 1 ? scopes : undefined
 }

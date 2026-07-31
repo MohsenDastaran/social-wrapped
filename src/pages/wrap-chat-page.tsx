@@ -92,7 +92,10 @@ export function WrapChatPage() {
         />
       </div>
 
-      <WrapChatAnalytics chat={chat} />
+      <WrapChatAnalytics
+        chat={chat}
+        selfName={wrap.analytics.displayName || wrap.stats.displayName}
+      />
     </div>
   )
 }
