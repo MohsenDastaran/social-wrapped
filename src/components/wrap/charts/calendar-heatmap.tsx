@@ -49,8 +49,9 @@ const MONTH_LABEL_H = 22
 const CHART_PAD_BOTTOM = 4
 const WEEKS = 53
 
-const GITHUB_LIGHT = ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"]
-const GITHUB_DARK = ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"]
+/** Level 0 (empty) is intentionally distinct from the card surface. */
+const GITHUB_LIGHT = ["#d0d7de", "#9be9a8", "#40c463", "#30a14e", "#216e39"]
+const GITHUB_DARK = ["#2d333b", "#0e4429", "#006d32", "#26a641", "#39d353"]
 
 type CalendarHeatmapProps = {
   days: HeatmapDay[]
