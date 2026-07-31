@@ -4,6 +4,19 @@ This document contains a comprehensive list of analytical ideas to extract from 
 
 ---
 
+## Shipped in Social Wrapped (snapshot)
+
+Product surfaces today:
+
+| Surface | What users see |
+| --- | --- |
+| **Main wrap** (`/wrap/:id`) | KPI strip (sent / received / total / chats), activity over time (line/bar), sent-vs-received pie, **message types** pie, top emojis (overall), circadian polar clock, GitHub-style heatmap, top-contacts insight cards (recent / faded / groups + top 20 DMs) |
+| **Contact page** (`/wrap/:id/chat/:chatId`) | Same title treatment with sky highlight, sent/received/total KPIs, activity over time, message types, **comparison KPI cards** (response time, message length, starts/closes, late night), top emojis with **All / [you] / [contact]** name toggle, circadian, heatmap |
+
+PNG export is available on chart/KPI cards. Pie charts show % on hover; legend % appears only when a slice/legend item is selected. Tiny pie labels (&lt;5%) are hidden to avoid overlap.
+
+---
+
 ## 🌟 Tier 1: Killer Features (Highest Visual Appeal & Viral Potential)
 
 These features offer the best potential for building highly interactive frontend components and animations.
@@ -12,6 +25,7 @@ These features offer the best potential for building highly interactive frontend
 
 - **Description:** An animated storyboard summarizing a year of communication between two people. (e.g., "You exchanged over 50,000 words in 2023, equivalent to a novel!").
 - **Appeal:** Prime content for users to screenshot and share on social media.
+- **Status:** Partial — share stories / media exist on the wrap page; not a full animated year storyboard yet.
 
 ### 2. Group Network Graph
 
@@ -27,16 +41,19 @@ These features offer the best potential for building highly interactive frontend
 
 - **Description:** Extracting the estimated sleep and wake times of two people based on the timestamps of the last message at night and the first in the morning.
 - **Appeal:** Displaying a 24-hour circular chart that shows how synced their daily life rhythms are.
+- **Shipped:** Polar “Activity by hour” on main (account total) and contact (per-participant series + sleep hints).
 
 ### - ✅ 5. Activity Heatmap
 
 - **Description:** A chart similar to GitHub's contribution graph covering 365 days of the year. High-chat days are darker, and quiet days are lighter.
 - **Appeal:** A quick, visual understanding of the days and months when the relationship was at its peak.
+- **Shipped:** GitHub-style calendar heatmap with year select on main and contact pages.
 
 ### 6. Binge-Chatting Days 🆕
 
 - **Description:** Pinpointing the single day in the entire chat history with the highest volume of exchanged messages.
 - **Appeal:** Creates curiosity ("What happened that day that we sent 2,000 messages?") and can include a small snippet of that day's conversation.
+- **Note:** Peak period is highlighted on activity / volume charts; a dedicated “that day” story card is not built yet.
 
 ### 7. Nostalgia Machine / On This Day 🆕
 
@@ -50,6 +67,7 @@ These features offer the best potential for building highly interactive frontend
 ### - ✅ 9. Top Emojis & Reactions 🧠+🆕
 
 - **Description:** Displaying the most used emojis (your request) plus an analysis of Telegram Premium reactions on messages. Who leaves more ❤️ reactions and who leaves more 😂?
+- **Shipped:** Ranked emoji grid on main (overall). On **contact page**, toggle **All / [your name] / [contact name]** using per-participant emoji stats. Dual-style symbols (♀, ☹, …) force emoji presentation. Reactions list exists in data; dedicated reactions UI is still light.
 
 ### 10. Tone Shift 🆕
 
@@ -68,6 +86,7 @@ Statistics that dissect the relationship dynamics and chatting habits.
 ### - ✅ 12. Initiator vs. Finisher 🧠
 
 - **Description:** Identifying who usually breaks the ice after hours of silence, and who typically closes the conversation (saying goodnight/goodbye).
+- **Shipped:** Contact-page **comparison KPI** card (“Who starts / closes”, after 6h+ silence) with winner badge.
 
 ### 13. Double Texting Ratio
 
@@ -76,14 +95,17 @@ Statistics that dissect the relationship dynamics and chatting habits.
 ### - ✅ 14. The "Late Night" Chats 🆕
 
 - **Description:** Filtering conversations that occurred strictly between 1 AM and 5 AM. These messages are often longer and more emotional.
+- **Shipped:** Contact-page comparison KPI (“Late night 1–5 AM”) per participant.
 
 ### - ✅ 15. Average Response Time
 
 - **Description:** Calculating the average delay in replying. Who is more "online" and responds faster?
+- **Shipped:** Contact-page comparison KPI with average + median (minutes), “Fastest” badge.
 
 ### - ✅ 16. Message Length Balance
 
 - **Description:** Comparing the average character count per message. Discovers who writes long, scrolling paragraphs and who replies with brief, single words.
+- **Shipped:** Contact-page comparison KPI (“Avg chars”), “Longer” badge.
 
 ### 17. N-gram & Catchphrases Cloud 🧠
 
@@ -110,14 +132,17 @@ Essential statistics required for any dashboard, making raw data comprehensible.
 ### - ✅ 21. Total Volume & Dominance 🧠
 
 - **Description:** The main counter for the total number of messages, specifying what percentage of the total belongs to each person.
+- **Shipped:** Main + contact KPI strips; top-contacts lists with sent/received split bars; activity-over-time series.
 
 ### - ✅ 22. Sent vs. Received 🧠
 
 - **Description:** A numerical comparison of messages sent by the user versus messages received.
+- **Shipped:** KPI tiles + pie on main analytics; contact page KPIs.
 
-### - ✅ 23. Voice vs. Text Ratio
+### - ✅ 23. Voice vs. Text Ratio / Message types
 
-- **Description:** Counting the number of voice memos versus text messages. It also calculates the total hours of voice messages recorded by each person.
+- **Description:** Counting voice memos versus text (and other content kinds). Also total voice duration.
+- **Shipped:** **Message types** pie (normal, link, emoji, image, video, voice, …) with optional “hide normal”, voice duration in description, % on hover / selected legend. Not yet split voice hours **per person**.
 
 ### 24. Longest Uninterrupted Session
 
@@ -130,14 +155,16 @@ Essential statistics required for any dashboard, making raw data comprehensible.
 ### 26. Link & Domain Analysis
 
 - **Description:** Extracting the most visited internet domains in the chat (e.g., comparing the share of YouTube links versus Instagram links).
+- **Note:** Links appear as a **message type** bucket; domain-level breakdown is not built.
 
 ### 27. Sticker & GIF Stats
 
 - **Description:** Counting sticker usage and introducing the top 5 sticker packs each person relies on in the chat.
 
-### 28. Media Breakdown
+### - ✅ / partial 28. Media Breakdown
 
 - **Description:** A bar chart showing the total size and count of photos, videos, files (PDF/Zip), and shared locations, separated by the sender.
+- **Shipped:** Count-by-type pie via message types. Missing: byte sizes, locations, per-sender media split.
 
 ### 29. The Ghosting Index 🆕
 
@@ -149,8 +176,20 @@ Essential statistics required for any dashboard, making raw data comprehensible.
 
 ---
 
+## Related product (not in original tiers)
+
+These shipped without a matching numbered idea above:
+
+- **Top contacts insights** — recently active (90d), faded friendships, top groups, top 20 DMs; tap opens contact analytics page.
+- **Deleted accounts** — labeled UI (`Deleted account` / chat id) in contact lists.
+- **Activity over time** — yearly/monthly line or stacked bar on main and contact.
+- **Per-contact route** — dedicated page with back navigation and distinct highlight color.
+
+---
+
 _Legend:_
 
+- ✅: Implemented (or largely implemented) in the current wrap UI.
 - 🧠: Your proposed ideas (expanded and refined).
-- 🆕: 10 brand new ideas.
+- 🆕: Brand new ideas from the original brainstorm.
 - The rest are previous ideas enriched with more detailed descriptions.
