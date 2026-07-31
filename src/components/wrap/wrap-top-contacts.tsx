@@ -146,8 +146,8 @@ export function WrapTopContacts({
             />
           </WrapChartCard> */}
 
-          <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-            <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5">
+          <div className="overflow-hidden rounded-xl bg-card shadow-[0_16px_48px_-20px] shadow-foreground/45 ring-1 ring-foreground/15 dark:shadow-foreground/25">
+            <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-2.5">
               <Users className="size-3.5 text-muted-foreground" aria-hidden />
               <p className="text-[0.65rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
                 Top {topContacts.length} contacts
