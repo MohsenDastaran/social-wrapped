@@ -65,7 +65,7 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
           <h2 className="truncate font-heading text-xl font-semibold tracking-tight">
             {display.title}
             {display.isDeleted ? (
-              <span className="ms-2 inline-flex align-middle rounded-md bg-muted px-2 py-0.5 text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase">
+              <span className="ms-2 inline-flex rounded-md bg-muted px-2 py-0.5 align-middle text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase">
                 Deleted
               </span>
             ) : null}
@@ -95,7 +95,11 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
         title={`Messages with ${display.title}`}
         exportName={`chat-${chat.chatId}-activity-over-time`}
         sentLabel="You"
-        receivedLabel={display.isDeleted ? display.subtitle ?? display.title : chat.chatName}
+        receivedLabel={
+          display.isDeleted
+            ? (display.subtitle ?? display.title)
+            : chat.chatName
+        }
       />
 
       <ContactVolumeBarChart

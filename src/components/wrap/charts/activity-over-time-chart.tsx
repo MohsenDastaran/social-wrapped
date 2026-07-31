@@ -160,7 +160,7 @@ export function ActivityOverTimeChart({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] tabular-nums leading-none">
+          <div className="flex items-center gap-2 text-[11px] leading-none tabular-nums">
             <span className="inline-flex items-center gap-1.5 text-muted-foreground">
               <span
                 className="size-1.5 shrink-0 rounded-full bg-[#047857] dark:bg-[#10b981]"
@@ -197,7 +197,7 @@ export function ActivityOverTimeChart({
               <EChartsAreaChart
                 data={data}
                 config={config}
-                className="h-full w-full p-3"
+                className="h-full w-full p-3 pt-0"
                 curveType="monotone"
                 xDataKey="date"
               >
