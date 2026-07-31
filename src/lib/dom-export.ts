@@ -118,8 +118,13 @@ async function expandForExport(
   el: HTMLElement,
   minWidth: number
 ): Promise<() => void> {
-  if (el.offsetWidth >= minWidth - 1) {
-    return () => undefined
+  const targetWidth = measureExportWidth(el, minWidth)
+  const scrollerRestores = expandScrollersForExport(el)
+
+  if (el.offsetWidth >= targetWidth - 1) {
+    return () => {
+      scrollerRestores()
+    }
   }
 
   const prev: StyleSnapshot = {
@@ -139,9 +144,9 @@ async function expandForExport(
   el.style.position = "fixed"
   el.style.left = "-12000px"
   el.style.top = "0"
-  el.style.width = `${minWidth}px`
-  el.style.maxWidth = `${minWidth}px`
-  el.style.minWidth = `${minWidth}px`
+  el.style.width = `${targetWidth}px`
+  el.style.maxWidth = `${targetWidth}px`
+  el.style.minWidth = `${targetWidth}px`
   el.style.zIndex = "0"
   el.style.opacity = "1"
   el.style.pointerEvents = "none"
@@ -165,7 +170,55 @@ async function expandForExport(
     el.style.opacity = prev.opacity
     el.style.pointerEvents = prev.pointerEvents
     el.style.transform = prev.transform
+    scrollerRestores()
     resizeEchartsIn(el)
+  }
+}
+
+/** Width needed so `[data-export-expand]` scrollers can show their full content. */
+function measureExportWidth(el: HTMLElement, minWidth: number): number {
+  let targetWidth = minWidth
+  for (const node of el.querySelectorAll<HTMLElement>("[data-export-expand]")) {
+    const cs = getComputedStyle(node)
+    const padX =
+      (Number.parseFloat(cs.paddingLeft) || 0) +
+      (Number.parseFloat(cs.paddingRight) || 0)
+    const child = node.firstElementChild as HTMLElement | null
+    const contentW = child?.offsetWidth ?? node.scrollWidth
+    const chrome = Math.max(0, el.offsetWidth - node.clientWidth)
+    const needed = contentW + padX + chrome + 8
+    if (needed > targetWidth) targetWidth = needed
+  }
+  return targetWidth
+}
+
+/** Reveal horizontally scrolled chart content (e.g. calendar heatmap) for capture. */
+function expandScrollersForExport(root: HTMLElement): () => void {
+  const restores: Array<{
+    el: HTMLElement
+    overflow: string
+    overflowX: string
+    scrollLeft: number
+  }> = []
+
+  for (const node of root.querySelectorAll<HTMLElement>("[data-export-expand]")) {
+    restores.push({
+      el: node,
+      overflow: node.style.overflow,
+      overflowX: node.style.overflowX,
+      scrollLeft: node.scrollLeft,
+    })
+    node.scrollLeft = 0
+    node.style.overflow = "visible"
+    node.style.overflowX = "visible"
+  }
+
+  return () => {
+    for (const { el, overflow, overflowX, scrollLeft } of restores) {
+      el.style.overflow = overflow
+      el.style.overflowX = overflowX
+      el.scrollLeft = scrollLeft
+    }
   }
 }
 

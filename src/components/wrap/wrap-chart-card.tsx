@@ -15,8 +15,8 @@ const EXPORT_SIZES: Record<
   compact: { minWidth: 480, pixelRatio: 3 },
   /** Typical bar / area cards. */
   default: { minWidth: 720, pixelRatio: 3 },
-  /** Full-bleed time series. */
-  wide: { minWidth: 900, pixelRatio: 3 },
+  /** Full-bleed time series / calendar heatmap (~53 weeks × cell). */
+  wide: { minWidth: 1040, pixelRatio: 3 },
 }
 
 export type WrapChartCardProps = {
@@ -33,6 +33,12 @@ export type WrapChartCardProps = {
    * @default "chart"
    */
   layout?: "chart" | "flow"
+  /**
+   * Override PNG capture strategy. Defaults to `dom` for `flow` layout and
+   * `chart` otherwise. Use `chart` with `flow` when the card embeds an ECharts
+   * canvas (e.g. calendar heatmap) so the canvas is snapshotted.
+   */
+  captureMode?: "chart" | "dom"
   /** Extra controls next to the export button (e.g. filters). */
   headerExtra?: ReactNode
   className?: string
@@ -90,6 +96,7 @@ export function WrapChartCard({
   exportName,
   exportSize = "default",
   layout = "chart",
+  captureMode,
   headerExtra,
   className,
   chartClassName,
@@ -98,7 +105,8 @@ export function WrapChartCard({
   const { ref, exporting, exportPng } = useDomExport<HTMLDivElement>({
     ...EXPORT_SIZES[exportSize],
     // Flow cards (KPI grids, emoji lists) need full HTML paint — not the chart compositor.
-    captureMode: layout === "flow" ? "dom" : "chart",
+    // Override when a flow card still embeds an ECharts canvas.
+    captureMode: captureMode ?? (layout === "flow" ? "dom" : "chart"),
   })
 
   return (

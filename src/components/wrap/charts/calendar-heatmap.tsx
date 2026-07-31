@@ -94,6 +94,8 @@ export function CalendarHeatmap({
       exportName={exportName}
       exportSize="wide"
       layout="flow"
+      // Flow layout (scroller + legend) but chart capture so the ECharts canvas is included.
+      captureMode="chart"
       exportLines={[
         `Year ${year}`,
         `${fmt(activeDays)} active days`,
@@ -188,6 +190,7 @@ function HeatmapScroller({ children }: { children: ReactNode }) {
     <div className="relative">
       <div
         aria-hidden
+        data-export-ignore
         className={cn(
           "pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-linear-to-r from-card to-transparent transition-opacity duration-150",
           edge.left ? "opacity-100" : "opacity-0"
@@ -195,6 +198,7 @@ function HeatmapScroller({ children }: { children: ReactNode }) {
       />
       <div
         aria-hidden
+        data-export-ignore
         className={cn(
           "pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-linear-to-l from-card to-transparent transition-opacity duration-150",
           edge.right ? "opacity-100" : "opacity-0"
@@ -202,6 +206,7 @@ function HeatmapScroller({ children }: { children: ReactNode }) {
       />
       <div
         ref={ref}
+        data-export-expand
         onScroll={updateEdges}
         className={cn(
           "overflow-x-auto overscroll-x-contain px-3 pb-1 [-webkit-overflow-scrolling:touch]",
