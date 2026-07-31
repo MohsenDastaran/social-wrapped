@@ -257,6 +257,17 @@ function HeatmapCanvas({
   height: number
 }) {
   const { containerRef, chartRef, ready } = useSizedEcharts()
+  const [themeEpoch, setThemeEpoch] = useState(0)
+
+  // Light/dark flips change the <html> class with no React state — watch and rebuild.
+  useEffect(() => {
+    const root = document.documentElement
+    const observer = new MutationObserver(() => {
+      setThemeEpoch((n) => n + 1)
+    })
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] })
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const chart = chartRef.current
@@ -343,7 +354,7 @@ function HeatmapCanvas({
     )
 
     chart.resize({ width, height })
-  }, [year, data, ready, chartRef, containerRef, width, height])
+  }, [year, data, ready, chartRef, containerRef, width, height, themeEpoch])
 
   return (
     <div
