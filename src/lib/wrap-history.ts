@@ -187,6 +187,11 @@ export function wrapPath(id: string): string {
   return `/wrap/${id}`
 }
 
+/** Route path for a per-contact analytics page. */
+export function wrapChatPath(wrapId: string, chatId: number): string {
+  return `/wrap/${wrapId}/chat/${chatId}`
+}
+
 export function saveWrap(input: {
   platformId: PlatformId
   fileName: string

@@ -14,17 +14,14 @@ import {
 import { TopEmojisCard } from "@/components/wrap/top-emojis-card"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import type { ChatResult } from "@/platform/analytics-types"
-import { X } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { EChartsAreaChart } from "@/components/evilcharts/charts/echarts-area-chart"
 
 type WrapChatAnalyticsProps = {
   chat: ChatResult
-  onClose?: () => void
 }
 
-/** Per-contact analytics — chart-first drill-down from Top contacts. */
-export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
+/** Per-contact analytics charts — used on the contact detail page. */
+export function WrapChatAnalytics({ chat }: WrapChatAnalyticsProps) {
   const a = chat.analytics
   const display = chatDisplay(chat)
 
@@ -59,37 +56,7 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
     }))
 
   return (
-    <section id="contact-stats" className="flex scroll-mt-4 flex-col gap-4">
-      <header className="flex items-start justify-between gap-3 text-start">
-        <div className="min-w-0">
-          <h2 className="truncate font-heading text-xl font-semibold tracking-tight">
-            {display.title}
-            {display.isDeleted ? (
-              <span className="ms-2 inline-flex rounded-md bg-muted px-2 py-0.5 align-middle text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase">
-                Deleted
-              </span>
-            ) : null}
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {display.subtitle ? `${display.subtitle} · ` : null}
-            {fmt(a.totalMessages)} messages · sent {fmt(a.sentMessages)} ·
-            received {fmt(a.receivedMessages)}
-          </p>
-        </div>
-        {onClose ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            aria-label="Close contact stats"
-          >
-            <X data-icon="inline-start" />
-            Close
-          </Button>
-        ) : null}
-      </header>
-
+    <section className="flex flex-col gap-4">
       <ActivityOverTimeChart
         series={a.activityOverTime}
         title={`Messages with ${display.title}`}

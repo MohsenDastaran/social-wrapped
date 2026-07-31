@@ -1,7 +1,5 @@
-import { EChartsPeakBarChart } from "@/components/evilcharts/blocks/peak-echarts-bar-chart"
 import { chatDisplay } from "@/components/wrap/chat-display"
-import { CONTACT_SENT_RECEIVED_BAR, fmt } from "@/components/wrap/chart-theme"
-import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
+import { fmt } from "@/components/wrap/chart-theme"
 import type { ChatResult, WrapAnalytics } from "@/platform/analytics-types"
 import { cn } from "@/lib/utils"
 import {
@@ -13,40 +11,13 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
-const CHART_N = 12
-
-const PEAK_SERIES = [
-  {
-    dataKey: "received",
-    label: "Received",
-    swatch: "bg-[#d97706] dark:bg-[#fbbf24]",
-  },
-  {
-    dataKey: "sent",
-    label: "Sent",
-    swatch: "bg-[#0d9488] dark:bg-[#2dd4bf]",
-  },
-] as const
-
-type ContactBarRow = {
-  name: string
-  fullName: string
-  sent: number
-  received: number
-}
-
 type WrapTopContactsProps = {
   analytics: WrapAnalytics
-  selectedChatId: number | null
   onSelect: (chatId: number) => void
 }
 
 /** Contact insight cards — top DMs, recent, faded, and groups. */
-export function WrapTopContacts({
-  analytics,
-  selectedChatId,
-  onSelect,
-}: WrapTopContactsProps) {
+export function WrapTopContacts({ analytics, onSelect }: WrapTopContactsProps) {
   const topContacts = analytics.topContacts?.length
     ? analytics.topContacts
     : analytics.chats.filter((c) => !c.isGroup).slice(0, 20)
@@ -64,15 +35,6 @@ export function WrapTopContacts({
   }
 
   const max = Math.max(...topContacts.map((c) => c.analytics.totalMessages), 1)
-  const chartData: ContactBarRow[] = topContacts.slice(0, CHART_N).map((c) => {
-    const d = chatDisplay(c)
-    return {
-      name: truncate(d.title, 10),
-      fullName: d.subtitle ? `${d.title} (${d.subtitle})` : d.title,
-      sent: c.analytics.sentMessages,
-      received: c.analytics.receivedMessages,
-    }
-  })
 
   return (
     <section className="flex flex-col gap-4">
@@ -81,7 +43,7 @@ export function WrapTopContacts({
           Top contacts
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          People and groups you message most. Tap one to see their stats.
+          People and groups you message most. Tap one to open their stats.
         </p>
       </header>
 
@@ -91,7 +53,6 @@ export function WrapTopContacts({
           description="Most messages in the last 90 days"
           icon={Clock3}
           chats={recent}
-          selectedChatId={selectedChatId}
           onSelect={onSelect}
         />
         <InsightListCard
@@ -99,7 +60,6 @@ export function WrapTopContacts({
           description="Talked a lot before, quiet in the last 90 days"
           icon={UserX}
           chats={faded}
-          selectedChatId={selectedChatId}
           onSelect={onSelect}
         />
         <InsightListCard
@@ -107,45 +67,13 @@ export function WrapTopContacts({
           description="Group chats by lifetime volume"
           icon={MessagesSquare}
           chats={groups}
-          selectedChatId={selectedChatId}
           onSelect={onSelect}
         />
       </div>
 
       {topContacts.length > 0 ? (
         <>
-          {/* <WrapChartCard
-            title={`Top ${Math.min(CHART_N, topContacts.length)} by volume`}
-            description="Personal chats only — each bar stacks sent and received"
-            exportName="top-contacts-volume"
-            exportLines={topContacts.slice(0, 5).map((c, i) => {
-              const d = chatDisplay(c)
-              const a = c.analytics
-              const label = d.isDeleted
-                ? `${d.title} (${d.subtitle})`
-                : d.title
-              return `#${i + 1} ${label} · ${fmt(a.totalMessages)} (↑${fmt(a.sentMessages)} ↓${fmt(a.receivedMessages)})`
-            })}
-            chartClassName="h-72 sm:h-80"
-          >
-            <EChartsPeakBarChart
-              data={chartData}
-              config={CONTACT_SENT_RECEIVED_BAR}
-              xDataKey="name"
-              series={[...PEAK_SERIES]}
-              peakEyebrow="Top contact"
-              formatValue={fmt}
-              formatPeakDetail={(row) => (
-                <>
-                  messages with{" "}
-                  <span className="font-medium text-foreground">
-                    {row.fullName}
-                  </span>
-                </>
-              )}
-            />
-          </WrapChartCard> */}
-
+          {/* chart card commented in file — keep list */}
           <div className="overflow-hidden rounded-xl bg-card shadow-[0_16px_48px_-20px] shadow-foreground/45 ring-1 ring-foreground/15 dark:shadow-foreground/25">
             <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-2.5">
               <Users className="size-3.5 text-muted-foreground" aria-hidden />
@@ -160,7 +88,6 @@ export function WrapTopContacts({
                   chat={chat}
                   index={index}
                   max={max}
-                  selected={chat.chatId === selectedChatId}
                   onSelect={onSelect}
                 />
               ))}
@@ -177,14 +104,12 @@ function InsightListCard({
   description,
   icon: Icon,
   chats,
-  selectedChatId,
   onSelect,
 }: {
   title: string
   description: string
   icon: LucideIcon
   chats: ChatResult[]
-  selectedChatId: number | null
   onSelect: (chatId: number) => void
 }) {
   if (chats.length === 0) return null
@@ -206,19 +131,13 @@ function InsightListCard({
       <ul className="divide-y divide-border/50">
         {chats.map((chat, index) => {
           const d = chatDisplay(chat)
-          const selected = chat.chatId === selectedChatId
           const pct = (chat.analytics.totalMessages / max) * 100
           return (
             <li key={chat.chatId}>
               <button
                 type="button"
                 onClick={() => onSelect(chat.chatId)}
-                className={cn(
-                  "flex w-full items-center gap-2 px-3 py-2.5 text-start transition-colors",
-                  selected
-                    ? "bg-primary/10"
-                    : "hover:bg-muted/50 active:bg-muted/70"
-                )}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-start transition-colors hover:bg-muted/50 active:bg-muted/70"
               >
                 <span className="w-4 shrink-0 text-center text-[0.65rem] font-semibold text-muted-foreground tabular-nums">
                   {index + 1}
@@ -267,13 +186,11 @@ function ContactRow({
   chat,
   index,
   max,
-  selected,
   onSelect,
 }: {
   chat: ChatResult
   index: number
   max: number
-  selected: boolean
   onSelect: (chatId: number) => void
 }) {
   const d = chatDisplay(chat)
@@ -288,10 +205,7 @@ function ContactRow({
       <button
         type="button"
         onClick={() => onSelect(chat.chatId)}
-        className={cn(
-          "flex w-full items-center gap-3 px-4 py-3 text-start transition-colors",
-          selected ? "bg-primary/10" : "hover:bg-muted/50 active:bg-muted/70"
-        )}
+        className="flex w-full items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-muted/50 active:bg-muted/70"
       >
         <span className="w-6 shrink-0 text-center text-xs font-semibold text-muted-foreground tabular-nums">
           {index + 1}
@@ -340,17 +254,10 @@ function ContactRow({
           </p>
         </div>
         <ChevronRight
-          className={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform",
-            selected && "text-primary"
-          )}
+          className="size-4 shrink-0 text-muted-foreground"
           aria-hidden
         />
       </button>
     </li>
   )
-}
-
-function truncate(s: string, n: number): string {
-  return s.length > n ? `${s.slice(0, n - 1)}…` : s
 }
