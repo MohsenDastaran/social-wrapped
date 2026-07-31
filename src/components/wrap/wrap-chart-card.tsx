@@ -95,9 +95,11 @@ export function WrapChartCard({
   chartClassName,
   children,
 }: WrapChartCardProps) {
-  const { ref, exporting, exportPng } = useDomExport<HTMLDivElement>(
-    EXPORT_SIZES[exportSize]
-  )
+  const { ref, exporting, exportPng } = useDomExport<HTMLDivElement>({
+    ...EXPORT_SIZES[exportSize],
+    // Flow cards (KPI grids, emoji lists) need full HTML paint — not the chart compositor.
+    captureMode: layout === "flow" ? "dom" : "chart",
+  })
 
   return (
     <div

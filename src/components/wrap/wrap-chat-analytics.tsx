@@ -3,18 +3,11 @@ import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 import { ContactVolumeBarChart } from "@/components/wrap/charts/contact-volume-bar-chart"
 import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
 import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
+import { ComparisonKpiCard } from "@/components/wrap/comparison-kpi-card"
 import { chatDisplay } from "@/components/wrap/chat-display"
-import {
-  fmt,
-  fmtResponseTime,
-  INITIATOR_AREA,
-  LENGTH_AREA,
-  RESPONSE_AREA,
-} from "@/components/wrap/chart-theme"
+import { fmt, fmtResponseTime } from "@/components/wrap/chart-theme"
 import { TopEmojisCard } from "@/components/wrap/top-emojis-card"
-import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import type { ChatResult } from "@/platform/analytics-types"
-import { EChartsAreaChart } from "@/components/evilcharts/charts/echarts-area-chart"
 
 type WrapChatAnalyticsProps = {
   chat: ChatResult
@@ -25,34 +18,38 @@ export function WrapChatAnalytics({ chat }: WrapChatAnalyticsProps) {
   const a = chat.analytics
   const display = chatDisplay(chat)
 
-  const lengthData = a.messageLength.participants.map((p) => ({
-    name: truncate(p.name, 12),
-    avgChars: Math.round(p.avgChars),
+  const responseRows = a.responseTime.participants.map((p) => ({
+    name: truncate(p.name, 18),
+    values: {
+      avgMin: Math.round(p.avgSecs / 60),
+      medianMin: Math.round(p.medianSecs / 60),
+    },
   }))
 
-  const responseData = a.responseTime.participants.map((p) => ({
-    name: truncate(p.name, 12),
-    avgMin: Math.round(p.avgSecs / 60),
-    medianMin: Math.round(p.medianSecs / 60),
+  const lengthRows = a.messageLength.participants.map((p) => ({
+    name: truncate(p.name, 18),
+    values: { avgChars: Math.round(p.avgChars) },
   }))
 
   const initiatorNames = new Set([
     ...a.initiatorFinisher.initiators.map((p) => p.name),
     ...a.initiatorFinisher.finishers.map((p) => p.name),
   ])
-  const initiatorData = [...initiatorNames].map((name) => ({
-    name: truncate(name, 12),
-    starts:
-      a.initiatorFinisher.initiators.find((p) => p.name === name)?.count ?? 0,
-    closes:
-      a.initiatorFinisher.finishers.find((p) => p.name === name)?.count ?? 0,
+  const initiatorRows = [...initiatorNames].map((name) => ({
+    name: truncate(name, 18),
+    values: {
+      starts:
+        a.initiatorFinisher.initiators.find((p) => p.name === name)?.count ?? 0,
+      closes:
+        a.initiatorFinisher.finishers.find((p) => p.name === name)?.count ?? 0,
+    },
   }))
 
-  const lateNightData = a.lateNight.participants
+  const lateNightRows = a.lateNight.participants
     .filter((p) => p.count > 0)
     .map((p) => ({
-      name: truncate(p.name, 12),
-      count: p.count,
+      name: truncate(p.name, 18),
+      values: { count: p.count },
     }))
 
   return (
@@ -86,172 +83,76 @@ export function WrapChatAnalytics({ chat }: WrapChatAnalyticsProps) {
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {responseData.length > 0 && (
-          <WrapChartCard
-            title="Response time"
-            description="Avg & median reply delay (minutes)"
-            exportName={`chat-${chat.chatId}-response`}
-            exportLines={a.responseTime.participants.map(
-              (p) => `${p.name} ${fmtResponseTime(p.avgSecs)}`
-            )}
-            chartClassName="h-52"
-          >
-            <EChartsAreaChart
-              data={responseData}
-              config={RESPONSE_AREA}
-              xDataKey="name"
-              className="h-full w-full"
-              curveType="monotone"
-              chartOptions={{
-                grid: { left: 8, right: 8, top: 16, bottom: 28 },
-                yAxis: {
-                  type: "value",
-                  show: true,
-                  scale: true,
-                  boundaryGap: ["0%", "20%"],
-                  axisLabel: { formatter: "{value}m", fontSize: 9 },
-                },
-              }}
-            >
-              <EChartsAreaChart.Tooltip variant="frosted-glass" />
-              <EChartsAreaChart.Legend />
-              <EChartsAreaChart.Area
-                dataKey="avgMin"
-                variant="gradient"
-                strokeVariant="solid"
-                strokeWidth={2}
-              />
-              <EChartsAreaChart.Area
-                dataKey="medianMin"
-                variant="gradient"
-                strokeVariant="solid"
-                strokeWidth={2}
-              />
-            </EChartsAreaChart>
-          </WrapChartCard>
-        )}
+        <ComparisonKpiCard
+          title="Response time"
+          description="Avg & median reply delay"
+          exportName={`chat-${chat.chatId}-response`}
+          exportLines={a.responseTime.participants.map(
+            (p) => `${p.name} ${fmtResponseTime(p.avgSecs)}`
+          )}
+          rows={responseRows}
+          metrics={[
+            {
+              key: "avgMin",
+              label: "Average",
+              accent: "teal",
+              format: (m) => (m < 1 ? "<1m" : `${m}m`),
+            },
+            {
+              key: "medianMin",
+              label: "Median",
+              accent: "amber",
+              format: (m) => (m < 1 ? "<1m" : `${m}m`),
+            },
+          ]}
+          highlightKey="avgMin"
+          lowerIsBetter
+          highlightLabel="Fastest"
+        />
 
-        {lengthData.length > 0 && (
-          <WrapChartCard
-            title="Message length"
-            description="Average characters per message"
-            exportName={`chat-${chat.chatId}-length`}
-            chartClassName="h-52"
-          >
-            <EChartsAreaChart
-              data={lengthData}
-              config={LENGTH_AREA}
-              xDataKey="name"
-              className="h-full w-full"
-              curveType="monotone"
-              chartOptions={{
-                grid: { left: 8, right: 8, top: 16, bottom: 28 },
-                yAxis: {
-                  type: "value",
-                  show: true,
-                  scale: true,
-                  boundaryGap: ["0%", "20%"],
-                  axisLabel: { fontSize: 9 },
-                },
-              }}
-            >
-              <EChartsAreaChart.Tooltip variant="frosted-glass" />
-              <EChartsAreaChart.Area
-                dataKey="avgChars"
-                variant="gradient"
-                strokeVariant="solid"
-                strokeWidth={2.5}
-              >
-                <EChartsAreaChart.ActiveDot variant="ping" />
-              </EChartsAreaChart.Area>
-            </EChartsAreaChart>
-          </WrapChartCard>
-        )}
-      </div>
+        <ComparisonKpiCard
+          title="Message length"
+          description="Average characters per message"
+          exportName={`chat-${chat.chatId}-length`}
+          rows={lengthRows}
+          metrics={[
+            {
+              key: "avgChars",
+              label: "Avg chars",
+              accent: "violet",
+              format: (n) => fmt(n),
+            },
+          ]}
+          highlightLabel="Longer"
+        />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {initiatorData.length > 0 && (
-          <WrapChartCard
-            title="Who starts / closes"
-            description="After 6h+ of silence"
-            exportName={`chat-${chat.chatId}-initiator`}
-            chartClassName="h-52"
-          >
-            <EChartsAreaChart
-              data={initiatorData}
-              config={INITIATOR_AREA}
-              xDataKey="name"
-              className="h-full w-full"
-              curveType="monotone"
-              chartOptions={{
-                grid: { left: 8, right: 8, top: 16, bottom: 28 },
-                yAxis: {
-                  type: "value",
-                  show: false,
-                  scale: true,
-                  boundaryGap: ["0%", "20%"],
-                },
-              }}
-            >
-              <EChartsAreaChart.Tooltip variant="frosted-glass" />
-              <EChartsAreaChart.Legend />
-              <EChartsAreaChart.Area
-                dataKey="starts"
-                variant="gradient"
-                strokeVariant="solid"
-                strokeWidth={2}
-              />
-              <EChartsAreaChart.Area
-                dataKey="closes"
-                variant="gradient"
-                strokeVariant="solid"
-                strokeWidth={2}
-              />
-            </EChartsAreaChart>
-          </WrapChartCard>
-        )}
+        <ComparisonKpiCard
+          title="Who starts / closes"
+          description="After 6h+ of silence"
+          exportName={`chat-${chat.chatId}-initiator`}
+          rows={initiatorRows}
+          metrics={[
+            { key: "starts", label: "Starts", accent: "teal" },
+            { key: "closes", label: "Closes", accent: "amber" },
+          ]}
+          highlightKey="starts"
+          highlightLabel="Opener"
+        />
 
-        {lateNightData.length > 0 && (
-          <WrapChartCard
-            title="Late night (1–5 AM)"
-            description={`${fmt(a.lateNight.totalLateNight)} messages`}
-            exportName={`chat-${chat.chatId}-late-night`}
-            chartClassName="h-52"
-          >
-            <EChartsAreaChart
-              data={lateNightData}
-              config={{
-                count: {
-                  label: "Messages",
-                  colors: {
-                    light: ["#6366f1", "#4f46e5"],
-                    dark: ["#818cf8", "#6366f1"],
-                  },
-                },
-              }}
-              xDataKey="name"
-              className="h-full w-full"
-              curveType="monotone"
-              chartOptions={{
-                grid: { left: 8, right: 8, top: 16, bottom: 28 },
-                yAxis: {
-                  type: "value",
-                  show: false,
-                  scale: true,
-                  boundaryGap: ["0%", "20%"],
-                },
-              }}
-            >
-              <EChartsAreaChart.Tooltip variant="frosted-glass" />
-              <EChartsAreaChart.Area
-                dataKey="count"
-                variant="gradient"
-                strokeVariant="solid"
-                strokeWidth={2.5}
-              />
-            </EChartsAreaChart>
-          </WrapChartCard>
-        )}
+        <ComparisonKpiCard
+          title="Late night (1–5 AM)"
+          description={`${fmt(a.lateNight.totalLateNight)} messages`}
+          exportName={`chat-${chat.chatId}-late-night`}
+          rows={lateNightRows}
+          metrics={[
+            {
+              key: "count",
+              label: "Messages",
+              accent: "indigo",
+            },
+          ]}
+          highlightLabel="Night owl"
+        />
       </div>
 
       <TopEmojisCard
