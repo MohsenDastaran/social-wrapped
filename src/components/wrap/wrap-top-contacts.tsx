@@ -1,15 +1,22 @@
 import { chatDisplay } from "@/components/wrap/chat-display"
 import { fmt } from "@/components/wrap/chart-theme"
+import { Button } from "@/components/ui/button"
+import { useDomExport } from "@/hooks/use-dom-export"
 import type { ChatResult, WrapAnalytics } from "@/platform/analytics-types"
 import { cn } from "@/lib/utils"
 import {
   ChevronRight,
   Clock3,
+  Download,
+  Loader2,
   MessagesSquare,
   UserX,
   Users,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+
+const CARD_EXPORT = { minWidth: 360, pixelRatio: 3 } as const
+const LIST_EXPORT = { minWidth: 720, pixelRatio: 3 } as const
 
 type WrapTopContactsProps = {
   analytics: WrapAnalytics
@@ -34,8 +41,6 @@ export function WrapTopContacts({ analytics, onSelect }: WrapTopContactsProps) {
     return null
   }
 
-  const max = Math.max(...topContacts.map((c) => c.analytics.totalMessages), 1)
-
   return (
     <section className="flex flex-col gap-4">
       <header className="text-start">
@@ -52,6 +57,7 @@ export function WrapTopContacts({ analytics, onSelect }: WrapTopContactsProps) {
           title="Recently active"
           description="Most messages in the last 90 days"
           icon={Clock3}
+          exportName="recently-active-contacts"
           chats={recent}
           onSelect={onSelect}
         />
@@ -59,6 +65,7 @@ export function WrapTopContacts({ analytics, onSelect }: WrapTopContactsProps) {
           title="Faded friendships"
           description="Talked a lot before, quiet in the last 90 days"
           icon={UserX}
+          exportName="faded-friendships"
           chats={faded}
           onSelect={onSelect}
         />
@@ -66,36 +73,48 @@ export function WrapTopContacts({ analytics, onSelect }: WrapTopContactsProps) {
           title="Top groups"
           description="Group chats by lifetime volume"
           icon={MessagesSquare}
+          exportName="top-groups"
           chats={groups}
           onSelect={onSelect}
         />
       </div>
 
       {topContacts.length > 0 ? (
-        <>
-          {/* chart card commented in file — keep list */}
-          <div className="overflow-hidden rounded-xl bg-card shadow-[0_16px_48px_-20px] shadow-foreground/45 ring-1 ring-foreground/15 dark:shadow-foreground/25">
-            <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-2.5">
-              <Users className="size-3.5 text-muted-foreground" aria-hidden />
-              <p className="text-[0.65rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-                Top {topContacts.length} contacts
-              </p>
-            </div>
-            <ul className="divide-y divide-border/50">
-              {topContacts.map((chat, index) => (
-                <ContactRow
-                  key={chat.chatId}
-                  chat={chat}
-                  index={index}
-                  max={max}
-                  onSelect={onSelect}
-                />
-              ))}
-            </ul>
-          </div>
-        </>
+        <TopContactsList chats={topContacts} onSelect={onSelect} />
       ) : null}
     </section>
+  )
+}
+
+function IconExportButton({
+  title,
+  exporting,
+  onExport,
+}: {
+  title: string
+  exporting: boolean
+  onExport: () => void
+}) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon-xs"
+      data-export-ignore
+      disabled={exporting}
+      onClick={(e) => {
+        e.stopPropagation()
+        onExport()
+      }}
+      aria-label={`Export ${title}`}
+      className="shrink-0"
+    >
+      {exporting ? (
+        <Loader2 className="animate-spin" />
+      ) : (
+        <Download />
+      )}
+    </Button>
   )
 }
 
@@ -103,30 +122,42 @@ function InsightListCard({
   title,
   description,
   icon: Icon,
+  exportName,
   chats,
   onSelect,
 }: {
   title: string
   description: string
   icon: LucideIcon
+  exportName: string
   chats: ChatResult[]
   onSelect: (chatId: number) => void
 }) {
+  const { ref, exporting, exportPng } = useDomExport<HTMLDivElement>(CARD_EXPORT)
+
   if (chats.length === 0) return null
 
   const max = Math.max(...chats.map((c) => c.analytics.totalMessages), 1)
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+    <div
+      ref={ref}
+      className="flex flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10"
+    >
       <div className="flex items-start gap-2 border-b border-border/60 px-3 py-2.5">
         <Icon
           className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
           aria-hidden
         />
-        <div className="min-w-0 text-start">
+        <div className="min-w-0 flex-1 text-start">
           <p className="text-sm font-semibold tracking-tight">{title}</p>
           <p className="text-[0.65rem] text-muted-foreground">{description}</p>
         </div>
+        <IconExportButton
+          title={title}
+          exporting={exporting}
+          onExport={() => void exportPng(`${exportName}.png`)}
+        />
       </div>
       <ul className="divide-y divide-border/50">
         {chats.map((chat, index) => {
@@ -177,6 +208,48 @@ function InsightListCard({
             </li>
           )
         })}
+      </ul>
+    </div>
+  )
+}
+
+function TopContactsList({
+  chats,
+  onSelect,
+}: {
+  chats: ChatResult[]
+  onSelect: (chatId: number) => void
+}) {
+  const { ref, exporting, exportPng } = useDomExport<HTMLDivElement>(LIST_EXPORT)
+  const max = Math.max(...chats.map((c) => c.analytics.totalMessages), 1)
+  const title = `Top ${chats.length} contacts`
+
+  return (
+    <div
+      ref={ref}
+      className="overflow-hidden rounded-xl bg-card shadow-[0_16px_48px_-20px] shadow-foreground/45 ring-1 ring-foreground/15 dark:shadow-foreground/25"
+    >
+      <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-2.5">
+        <Users className="size-3.5 text-muted-foreground" aria-hidden />
+        <p className="min-w-0 flex-1 text-[0.65rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+          {title}
+        </p>
+        <IconExportButton
+          title={title}
+          exporting={exporting}
+          onExport={() => void exportPng("top-contacts.png")}
+        />
+      </div>
+      <ul className="divide-y divide-border/50">
+        {chats.map((chat, index) => (
+          <ContactRow
+            key={chat.chatId}
+            chat={chat}
+            index={index}
+            max={max}
+            onSelect={onSelect}
+          />
+        ))}
       </ul>
     </div>
   )
