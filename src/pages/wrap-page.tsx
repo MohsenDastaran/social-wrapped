@@ -113,7 +113,7 @@ export function WrapPage() {
         />
       ) : wrap.analytics.chats.length > 0 ? (
         <p className="rounded-xl bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground ring-1 ring-border/50">
-          Select a contact above to see their charts.
+          Select a contact above to see their analytics.
         </p>
       ) : null}
     </div>
