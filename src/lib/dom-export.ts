@@ -21,6 +21,12 @@ export type DomExportOptions = {
    * `[data-export-ignore]` is always hidden.
    */
   excludeSelector?: string
+  /**
+   * `chart` — ECharts snapshots + small swatches + text (default).
+   * `dom` — full HTML paint for list/cards (bars, borders, header fills, icons).
+   * @default "chart"
+   */
+  captureMode?: "chart" | "dom"
 }
 
 type StyleSnapshot = {
@@ -51,9 +57,13 @@ export async function elementToPngBlob(
   const minWidth = options.minWidth ?? 720
   const pixelRatio = options.pixelRatio ?? 3
 
+  const captureMode = options.captureMode ?? "chart"
   const layoutRestore = await expandForExport(element, minWidth)
   const hidden = hideExcluded(element, options.excludeSelector)
-  const canvasSwaps = await swapCanvasesForImages(element, pixelRatio)
+  const canvasSwaps =
+    captureMode === "chart"
+      ? await swapCanvasesForImages(element, pixelRatio)
+      : []
 
   try {
     await nextFrame()
@@ -71,7 +81,8 @@ export async function elementToPngBlob(
       width,
       height,
       pixelRatio,
-      backgroundColor
+      backgroundColor,
+      captureMode
     )
 
     const blob = await dataUrlToBlob(dataUrl)
@@ -174,7 +185,11 @@ function resizeEchartsIn(root: HTMLElement) {
 
 // ── Hide / canvas swap ───────────────────────────────────────────────────────
 
-type HiddenNode = { el: HTMLElement; visibility: string }
+type HiddenNode = {
+  el: HTMLElement
+  visibility: string
+  display: string
+}
 type CanvasSwap = {
   canvas: HTMLCanvasElement
   img: HTMLImageElement
@@ -190,14 +205,18 @@ function hideExcluded(
     : "[data-export-ignore]"
   return [...root.querySelectorAll<HTMLElement>(selector)].map((el) => {
     const visibility = el.style.visibility
+    const display = el.style.display
+    // Collapse ignored controls so the export matches the card without a hole.
     el.style.visibility = "hidden"
-    return { el, visibility }
+    el.style.display = "none"
+    return { el, visibility, display }
   })
 }
 
 function restoreHidden(hidden: HiddenNode[]) {
-  for (const { el, visibility } of hidden) {
+  for (const { el, visibility, display } of hidden) {
     el.style.visibility = visibility
+    el.style.display = display
   }
 }
 
@@ -312,13 +331,15 @@ function resolveBackground(
 /**
  * Paint the card from live layout: chart snapshot images, then HTML overlays
  * (titles, legends, swatches). Avoids fragile SVG foreignObject for legends.
+ * `dom` mode paints full HTML (bars, borders, icons) for list-style cards.
  */
 async function renderElementComposite(
   element: HTMLElement,
   width: number,
   height: number,
   pixelRatio: number,
-  backgroundColor: string
+  backgroundColor: string,
+  captureMode: "chart" | "dom"
 ): Promise<string> {
   const canvas = document.createElement("canvas")
   canvas.width = Math.round(width * pixelRatio)
@@ -327,30 +348,62 @@ async function renderElementComposite(
   if (!ctx) throw new Error("Canvas unsupported")
   ctx.scale(pixelRatio, pixelRatio)
 
+  const rootRadius = parseCssRadius(
+    getComputedStyle(element).borderRadius,
+    width,
+    height
+  )
+
+  ctx.save()
+  roundRect(ctx, 0, 0, width, height, rootRadius || 12)
+  ctx.clip()
+
   ctx.fillStyle = backgroundColor
-  roundRect(ctx, 0, 0, width, height, 12)
   ctx.fill()
 
   const root = element.getBoundingClientRect()
 
-  // Chart snapshots first (under legends).
-  for (const img of element.querySelectorAll("img")) {
-    if (!img.complete || img.naturalWidth === 0) continue
-    if (isExportIgnored(img)) continue
-    const r = img.getBoundingClientRect()
-    if (r.width < 1 || r.height < 1) continue
-    ctx.drawImage(
-      img,
-      r.left - root.left,
-      r.top - root.top,
-      Math.max(r.width, 1),
-      Math.max(r.height, 1)
-    )
+  if (captureMode === "dom") {
+    paintDomSurfaces(ctx, element, root)
+    await paintSvgIcons(ctx, element, root)
+    paintTextOverlays(ctx, element, root)
+  } else {
+    // Chart snapshots first (under legends).
+    for (const img of element.querySelectorAll("img")) {
+      if (!img.complete || img.naturalWidth === 0) continue
+      if (isExportIgnored(img)) continue
+      const r = img.getBoundingClientRect()
+      if (r.width < 1 || r.height < 1) continue
+      ctx.drawImage(
+        img,
+        r.left - root.left,
+        r.top - root.top,
+        Math.max(r.width, 1),
+        Math.max(r.height, 1)
+      )
+    }
+    paintHtmlOverlays(ctx, element, root)
   }
 
-  paintHtmlOverlays(ctx, element, root)
+  ctx.restore()
+
+  // Thin outline so ring/edge still reads after clip.
+  const ring = ringStrokeFromStyle(getComputedStyle(element))
+  if (ring) {
+    ctx.strokeStyle = ring
+    ctx.lineWidth = 1
+    roundRect(ctx, 0.5, 0.5, width - 1, height - 1, rootRadius || 12)
+    ctx.stroke()
+  }
 
   return canvas.toDataURL("image/png")
+}
+
+function ringStrokeFromStyle(cs: CSSStyleDeclaration): string | null {
+  const shadow = cs.boxShadow
+  if (!shadow || shadow === "none") return null
+  const match = shadow.match(/rgba?\([^)]+\)|hsla?\([^)]+\)|#[0-9a-fA-F]{3,8}/i)
+  return match ? cssColorToRgb(match[0]!) : null
 }
 
 function isExportIgnored(el: Element): boolean {
@@ -365,6 +418,168 @@ function isHidden(el: HTMLElement, cs: CSSStyleDeclaration): boolean {
   if (Number.parseFloat(cs.opacity || "1") === 0) return true
   if (el.style.visibility === "hidden") return true
   return false
+}
+
+/** Full DOM surfaces: backgrounds (any size) + borders, tree order. */
+function paintDomSurfaces(
+  ctx: CanvasRenderingContext2D,
+  element: HTMLElement,
+  root: DOMRect
+) {
+  for (const el of element.querySelectorAll<HTMLElement>("*")) {
+    if (el.tagName === "IMG" || el.tagName === "CANVAS" || el.tagName === "SVG") {
+      continue
+    }
+    if (el.closest("[data-export-ignore]")) continue
+
+    const cs = getComputedStyle(el)
+    if (isHidden(el, cs)) continue
+
+    const r = el.getBoundingClientRect()
+    if (r.width < 1 || r.height < 1) continue
+
+    const x = r.left - root.left
+    const y = r.top - root.top
+    const alpha = Number.parseFloat(cs.opacity || "1")
+    const radius = parseCssRadius(cs.borderRadius, r.width, r.height)
+
+    const fill = solidFillFromStyle(cs)
+    if (fill) {
+      ctx.save()
+      ctx.globalAlpha = Number.isFinite(alpha) ? alpha : 1
+      ctx.fillStyle = fill
+      roundRect(ctx, x, y, r.width, r.height, radius)
+      ctx.fill()
+      ctx.restore()
+    }
+
+    paintBorders(ctx, cs, x, y, r.width, r.height, radius, alpha)
+  }
+}
+
+function paintBorders(
+  ctx: CanvasRenderingContext2D,
+  cs: CSSStyleDeclaration,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radius: number,
+  alpha: number
+) {
+  const sides: Array<{
+    width: number
+    color: string
+    draw: () => void
+  }> = [
+    {
+      width: Number.parseFloat(cs.borderTopWidth) || 0,
+      color: cs.borderTopColor,
+      draw: () => {
+        ctx.beginPath()
+        ctx.moveTo(x + radius, y + 0.5)
+        ctx.lineTo(x + w - radius, y + 0.5)
+        ctx.stroke()
+      },
+    },
+    {
+      width: Number.parseFloat(cs.borderRightWidth) || 0,
+      color: cs.borderRightColor,
+      draw: () => {
+        ctx.beginPath()
+        ctx.moveTo(x + w - 0.5, y + radius)
+        ctx.lineTo(x + w - 0.5, y + h - radius)
+        ctx.stroke()
+      },
+    },
+    {
+      width: Number.parseFloat(cs.borderBottomWidth) || 0,
+      color: cs.borderBottomColor,
+      draw: () => {
+        ctx.beginPath()
+        ctx.moveTo(x + radius, y + h - 0.5)
+        ctx.lineTo(x + w - radius, y + h - 0.5)
+        ctx.stroke()
+      },
+    },
+    {
+      width: Number.parseFloat(cs.borderLeftWidth) || 0,
+      color: cs.borderLeftColor,
+      draw: () => {
+        ctx.beginPath()
+        ctx.moveTo(x + 0.5, y + radius)
+        ctx.lineTo(x + 0.5, y + h - radius)
+        ctx.stroke()
+      },
+    },
+  ]
+
+  for (const side of sides) {
+    if (side.width < 0.5) continue
+    const color = cssColorToRgb(side.color)
+    if (!color || color === "transparent") continue
+    ctx.save()
+    ctx.globalAlpha = Number.isFinite(alpha) ? alpha : 1
+    ctx.strokeStyle = color
+    ctx.lineWidth = side.width
+    side.draw()
+    ctx.restore()
+  }
+}
+
+async function paintSvgIcons(
+  ctx: CanvasRenderingContext2D,
+  element: HTMLElement,
+  root: DOMRect
+) {
+  const svgs = [...element.querySelectorAll("svg")].filter((svg) => {
+    if (svg.closest("[data-export-ignore]")) return false
+    const parent = svg.parentElement
+    if (parent) {
+      const cs = getComputedStyle(parent)
+      if (isHidden(parent, cs)) return false
+    }
+    const r = svg.getBoundingClientRect()
+    return r.width >= 1 && r.height >= 1
+  })
+
+  await Promise.all(
+    svgs.map(async (svg) => {
+      const r = svg.getBoundingClientRect()
+      const color = cssColorToRgb(getComputedStyle(svg).color)
+      const clone = svg.cloneNode(true) as SVGSVGElement
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg")
+      if (!clone.getAttribute("width")) {
+        clone.setAttribute("width", String(Math.max(r.width, 1)))
+      }
+      if (!clone.getAttribute("height")) {
+        clone.setAttribute("height", String(Math.max(r.height, 1)))
+      }
+      let xml = new XMLSerializer().serializeToString(clone)
+      if (color) {
+        xml = xml.replaceAll("currentColor", color)
+      }
+      const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`
+      const img = await loadImage(url)
+      if (!img) return
+      ctx.drawImage(
+        img,
+        r.left - root.left,
+        r.top - root.top,
+        Math.max(r.width, 1),
+        Math.max(r.height, 1)
+      )
+    })
+  )
+}
+
+function loadImage(url: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => resolve(null)
+    img.src = url
+  })
 }
 
 /** Draw HTML legends/labels/swatches from measured DOM boxes. */
@@ -407,7 +622,14 @@ function paintHtmlOverlays(
     ctx.restore()
   }
 
-  // Text (titles, descriptions, legend labels, summary stats).
+  paintTextOverlays(ctx, element, root)
+}
+
+function paintTextOverlays(
+  ctx: CanvasRenderingContext2D,
+  element: HTMLElement,
+  root: DOMRect
+) {
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
   let node: Node | null = walker.nextNode()
   while (node) {
@@ -426,6 +648,16 @@ function paintHtmlOverlays(
           ctx.fillStyle = cssColorToRgb(cs.color)
           ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
           ctx.textBaseline = "top"
+          // Clip to the parent box so truncated labels don't overflow.
+          const parentRect = parent.getBoundingClientRect()
+          ctx.beginPath()
+          ctx.rect(
+            parentRect.left - root.left,
+            parentRect.top - root.top,
+            parentRect.width,
+            parentRect.height
+          )
+          ctx.clip()
           ctx.fillText(text, r.left - root.left, r.top - root.top)
           ctx.restore()
         }

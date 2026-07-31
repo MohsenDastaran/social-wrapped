@@ -15,8 +15,16 @@ import {
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
-const CARD_EXPORT = { minWidth: 360, pixelRatio: 3 } as const
-const LIST_EXPORT = { minWidth: 720, pixelRatio: 3 } as const
+const CARD_EXPORT = {
+  minWidth: 1,
+  pixelRatio: 3,
+  captureMode: "dom",
+} as const
+const LIST_EXPORT = {
+  minWidth: 1,
+  pixelRatio: 3,
+  captureMode: "dom",
+} as const
 
 type WrapTopContactsProps = {
   analytics: WrapAnalytics
