@@ -41,10 +41,11 @@ echarts.use([
 ])
 
 /** Matches GitHub contribution squares (px). */
-const CELL = 11
-const CELL_GAP = 3
-const DAY_LABEL_W = 28
-const MONTH_LABEL_H = 20
+const CELL = 14
+const CELL_GAP = 4
+const CELL_RADIUS = 4
+const DAY_LABEL_W = 30
+const MONTH_LABEL_H = 22
 const CHART_PAD_BOTTOM = 4
 const WEEKS = 53
 
@@ -224,7 +225,7 @@ function HeatmapLegend() {
         {GITHUB_LIGHT.map((c) => (
           <span
             key={c}
-            className="size-2.5 rounded-sm"
+            className="size-3 rounded-[4px]"
             style={{ backgroundColor: c }}
           />
         ))}
@@ -233,7 +234,7 @@ function HeatmapLegend() {
         {GITHUB_DARK.map((c) => (
           <span
             key={c}
-            className="size-2.5 rounded-sm"
+            className="size-3 rounded-[4px]"
             style={{ backgroundColor: c }}
           />
         ))}
@@ -307,7 +308,7 @@ function HeatmapCanvas({
             color: colors[0],
             borderWidth: CELL_GAP,
             borderColor: surface,
-            borderRadius: 2,
+            borderRadius: CELL_RADIUS,
           },
           dayLabel: {
             firstDay: 0,
@@ -330,7 +331,7 @@ function HeatmapCanvas({
             coordinateSystem: "calendar",
             data,
             itemStyle: {
-              borderRadius: 2,
+              borderRadius: CELL_RADIUS,
               borderWidth: CELL_GAP,
               borderColor: surface,
             },
