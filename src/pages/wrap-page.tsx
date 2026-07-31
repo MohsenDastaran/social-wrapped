@@ -1,13 +1,15 @@
+import { useEffect, useState } from "react"
 import { ArrowLeft } from "lucide-react"
 import { Link, Navigate, useNavigate, useParams } from "react-router"
 
+import { AppLoader } from "@/components/app-loader"
 import { Button } from "@/components/ui/button"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import { WrapMainAnalytics } from "@/components/wrap/wrap-main-analytics"
 import { WrapShareMedia } from "@/components/wrap/wrap-share-media"
 import { WrapTopContacts } from "@/components/wrap/wrap-top-contacts"
 import { getPlatform } from "@/lib/platforms"
-import { getWrap, wrapChatPath } from "@/lib/wrap-history"
+import { getWrap, wrapChatPath, type WrapRecord } from "@/lib/wrap-history"
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -20,7 +22,33 @@ function formatDate(iso: string): string {
 export function WrapPage() {
   const { wrapId } = useParams<{ wrapId: string }>()
   const navigate = useNavigate()
-  const wrap = wrapId ? getWrap(wrapId) : undefined
+  const [wrap, setWrap] = useState<WrapRecord | null | undefined>(undefined)
+
+  useEffect(() => {
+    let cancelled = false
+    if (!wrapId) {
+      setWrap(null)
+      return
+    }
+    setWrap(undefined)
+    void getWrap(wrapId).then((next) => {
+      if (!cancelled) setWrap(next ?? null)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [wrapId])
+
+  if (wrap === undefined) {
+    return (
+      <AppLoader
+        size="md"
+        fullscreen={false}
+        label="Loading wrap"
+        className="flex min-h-[40vh] w-full"
+      />
+    )
+  }
 
   if (!wrap?.analytics?.account) {
     return <Navigate to="/history" replace />

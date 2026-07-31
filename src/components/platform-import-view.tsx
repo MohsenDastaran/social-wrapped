@@ -92,7 +92,7 @@ export function PlatformImportView({
     })
     try {
       const analytics = await importPlatformFile(platform, file, setProgress)
-      const wrap = saveWrap({
+      const wrap = await saveWrap({
         platformId: platform.id,
         fileName: file.name,
         analytics,

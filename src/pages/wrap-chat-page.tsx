@@ -1,13 +1,15 @@
+import { useEffect, useState } from "react"
 import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Hash } from "lucide-react"
 import { Link, Navigate, useParams } from "react-router"
 
+import { AppLoader } from "@/components/app-loader"
 import { Button } from "@/components/ui/button"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import { chatDisplay } from "@/components/wrap/chat-display"
 import { WrapChatAnalytics } from "@/components/wrap/wrap-chat-analytics"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { fmt } from "@/components/wrap/chart-theme"
-import { getWrap, wrapPath } from "@/lib/wrap-history"
+import { getWrap, wrapPath, type WrapRecord } from "@/lib/wrap-history"
 
 /** Per-contact analytics — `/wrap/:wrapId/chat/:chatId`. */
 export function WrapChatPage() {
@@ -15,8 +17,34 @@ export function WrapChatPage() {
     wrapId: string
     chatId: string
   }>()
-  const wrap = wrapId ? getWrap(wrapId) : undefined
   const chatId = chatIdParam != null ? Number(chatIdParam) : NaN
+  const [wrap, setWrap] = useState<WrapRecord | null | undefined>(undefined)
+
+  useEffect(() => {
+    let cancelled = false
+    if (!wrapId) {
+      setWrap(null)
+      return
+    }
+    setWrap(undefined)
+    void getWrap(wrapId).then((next) => {
+      if (!cancelled) setWrap(next ?? null)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [wrapId])
+
+  if (wrap === undefined) {
+    return (
+      <AppLoader
+        size="md"
+        fullscreen={false}
+        label="Loading chat"
+        className="flex min-h-[40vh] w-full"
+      />
+    )
+  }
 
   if (!wrap?.analytics?.account || !Number.isFinite(chatId)) {
     return <Navigate to="/history" replace />

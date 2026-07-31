@@ -1,10 +1,12 @@
+import { useEffect, useState } from "react"
 import { History } from "lucide-react"
 import { Link } from "react-router"
 
+import { AppLoader } from "@/components/app-loader"
 import { PlatformLogo } from "@/components/platform-logo"
 import { getPlatform } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
-import { listWraps, wrapPath } from "@/lib/wrap-history"
+import { listWraps, wrapPath, type WrapRecord } from "@/lib/wrap-history"
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -18,7 +20,28 @@ function formatCount(n: number): string {
 }
 
 export function HistoryPage() {
-  const wraps = listWraps()
+  const [wraps, setWraps] = useState<WrapRecord[] | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void listWraps().then((next) => {
+      if (!cancelled) setWraps(next)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (wraps === null) {
+    return (
+      <AppLoader
+        size="md"
+        fullscreen={false}
+        label="Loading history"
+        className="flex min-h-[40vh] w-full"
+      />
+    )
+  }
 
   if (wraps.length === 0) {
     return (
