@@ -1,6 +1,7 @@
 import { fmt } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import type { EmojiEntry } from "@/platform/analytics-types"
+import { withEmojiPresentation } from "@/lib/emoji"
 import { cn } from "@/lib/utils"
 
 type TopEmojisCardProps = {
@@ -36,13 +37,14 @@ export function TopEmojisCard({
       layout="flow"
       exportLines={items
         .slice(0, 5)
-        .map((e) => `${e.emoji} ${fmt(e.count)}`)}
+        .map((e) => `${withEmojiPresentation(e.emoji)} ${fmt(e.count)}`)}
       className={className}
     >
       <ol className="grid list-none grid-cols-3 gap-2 p-4 sm:grid-cols-4 md:grid-cols-6">
         {items.map((entry, index) => {
           const share = peak > 0 ? entry.count / peak : 0
           const isTop = index === 0
+          const glyph = withEmojiPresentation(entry.emoji)
           return (
             <li
               key={`${entry.emoji}-${index}`}
@@ -63,13 +65,13 @@ export function TopEmojisCard({
               </span>
               <span
                 className={cn(
-                  "leading-none",
+                  "leading-none [font-variant-emoji:emoji]",
                   isTop ? "text-4xl sm:text-[2.75rem]" : "text-3xl"
                 )}
                 role="img"
                 aria-label={`Rank ${index + 1}`}
               >
-                {entry.emoji}
+                {glyph}
               </span>
               <span className="font-heading text-xs font-semibold tabular-nums tracking-tight text-foreground">
                 {fmt(entry.count)}

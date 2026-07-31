@@ -10,6 +10,7 @@ import {
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import type { WrapAnalytics } from "@/platform/analytics-types"
+import { withEmojiPresentation } from "@/lib/emoji"
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -49,7 +50,7 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
   ]
 
   const reactionData = a.emojis.topReactions.slice(0, 10).map((e) => ({
-    name: e.emoji,
+    name: withEmojiPresentation(e.emoji),
     count: e.count,
   }))
 
