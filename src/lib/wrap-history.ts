@@ -159,6 +159,7 @@ function emptyAnalyticsResult(
     heatmap: { days: [] },
     activityOverTime: { daily: [], monthly: [], yearly: [], years: [] },
     keywords: { counts: {} },
+    editTypo: { totalEdits: 0, participants: [] },
   }
 }
 
@@ -196,6 +197,13 @@ function normalizeChat(c: ChatResult): ChatResult {
       contentMix: normalizeContentMix(c.analytics),
       keywords: {
         counts: c.analytics.keywords?.counts ?? {},
+      },
+      editTypo: {
+        totalEdits: c.analytics.editTypo?.totalEdits ?? 0,
+        participants: (c.analytics.editTypo?.participants ?? []).map((p) => ({
+          name: p.name,
+          edits: p.edits,
+        })),
       },
     },
   }
@@ -260,6 +268,13 @@ function expandAnalytics(raw: CompactAnalytics | WrapAnalytics): WrapAnalytics {
       contentMix: normalizeContentMix(raw.account),
       keywords: {
         counts: raw.account.keywords?.counts ?? {},
+      },
+      editTypo: {
+        totalEdits: raw.account.editTypo?.totalEdits ?? 0,
+        participants: (raw.account.editTypo?.participants ?? []).map((p) => ({
+          name: p.name,
+          edits: p.edits,
+        })),
       },
     },
     chats,

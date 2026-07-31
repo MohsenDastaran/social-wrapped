@@ -66,6 +66,13 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
       values: { count: p.count },
     }))
 
+  const editTypoRows = (a.editTypo?.participants ?? [])
+    .filter((p) => p.edits > 0)
+    .map((p) => ({
+      name: truncate(p.name, 18),
+      values: { edits: p.edits },
+    }))
+
   return (
     <section className="flex flex-col gap-4">
       <ActivityOverTimeChart
@@ -167,6 +174,21 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
             },
           ]}
           highlightLabel="Night owl"
+        />
+
+        <ComparisonKpiCard
+          title="Edited messages"
+          description={`${fmt(a.editTypo?.totalEdits ?? 0)} messages edited after sending`}
+          exportName={`chat-${chat.chatId}-edits`}
+          exportLines={(a.editTypo?.participants ?? []).map(
+            (p) => `${p.name} ${p.edits} edits`
+          )}
+          rows={editTypoRows}
+          metrics={[
+            { key: "edits", label: "Edits", accent: "violet" },
+          ]}
+          highlightKey="edits"
+          highlightLabel="Editor"
         />
       </div>
 

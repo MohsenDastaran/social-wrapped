@@ -149,6 +149,22 @@ export type KeywordStats = {
   counts: Record<string, [number, number]>
 }
 
+// ── Stat 20: Edit Counter ─────────────────────────────────────────────────────
+
+export type EditTypoParticipant = {
+  name: string
+  edits: number
+  /** Legacy; always 0 — asterisk typo counting was removed. */
+  typos?: number
+}
+
+export type EditTypoStats = {
+  totalEdits: number
+  /** Legacy; always 0. */
+  totalTypos?: number
+  participants: EditTypoParticipant[]
+}
+
 // ── Result types ──────────────────────────────────────────────────────────────
 
 export type AnalyticsResult = {
@@ -167,6 +183,8 @@ export type AnalyticsResult = {
   activityOverTime: ActivityTimeSeries
   /** Per-chat keyword index for Keyword Battle (empty on account-level). */
   keywords?: KeywordStats
+  /** Edited messages (Telegram `edited` field). */
+  editTypo?: EditTypoStats
 }
 
 export type ChatResult = {

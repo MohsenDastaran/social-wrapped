@@ -39,8 +39,7 @@ use serde_json::Value;
 
 use crate::analytics::collectors::{
     extract_emojis, is_pure_emoji_text, parse_telegram_date, text_has_url, AnalysisEngine,
-    ContentKind, MessageEvent, MessageKind,
-    ReactionEvent, WrapAnalytics,
+    ContentKind, MessageEvent, MessageKind, ReactionEvent, WrapAnalytics,
 };
 use crate::error::CoreError;
 
@@ -104,6 +103,9 @@ struct RawMessage {
     duration_seconds: Option<u32>,
     #[serde(default)]
     reactions: Vec<RawReaction>,
+    /// Present when the message was edited after sending (ISO date or other).
+    #[serde(default)]
+    edited: Option<Value>,
 }
 
 #[derive(Deserialize)]
@@ -387,6 +389,7 @@ where
             } else {
                 vec![]
             };
+            let is_edited = message_was_edited(&msg.edited);
             let emojis = if kind.is_text() {
                 extract_emojis(&plain_text)
             } else {
@@ -446,6 +449,7 @@ where
                 voice_duration_secs,
                 emojis,
                 reactions,
+                is_edited,
             };
 
             engine.feed(&ev);
@@ -577,6 +581,18 @@ fn value_to_plain_text(v: &Value) -> String {
             .collect::<Vec<_>>()
             .join(""),
         _ => String::new(),
+    }
+}
+
+/// Telegram Desktop sets `edited` to an ISO timestamp (sometimes bool/other).
+fn message_was_edited(edited: &Option<Value>) -> bool {
+    match edited {
+        None => false,
+        Some(Value::Null) => false,
+        Some(Value::Bool(b)) => *b,
+        Some(Value::String(s)) => !s.is_empty(),
+        Some(Value::Number(_)) => true,
+        Some(_) => true,
     }
 }
 

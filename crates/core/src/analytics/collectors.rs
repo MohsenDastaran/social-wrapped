@@ -21,6 +21,7 @@
 //! | Circadian rhythm + sleep |  4 |
 //! | Activity heatmap         |  5 |
 //! | Keyword battle (per chat)|  3 |
+//! | Edit counter             | 20 |
 
 use std::collections::HashMap;
 
@@ -218,6 +219,8 @@ pub struct MessageEvent {
     /// Base emoji characters extracted from the message text.
     pub emojis: Vec<String>,
     pub reactions: Vec<ReactionEvent>,
+    /// Telegram `edited` field was present (message was edited after send).
+    pub is_edited: bool,
 }
 
 // ── Output types ─────────────────────────────────────────────────────────────
@@ -419,6 +422,29 @@ pub struct KeywordStats {
     pub counts: HashMap<String, [u64; 2]>,
 }
 
+// stat 20 — edit counter (Telegram `edited` field)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditTypoParticipant {
+    pub name: String,
+    pub edits: u64,
+    /// Legacy field from when asterisk corrections were counted; always 0 now.
+    #[serde(default)]
+    pub typos: u64,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditTypoStats {
+    pub total_edits: u64,
+    /// Legacy field; always 0 now.
+    #[serde(default)]
+    pub total_typos: u64,
+    /// Participants with at least one edit, sorted by edits desc.
+    #[serde(default)]
+    pub participants: Vec<EditTypoParticipant>,
+}
+
 // ── Aggregate result types ────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -440,6 +466,9 @@ pub struct AnalyticsResult {
     /// Per-chat keyword index for Keyword Battle (empty on account-level).
     #[serde(default)]
     pub keywords: KeywordStats,
+    /// Edited messages (Telegram `edited` field).
+    #[serde(default)]
+    pub edit_typo: EditTypoStats,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -545,6 +574,9 @@ struct EngineState {
     // ── keyword battle (stat 3) — you vs them word counts ─────────────────
     /// word → (you, them)
     keywords: HashMap<String, (u64, u64)>,
+
+    // ── edits (stat 20) ───────────────────────────────────────────────────
+    edit_counts: HashMap<String, u64>,
 }
 
 impl EngineState {
@@ -575,6 +607,7 @@ impl EngineState {
             heatmap_days: HashMap::new(),
             activity_daily: HashMap::new(),
             keywords: HashMap::new(),
+            edit_counts: HashMap::new(),
         }
     }
 
@@ -600,6 +633,11 @@ impl EngineState {
         if ev.kind.is_text() && ev.char_count > 0 {
             *self.msg_chars.entry(sender.clone()).or_default() += ev.char_count as u64;
             *self.msg_char_counts.entry(sender.clone()).or_default() += 1;
+        }
+
+        // ── Edits (stat 20) ───────────────────────────────────────────────
+        if ev.is_edited {
+            *self.edit_counts.entry(sender.clone()).or_default() += 1;
         }
 
         // ── Response time ─────────────────────────────────────────────────
@@ -961,6 +999,9 @@ impl EngineState {
         // ── Keywords (you vs them) ────────────────────────────────────────
         let keywords = build_keyword_stats(self.keywords);
 
+        // ── Edits ─────────────────────────────────────────────────────────
+        let edit_typo = build_edit_stats(&self.edit_counts);
+
         AnalyticsResult {
             total_messages: total,
             sent_messages: self.sent_count,
@@ -976,6 +1017,7 @@ impl EngineState {
             heatmap,
             activity_over_time,
             keywords,
+            edit_typo,
         }
     }
 }
@@ -998,6 +1040,24 @@ fn build_keyword_stats(map: HashMap<String, (u64, u64)>) -> KeywordStats {
         counts.insert(word, [you, them]);
     }
     KeywordStats { counts }
+}
+
+fn build_edit_stats(edits: &HashMap<String, u64>) -> EditTypoStats {
+    let mut participants: Vec<EditTypoParticipant> = edits
+        .iter()
+        .filter(|(_, &count)| count > 0)
+        .map(|(name, &count)| EditTypoParticipant {
+            name: name.clone(),
+            edits: count,
+            typos: 0,
+        })
+        .collect();
+    participants.sort_by(|a, b| b.edits.cmp(&a.edits).then_with(|| a.name.cmp(&b.name)));
+    EditTypoStats {
+        total_edits: edits.values().sum(),
+        total_typos: 0,
+        participants,
+    }
 }
 
 /// Split message text into lowercased word tokens for Keyword Battle.
@@ -1539,7 +1599,29 @@ mod tests {
             voice_duration_secs: 0,
             emojis: vec![],
             reactions: vec![],
+            is_edited: false,
         }
+    }
+
+    #[test]
+    fn test_edit_counts() {
+        let mut engine = AnalysisEngine::new("Me".into(), None, "".into(), 0);
+        let mut edited = make_ev("Me", true, 1000, 10, "2024-01-01", MessageKind::Text, 5);
+        edited.is_edited = true;
+        let mut also = make_ev("Bob", false, 2000, 11, "2024-01-01", MessageKind::Text, 4);
+        also.is_edited = true;
+        let plain = make_ev("Bob", false, 3000, 11, "2024-01-01", MessageKind::Text, 3);
+        engine.feed(&edited);
+        engine.feed(&also);
+        engine.feed(&plain);
+        let wrap = engine.finish();
+        let chat = wrap.chats.first().expect("chat");
+        let stats = &chat.analytics.edit_typo;
+        assert_eq!(stats.total_edits, 2);
+        assert_eq!(stats.total_typos, 0);
+        let bob = stats.participants.iter().find(|p| p.name == "Bob").unwrap();
+        assert_eq!(bob.edits, 1);
+        assert_eq!(bob.typos, 0);
     }
 
     #[test]

@@ -11,7 +11,7 @@ Product surfaces today:
 | Surface                                     | What users see                                                                                                                                                                                                                                                         |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Main wrap** (`/wrap/:id`)                 | KPI strip (sent / received / total / chats), activity over time (line/bar), sent-vs-received pie, **message types** pie, top emojis (overall), circadian polar clock, GitHub-style heatmap, top-contacts insight cards (recent / faded / groups + top 20 DMs)          |
-| **Contact page** (`/wrap/:id/chat/:chatId`) | Same title treatment with sky highlight, sent/received/total KPIs, activity over time, **keyword battle** (search a word → you-vs-them donut), message types, **comparison KPI cards** (response time, message length, starts/closes, late night), top emojis with **All / [you] / [contact]** name toggle, circadian, heatmap |
+| **Contact page** (`/wrap/:id/chat/:chatId`) | Same title treatment with sky highlight, sent/received/total KPIs, activity over time, **keyword battle** (search a word → you-vs-them donut), message types, **comparison KPI cards** (response time, message length, starts/closes, late night, **edited messages**), top emojis with **All / [you] / [contact]** name toggle, circadian, heatmap |
 
 PNG export is available on chart/KPI cards. Pie charts show % on hover; legend % appears only when a slice/legend item is selected. Tiny pie labels (<5%) are hidden to avoid overlap.
 
@@ -120,9 +120,10 @@ Statistics that dissect the relationship dynamics and chatting habits.
 
 - **Description:** Finding group members who read the messages but haven't typed a single word in months.
 
-### 20. Edit & Typo Counter 🆕
+### - ✅ 20. Edit & Typo Counter 🆕
 
 - **Description:** (Specific to Telegram) Counting the number of edited messages or messages sent with an asterisk (*) to correct a typo.
+- **Shipped:** Contact-page comparison KPI (“Edited messages”) — Telegram `edited` timestamps per participant. Asterisk `*correction` follow-ups are not counted. Re-import required for older wraps.
 
 ---
 
