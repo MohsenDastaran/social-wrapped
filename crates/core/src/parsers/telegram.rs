@@ -74,6 +74,9 @@ struct RawChat {
     id: i64,
     #[serde(default)]
     name: Option<String>,
+    /// Telegram: `personal_chat`, `private_group`, `private_supergroup`, …
+    #[serde(default, rename = "type")]
+    chat_type: Option<String>,
     #[serde(default)]
     messages: Vec<RawMessage>,
 }
@@ -342,10 +345,8 @@ where
         } else {
             chat_index as i64
         };
-        let chat_name = chat
-            .name
-            .clone()
-            .unwrap_or_else(|| format!("Chat {}", chat_index + 1));
+        let (chat_name, is_deleted) = resolve_chat_name(chat.name.as_deref(), chat_id);
+        let (is_group, is_channel) = classify_telegram_chat_type(chat.chat_type.as_deref());
 
         for msg in &chat.messages {
             processed += 1;
@@ -425,6 +426,9 @@ where
             let ev = MessageEvent {
                 chat_id,
                 chat_name: chat_name.clone(),
+                is_group,
+                is_channel,
+                is_deleted,
                 is_mine,
                 sender_name: from_name.clone(),
                 timestamp_secs,
@@ -505,6 +509,35 @@ fn wrap_analytics_to_summary(a: WrapAnalytics) -> TelegramExportSummary {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/// Display name + deleted flag. Deleted / missing names become `Chat {id}`.
+fn resolve_chat_name(name: Option<&str>, chat_id: i64) -> (String, bool) {
+    let trimmed = name.map(str::trim).filter(|s| !s.is_empty());
+    let is_deleted = match trimmed {
+        None => true,
+        Some(s) => s.eq_ignore_ascii_case("Deleted Account"),
+    };
+    if is_deleted {
+        (format!("Chat {chat_id}"), true)
+    } else {
+        (trimmed.unwrap().to_string(), false)
+    }
+}
+
+/// `(is_group, is_channel)` from Telegram's chat `type` string.
+fn classify_telegram_chat_type(chat_type: Option<&str>) -> (bool, bool) {
+    let Some(t) = chat_type.map(|s| s.to_ascii_lowercase()) else {
+        return (false, false);
+    };
+    if t.contains("channel") {
+        (false, true)
+    } else if t.contains("supergroup") || t.contains("group") {
+        (true, false)
+    } else {
+        // personal_chat, saved_messages, unknown → personal DM
+        (false, false)
+    }
+}
 
 /// Maps Telegram's `media_type` string to a [`MessageKind`].
 fn message_kind(media_type: &Option<String>) -> MessageKind {

@@ -164,6 +164,10 @@ export type ChatResult = {
   chatId: number
   chatName: string
   analytics: AnalyticsResult
+  /** Group / supergroup (not a 1:1 DM). */
+  isGroup?: boolean
+  /** Deleted peer or missing name — show deleted-account UI. */
+  isDeleted?: boolean
 }
 
 export type WrapAnalytics = {
@@ -174,5 +178,14 @@ export type WrapAnalytics = {
   chatCount: number
   sampleMessages: string[]
   account: AnalyticsResult
+  /** Deduped union of insight lists for drill-down lookup. */
   chats: ChatResult[]
+  /** Top 20 personal chats by lifetime volume. */
+  topContacts?: ChatResult[]
+  /** Top 5 personal chats by last-90-day volume. */
+  recentContacts?: ChatResult[]
+  /** Top 5 personal chats active before, quiet in last 90 days. */
+  fadedContacts?: ChatResult[]
+  /** Top 5 group chats by lifetime volume. */
+  topGroups?: ChatResult[]
 }

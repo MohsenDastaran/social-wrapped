@@ -189,6 +189,12 @@ pub struct MessageEvent {
     /// Platform-assigned chat id (used to split per-chat analytics).
     pub chat_id: i64,
     pub chat_name: String,
+    /// Group / supergroup (not a 1:1 DM).
+    pub is_group: bool,
+    /// Channel — excluded from contact and group insight lists.
+    pub is_channel: bool,
+    /// Peer account deleted or name missing.
+    pub is_deleted: bool,
     /// `true` when the account owner sent this message.
     pub is_mine: bool,
     /// Display name of the sender.
@@ -426,6 +432,12 @@ pub struct ChatResult {
     pub chat_id: i64,
     pub chat_name: String,
     pub analytics: AnalyticsResult,
+    /// Group / supergroup chat.
+    #[serde(default)]
+    pub is_group: bool,
+    /// Deleted peer (or missing name) — UI should label clearly.
+    #[serde(default)]
+    pub is_deleted: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -438,8 +450,20 @@ pub struct WrapAnalytics {
     pub chat_count: usize,
     pub sample_messages: Vec<String>,
     pub account: AnalyticsResult,
-    /// Top 25 chats by total message volume.
+    /// Deduped union of insight lists — used for drill-down lookup by `chatId`.
     pub chats: Vec<ChatResult>,
+    /// Top 20 personal chats by lifetime volume.
+    #[serde(default)]
+    pub top_contacts: Vec<ChatResult>,
+    /// Top 5 personal chats by message volume in the last 90 days.
+    #[serde(default)]
+    pub recent_contacts: Vec<ChatResult>,
+    /// Top 5 personal chats that were active before, quiet in the last 90 days.
+    #[serde(default)]
+    pub faded_contacts: Vec<ChatResult>,
+    /// Top 5 group chats by lifetime volume.
+    #[serde(default)]
+    pub top_groups: Vec<ChatResult>,
 }
 
 // ── Internal collector state ──────────────────────────────────────────────────
@@ -983,6 +1007,15 @@ fn build_activity_time_series(
 
 // ── Analysis engine ───────────────────────────────────────────────────────────
 
+/// Per-chat metadata + collector state held while streaming messages.
+struct ChatSlot {
+    name: String,
+    is_group: bool,
+    is_channel: bool,
+    is_deleted: bool,
+    state: EngineState,
+}
+
 /// Drives all ten collectors in a single sequential message pass.
 ///
 /// Feed events in timestamp order via [`AnalysisEngine::feed`]; call
@@ -990,7 +1023,7 @@ fn build_activity_time_series(
 /// [`WrapAnalytics`].
 pub struct AnalysisEngine {
     account: EngineState,
-    chats: HashMap<i64, (String, EngineState)>,
+    chats: HashMap<i64, ChatSlot>,
     display_name: String,
     username: Option<String>,
     about_preview: String,
@@ -1022,11 +1055,14 @@ impl AnalysisEngine {
         self.account.feed(ev);
 
         // Per-chat
-        let (_, state) = self
-            .chats
-            .entry(ev.chat_id)
-            .or_insert_with(|| (ev.chat_name.clone(), EngineState::new()));
-        state.feed(ev);
+        let slot = self.chats.entry(ev.chat_id).or_insert_with(|| ChatSlot {
+            name: ev.chat_name.clone(),
+            is_group: ev.is_group,
+            is_channel: ev.is_channel,
+            is_deleted: ev.is_deleted,
+            state: EngineState::new(),
+        });
+        slot.state.feed(ev);
 
         // Sample messages (first 5 non-empty text snippets)
         if self.sample_messages.len() < 5 && ev.kind.is_text() && ev.char_count > 0 {
@@ -1047,25 +1083,138 @@ impl AnalysisEngine {
         let chat_count = self.chats.len();
         let account = self.account.build();
 
-        // Build per-chat results, cap to top 25 by total volume
-        let mut chat_results: Vec<ChatResult> = self
+        struct Ranked {
+            result: ChatResult,
+            is_channel: bool,
+            recent90: u64,
+            /// All messages before the recent 90-day window (not only the prior 90 days).
+            before_recent: u64,
+        }
+
+        let mut ranked: Vec<Ranked> = self
             .chats
             .into_iter()
-            .map(|(chat_id, (chat_name, state))| {
-                let analytics = state.build();
-                ChatResult {
-                    chat_id,
-                    chat_name,
-                    analytics,
+            .map(|(chat_id, slot)| {
+                let is_channel = slot.is_channel;
+                let analytics = slot.state.build();
+                Ranked {
+                    result: ChatResult {
+                        chat_id,
+                        chat_name: slot.name,
+                        analytics,
+                        is_group: slot.is_group,
+                        is_deleted: slot.is_deleted,
+                    },
+                    is_channel,
+                    recent90: 0,
+                    before_recent: 0,
                 }
             })
             .collect();
-        chat_results.sort_by(|a, b| {
-            b.analytics
+
+        // Anchor "today" to the newest activity day across the export.
+        let anchor = ranked
+            .iter()
+            .flat_map(|r| r.result.analytics.activity_over_time.daily.iter())
+            .map(|p| p.period.as_str())
+            .filter(|d| d.len() >= 10)
+            .max()
+            .map(str::to_string);
+
+        if let Some(anchor) = anchor.as_deref() {
+            if let Some(recent_start) = date_minus_days(anchor, 89) {
+                // recent: [recent_start, anchor] (90 days inclusive)
+                // before: everything earlier (so faded chats from years ago still qualify)
+                for r in &mut ranked {
+                    let (recent, before) = sum_recent_and_before(
+                        &r.result.analytics.activity_over_time.daily,
+                        &recent_start,
+                        anchor,
+                    );
+                    r.recent90 = recent;
+                    r.before_recent = before;
+                }
+            }
+        }
+
+        let mut personal: Vec<&Ranked> = ranked
+            .iter()
+            .filter(|r| !r.result.is_group && !r.is_channel)
+            .collect();
+
+        personal.sort_by(|a, b| {
+            b.result
+                .analytics
                 .total_messages
-                .cmp(&a.analytics.total_messages)
+                .cmp(&a.result.analytics.total_messages)
         });
-        chat_results.truncate(25);
+        let top_contacts: Vec<ChatResult> = personal
+            .iter()
+            .take(20)
+            .map(|r| r.result.clone())
+            .collect();
+
+        personal.sort_by(|a, b| b.recent90.cmp(&a.recent90));
+        let recent_contacts: Vec<ChatResult> = personal
+            .iter()
+            .filter(|r| r.recent90 > 0)
+            .take(5)
+            .map(|r| r.result.clone())
+            .collect();
+
+        let mut faded_pool: Vec<&Ranked> = personal
+            .iter()
+            .copied()
+            .filter(|r| {
+                if r.result.is_deleted {
+                    return false;
+                }
+                // Meaningful history before the last 90 days.
+                if r.before_recent < 50 {
+                    return false;
+                }
+                // "Very little" recently: under 5% of earlier volume, floor 10.
+                let threshold = (r.before_recent / 20).max(10);
+                r.recent90 < threshold
+            })
+            .collect();
+        faded_pool.sort_by(|a, b| b.before_recent.cmp(&a.before_recent));
+        let faded_contacts: Vec<ChatResult> = faded_pool
+            .iter()
+            .take(5)
+            .map(|r| r.result.clone())
+            .collect();
+
+        // Prefer faded over recent when both match — drop faded ids from recent.
+        let faded_ids: std::collections::HashSet<i64> =
+            faded_contacts.iter().map(|c| c.chat_id).collect();
+        let recent_contacts: Vec<ChatResult> = recent_contacts
+            .into_iter()
+            .filter(|c| !faded_ids.contains(&c.chat_id))
+            .collect();
+
+        let mut groups: Vec<&Ranked> = ranked
+            .iter()
+            .filter(|r| r.result.is_group && !r.is_channel)
+            .collect();
+        groups.sort_by(|a, b| {
+            b.result
+                .analytics
+                .total_messages
+                .cmp(&a.result.analytics.total_messages)
+        });
+        let top_groups: Vec<ChatResult> = groups
+            .iter()
+            .take(5)
+            .map(|r| r.result.clone())
+            .collect();
+
+        let chats = merge_unique_chats([
+            &top_contacts,
+            &recent_contacts,
+            &faded_contacts,
+            &top_groups,
+        ]);
 
         WrapAnalytics {
             display_name: self.display_name,
@@ -1075,12 +1224,96 @@ impl AnalysisEngine {
             chat_count,
             sample_messages: self.sample_messages,
             account,
-            chats: chat_results,
+            chats,
+            top_contacts,
+            recent_contacts,
+            faded_contacts,
+            top_groups,
         }
     }
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
+
+fn merge_unique_chats(lists: [&[ChatResult]; 4]) -> Vec<ChatResult> {
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for list in lists {
+        for chat in list {
+            if seen.insert(chat.chat_id) {
+                out.push(chat.clone());
+            }
+        }
+    }
+    out
+}
+
+/// Sum messages in the recent 90-day window and everything before it.
+fn sum_recent_and_before(
+    daily: &[ActivityPoint],
+    recent_start: &str,
+    anchor: &str,
+) -> (u64, u64) {
+    let mut recent = 0u64;
+    let mut before = 0u64;
+    for p in daily {
+        let d = p.period.as_str();
+        if d.len() < 10 {
+            continue;
+        }
+        let n = p.sent + p.received;
+        if d >= recent_start && d <= anchor {
+            recent += n;
+        } else if d < recent_start {
+            before += n;
+        }
+    }
+    (recent, before)
+}
+
+/// Subtract `days` from a `YYYY-MM-DD` date (proleptic Gregorian).
+fn date_minus_days(date: &str, days: i64) -> Option<String> {
+    if date.len() < 10 {
+        return None;
+    }
+    let y: i32 = date[0..4].parse().ok()?;
+    let m: u32 = date[5..7].parse().ok()?;
+    let d: u32 = date[8..10].parse().ok()?;
+    let ordinal = days_from_civil(y, m, d)? - days;
+    let (yy, mm, dd) = civil_from_days(ordinal)?;
+    Some(format!("{yy:04}-{mm:02}-{dd:02}"))
+}
+
+/// Howard Hinnant's civil_from_days / days_from_civil (UTC date arithmetic).
+fn days_from_civil(y: i32, m: u32, d: u32) -> Option<i64> {
+    if !(1..=12).contains(&m) || !(1..=31).contains(&d) {
+        return None;
+    }
+    let y = y as i64;
+    let m = m as i64;
+    let d = d as i64;
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = if y >= 0 { y } else { y - 399 } / 400;
+    let yoe = y - era * 400;
+    let m_adj = if m > 2 { m - 3 } else { m + 9 };
+    let doy = (153 * m_adj + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    Some(era * 146_097 + doe - 719_468)
+}
+
+fn civil_from_days(z: i64) -> Option<(i32, u32, u32)> {
+    let z = z + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    Some((y as i32, m as u32, d as u32))
+}
 
 /// Estimates sleep window as the longest consecutive ≤30%-of-avg quiet stretch.
 fn estimate_sleep_window(hourly: &[u64; 24]) -> (u8, u8) {
@@ -1210,6 +1443,9 @@ mod tests {
         MessageEvent {
             chat_id: 1,
             chat_name: "Test Chat".into(),
+            is_group: false,
+            is_channel: false,
+            is_deleted: false,
             is_mine,
             sender_name: sender.into(),
             timestamp_secs: ts,
@@ -1344,6 +1580,55 @@ mod tests {
         assert_eq!(y2023.received, 1);
 
         assert_eq!(ts.years, vec![2024, 2023]);
+    }
+
+    #[test]
+    fn test_faded_contacts_use_history_before_recent_window() {
+        // Anchor will be 2024-06-01. Recent window ≈ 2024-03-04..=2024-06-01.
+        // Alice: busy in 2023, quiet recently → faded.
+        // Bob: busy recently → recent, not faded.
+        let mut engine = AnalysisEngine::new("Me".into(), None, "".into(), 0);
+        for i in 0..60 {
+            let mut ev = make_ev("Me", true, 1000 + i, 10, "2023-05-01", MessageKind::Text, 3);
+            ev.chat_id = 10;
+            ev.chat_name = "Alice".into();
+            engine.feed(&ev);
+        }
+        for i in 0..5 {
+            let mut ev = make_ev("Me", true, 5000 + i, 10, "2024-05-15", MessageKind::Text, 3);
+            ev.chat_id = 10;
+            ev.chat_name = "Alice".into();
+            engine.feed(&ev);
+        }
+        for i in 0..40 {
+            let mut ev = make_ev("Me", true, 8000 + i, 10, "2024-05-20", MessageKind::Text, 3);
+            ev.chat_id = 20;
+            ev.chat_name = "Bob".into();
+            engine.feed(&ev);
+        }
+        // Keep the export anchor recent.
+        let mut anchor = make_ev("Me", true, 9000, 10, "2024-06-01", MessageKind::Text, 3);
+        anchor.chat_id = 20;
+        anchor.chat_name = "Bob".into();
+        engine.feed(&anchor);
+
+        let result = engine.finish();
+        assert!(
+            result
+                .faded_contacts
+                .iter()
+                .any(|c| c.chat_id == 10 && c.chat_name == "Alice"),
+            "Alice should be faded; got {:?}",
+            result
+                .faded_contacts
+                .iter()
+                .map(|c| (&c.chat_name, c.chat_id))
+                .collect::<Vec<_>>()
+        );
+        assert!(
+            !result.faded_contacts.iter().any(|c| c.chat_id == 20),
+            "Bob should not be faded"
+        );
     }
 
     #[test]

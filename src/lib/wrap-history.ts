@@ -1,6 +1,7 @@
 import type { PlatformId } from "@/lib/platforms"
 import type {
   AnalyticsResult,
+  ChatResult,
   ContentMixStats,
   WrapAnalytics,
 } from "@/platform/analytics-types"
@@ -74,6 +75,10 @@ function analyticsFromLegacyStats(stats: TelegramExportStats): WrapAnalytics {
     sampleMessages: stats.sampleMessages ?? [],
     account: emptyAnalyticsResult(stats.sentMessages, stats.receivedMessages),
     chats: [],
+    topContacts: [],
+    recentContacts: [],
+    fadedContacts: [],
+    topGroups: [],
   }
 }
 
@@ -84,6 +89,25 @@ type StoredWrap = Partial<WrapRecord> & {
   createdAt?: string
   stats?: TelegramExportStats
   analytics?: WrapAnalytics
+}
+
+function normalizeChat(c: ChatResult): ChatResult {
+  return {
+    ...c,
+    isGroup: c.isGroup ?? false,
+    isDeleted: c.isDeleted ?? false,
+    analytics: {
+      ...c.analytics,
+      activityOverTime:
+        c.analytics.activityOverTime ?? {
+          daily: [],
+          monthly: [],
+          yearly: [],
+          years: [],
+        },
+      contentMix: normalizeContentMix(c.analytics),
+    },
+  }
 }
 
 function normalizeWrap(raw: StoredWrap): WrapRecord | null {
@@ -113,20 +137,11 @@ function normalizeWrap(raw: StoredWrap): WrapRecord | null {
         },
       contentMix: normalizeContentMix(analytics.account),
     },
-    chats: analytics.chats.map((c) => ({
-      ...c,
-      analytics: {
-        ...c.analytics,
-        activityOverTime:
-          c.analytics.activityOverTime ?? {
-            daily: [],
-            monthly: [],
-            yearly: [],
-            years: [],
-          },
-        contentMix: normalizeContentMix(c.analytics),
-      },
-    })),
+    chats: (analytics.chats ?? []).map(normalizeChat),
+    topContacts: (analytics.topContacts ?? []).map(normalizeChat),
+    recentContacts: (analytics.recentContacts ?? []).map(normalizeChat),
+    fadedContacts: (analytics.fadedContacts ?? []).map(normalizeChat),
+    topGroups: (analytics.topGroups ?? []).map(normalizeChat),
   }
 
   const stats = raw.stats ?? analyticsToStats(analytics)
@@ -188,13 +203,11 @@ export function saveWrap(input: {
         ...input.analytics.account,
         contentMix: normalizeContentMix(input.analytics.account),
       },
-      chats: (input.analytics.chats ?? []).map((c) => ({
-        ...c,
-        analytics: {
-          ...c.analytics,
-          contentMix: normalizeContentMix(c.analytics),
-        },
-      })),
+      chats: (input.analytics.chats ?? []).map(normalizeChat),
+      topContacts: (input.analytics.topContacts ?? []).map(normalizeChat),
+      recentContacts: (input.analytics.recentContacts ?? []).map(normalizeChat),
+      fadedContacts: (input.analytics.fadedContacts ?? []).map(normalizeChat),
+      topGroups: (input.analytics.topGroups ?? []).map(normalizeChat),
     },
     stats: analyticsToStats(input.analytics),
   }

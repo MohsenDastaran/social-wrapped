@@ -1,9 +1,9 @@
-import { EChartsAreaChart } from "@/components/evilcharts/charts/echarts-area-chart"
 import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-time-chart"
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 import { ContactVolumeBarChart } from "@/components/wrap/charts/contact-volume-bar-chart"
 import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
 import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
+import { chatDisplay } from "@/components/wrap/chat-display"
 import {
   fmt,
   fmtResponseTime,
@@ -16,6 +16,7 @@ import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import type { ChatResult } from "@/platform/analytics-types"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { EChartsAreaChart } from "@/components/evilcharts/charts/echarts-area-chart"
 
 type WrapChatAnalyticsProps = {
   chat: ChatResult
@@ -25,6 +26,7 @@ type WrapChatAnalyticsProps = {
 /** Per-contact analytics — chart-first drill-down from Top contacts. */
 export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
   const a = chat.analytics
+  const display = chatDisplay(chat)
 
   const lengthData = a.messageLength.participants.map((p) => ({
     name: truncate(p.name, 12),
@@ -61,9 +63,15 @@ export function WrapChatAnalytics({ chat, onClose }: WrapChatAnalyticsProps) {
       <header className="flex items-start justify-between gap-3 text-start">
         <div className="min-w-0">
           <h2 className="truncate font-heading text-xl font-semibold tracking-tight">
-            {chat.chatName}
+            {display.title}
+            {display.isDeleted ? (
+              <span className="ms-2 inline-flex align-middle rounded-md bg-muted px-2 py-0.5 text-[0.65rem] font-semibold tracking-wide text-muted-foreground uppercase">
+                Deleted
+              </span>
+            ) : null}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
+            {display.subtitle ? `${display.subtitle} · ` : null}
             {fmt(a.totalMessages)} messages · sent {fmt(a.sentMessages)} ·
             received {fmt(a.receivedMessages)}
           </p>

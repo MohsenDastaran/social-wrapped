@@ -101,7 +101,7 @@ export function WrapPage() {
       <WrapMainAnalytics analytics={wrap.analytics} />
 
       <WrapTopContacts
-        chats={wrap.analytics.chats}
+        analytics={wrap.analytics}
         selectedChatId={selectedChatId}
         onSelect={setSelectedChatId}
       />
