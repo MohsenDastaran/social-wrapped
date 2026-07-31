@@ -1,5 +1,6 @@
 import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-time-chart"
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
+import { GhostingChart } from "@/components/wrap/charts/ghosting-chart"
 import { KeywordBattleChart } from "@/components/wrap/charts/keyword-battle-chart"
 import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
 import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
@@ -90,6 +91,18 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
       <KeywordBattleChart
         keywords={a.keywords}
         exportName={`chat-${chat.chatId}-keyword-battle`}
+        youLabel="You"
+        themLabel={
+          display.isDeleted
+            ? (display.subtitle ?? "Them")
+            : truncate(chat.chatName || display.title, 14)
+        }
+      />
+
+      <GhostingChart
+        ghosting={a.ghosting}
+        exportName={`chat-${chat.chatId}-ghosting`}
+        selfName={selfName}
         youLabel="You"
         themLabel={
           display.isDeleted

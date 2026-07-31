@@ -10,8 +10,8 @@ Product surfaces today:
 
 | Surface                                     | What users see                                                                                                                                                                                                                                                         |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Main wrap** (`/wrap/:id`)                 | KPI strip (sent / received / total / chats), activity over time (line/bar), sent-vs-received pie, **message types** pie, top emojis (overall), circadian polar clock, GitHub-style heatmap, top-contacts insight cards (recent / faded / groups + top 20 DMs)          |
-| **Contact page** (`/wrap/:id/chat/:chatId`) | Same title treatment with sky highlight, sent/received/total KPIs, activity over time, **keyword battle** (search a word → you-vs-them donut), message types, **comparison KPI cards** (response time, message length, starts/closes, late night, **edited messages**), top emojis with **All / [you] / [contact]** name toggle, circadian, heatmap |
+| **Main wrap** (`/wrap/:id`)                 | KPI strip (sent / received / total / chats), activity over time (line/bar), sent-vs-received pie, **message types** pie, top emojis (overall), circadian polar clock, GitHub-style heatmap, top-contacts insight cards (recent / faded / **ghosting experts** / groups + top 20 DMs)          |
+| **Contact page** (`/wrap/:id/chat/:chatId`) | Same title treatment with sky highlight, sent/received/total KPIs, activity over time, **keyword battle**, **ghosting index** donut, message types, **comparison KPI cards** (response time, message length, starts/closes, late night, **edited messages**), top emojis with **All / [you] / [contact]** name toggle, circadian, heatmap |
 
 PNG export is available on chart/KPI cards. Pie charts show % on hover; legend % appears only when a slice/legend item is selected. Tiny pie labels (<5%) are hidden to avoid overlap.
 
@@ -168,9 +168,10 @@ Essential statistics required for any dashboard, making raw data comprehensible.
 - **Description:** A bar chart showing the total size and count of photos, videos, files (PDF/Zip), and shared locations, separated by the sender.
 - **Shipped:** Count-by-type pie via message types. Missing: byte sizes, locations, per-sender media split.
 
-### 29. The Ghosting Index 🆕
+### - ✅ 29. The Ghosting Index 🆕
 
 - **Description:** Counting the number of messages sent as the final message in a thread that received no reply for more than 24 hours.
+- **Shipped:** Main wrap — **Ghosting experts** top-5 contacts (they left you hanging ≥ 24h). Contact page — you-vs-them donut. Re-import required for older wraps.
 
 ### 30. Custom Slang/Profanity Meter 🆕
 

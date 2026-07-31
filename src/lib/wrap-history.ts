@@ -30,17 +30,23 @@ export type WrapRecord = {
  */
 type CompactAnalytics = Omit<
   WrapAnalytics,
-  "topContacts" | "recentContacts" | "fadedContacts" | "topGroups"
+  | "topContacts"
+  | "recentContacts"
+  | "fadedContacts"
+  | "topGroups"
+  | "topGhosters"
 > & {
   topContactIds?: number[]
   recentContactIds?: number[]
   fadedContactIds?: number[]
   topGroupIds?: number[]
+  topGhosterIds?: number[]
   /** Legacy full objects — expanded then dropped on next save. */
   topContacts?: ChatResult[]
   recentContacts?: ChatResult[]
   fadedContacts?: ChatResult[]
   topGroups?: ChatResult[]
+  topGhosters?: ChatResult[]
 }
 
 type StoredWrap = {
@@ -160,6 +166,7 @@ function emptyAnalyticsResult(
     activityOverTime: { daily: [], monthly: [], yearly: [], years: [] },
     keywords: { counts: {} },
     editTypo: { totalEdits: 0, participants: [] },
+    ghosting: { total: 0, participants: [] },
   }
 }
 
@@ -177,6 +184,16 @@ function analyticsFromLegacyStats(stats: TelegramExportStats): WrapAnalytics {
     recentContacts: [],
     fadedContacts: [],
     topGroups: [],
+    topGhosters: [],
+  }
+}
+
+function normalizeGhosting(
+  g: AnalyticsResult["ghosting"] | undefined
+): NonNullable<AnalyticsResult["ghosting"]> {
+  return {
+    total: g?.total ?? 0,
+    participants: g?.participants ?? [],
   }
 }
 
@@ -205,6 +222,7 @@ function normalizeChat(c: ChatResult): ChatResult {
           edits: p.edits,
         })),
       },
+      ghosting: normalizeGhosting(c.analytics.ghosting),
     },
   }
 }
@@ -239,6 +257,7 @@ function expandAnalytics(raw: CompactAnalytics | WrapAnalytics): WrapAnalytics {
     raw.recentContacts,
     raw.fadedContacts,
     raw.topGroups,
+    raw.topGhosters,
   ]) {
     for (const chat of list ?? []) {
       if (!byId.has(chat.chatId)) {
@@ -276,6 +295,7 @@ function expandAnalytics(raw: CompactAnalytics | WrapAnalytics): WrapAnalytics {
           edits: p.edits,
         })),
       },
+      ghosting: normalizeGhosting(raw.account.ghosting),
     },
     chats,
     topContacts: resolveChatList(
@@ -294,6 +314,11 @@ function expandAnalytics(raw: CompactAnalytics | WrapAnalytics): WrapAnalytics {
       raw.fadedContacts
     ),
     topGroups: resolveChatList(compact.topGroupIds, byId, raw.topGroups),
+    topGhosters: resolveChatList(
+      compact.topGhosterIds,
+      byId,
+      raw.topGhosters
+    ),
   }
 }
 
@@ -303,6 +328,7 @@ function compactAnalytics(analytics: WrapAnalytics): CompactAnalytics {
     recentContacts,
     fadedContacts,
     topGroups,
+    topGhosters,
     ...rest
   } = analytics
 
@@ -310,7 +336,13 @@ function compactAnalytics(analytics: WrapAnalytics): CompactAnalytics {
   for (const chat of analytics.chats ?? []) {
     byId.set(chat.chatId, normalizeChat(chat))
   }
-  for (const list of [topContacts, recentContacts, fadedContacts, topGroups]) {
+  for (const list of [
+    topContacts,
+    recentContacts,
+    fadedContacts,
+    topGroups,
+    topGhosters,
+  ]) {
     for (const chat of list ?? []) {
       if (!byId.has(chat.chatId)) {
         byId.set(chat.chatId, normalizeChat(chat))
@@ -325,6 +357,7 @@ function compactAnalytics(analytics: WrapAnalytics): CompactAnalytics {
     recentContactIds: chatIds(recentContacts),
     fadedContactIds: chatIds(fadedContacts),
     topGroupIds: chatIds(topGroups),
+    topGhosterIds: chatIds(topGhosters),
   }
 }
 
@@ -487,6 +520,7 @@ export async function saveWrap(input: {
       recentContacts: (input.analytics.recentContacts ?? []).map(normalizeChat),
       fadedContacts: (input.analytics.fadedContacts ?? []).map(normalizeChat),
       topGroups: (input.analytics.topGroups ?? []).map(normalizeChat),
+      topGhosters: (input.analytics.topGhosters ?? []).map(normalizeChat),
     }),
     stats: analyticsToStats(input.analytics),
   }

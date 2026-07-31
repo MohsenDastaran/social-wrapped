@@ -165,6 +165,14 @@ export type EditTypoStats = {
   participants: EditTypoParticipant[]
 }
 
+// ── Stat 29: Ghosting Index ───────────────────────────────────────────────────
+
+export type GhostingStats = {
+  total: number
+  /** Times each person left a message unanswered ≥ 24h. */
+  participants: ParticipantCount[]
+}
+
 // ── Result types ──────────────────────────────────────────────────────────────
 
 export type AnalyticsResult = {
@@ -185,6 +193,8 @@ export type AnalyticsResult = {
   keywords?: KeywordStats
   /** Edited messages (Telegram `edited` field). */
   editTypo?: EditTypoStats
+  /** Ghosting: left unanswered ≥ 24h. */
+  ghosting?: GhostingStats
 }
 
 export type ChatResult = {
@@ -215,4 +225,6 @@ export type WrapAnalytics = {
   fadedContacts?: ChatResult[]
   /** Top 5 group chats by lifetime volume. */
   topGroups?: ChatResult[]
+  /** Top 5 personal contacts by ghosting (they left you hanging ≥ 24h). */
+  topGhosters?: ChatResult[]
 }

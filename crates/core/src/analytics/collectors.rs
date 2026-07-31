@@ -22,6 +22,7 @@
 //! | Activity heatmap         |  5 |
 //! | Keyword battle (per chat)|  3 |
 //! | Edit counter             | 20 |
+//! | Ghosting index           | 29 |
 
 use std::collections::HashMap;
 
@@ -445,6 +446,16 @@ pub struct EditTypoStats {
     pub participants: Vec<EditTypoParticipant>,
 }
 
+// stat 29 — ghosting index (left unanswered ≥ 24h)
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GhostingStats {
+    pub total: u64,
+    /// Times each person left someone hanging ≥ 24h (sorted by count desc).
+    #[serde(default)]
+    pub participants: Vec<ParticipantCount>,
+}
+
 // ── Aggregate result types ────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -469,6 +480,9 @@ pub struct AnalyticsResult {
     /// Edited messages (Telegram `edited` field).
     #[serde(default)]
     pub edit_typo: EditTypoStats,
+    /// Times each participant ghosted (left a message unanswered ≥ 24h).
+    #[serde(default)]
+    pub ghosting: GhostingStats,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -509,6 +523,9 @@ pub struct WrapAnalytics {
     /// Top 5 group chats by lifetime volume.
     #[serde(default)]
     pub top_groups: Vec<ChatResult>,
+    /// Top 5 personal contacts by ghosting score (they left you hanging ≥ 24h).
+    #[serde(default)]
+    pub top_ghosters: Vec<ChatResult>,
 }
 
 // ── Internal collector state ──────────────────────────────────────────────────
@@ -521,6 +538,9 @@ const MAX_KEYWORDS: usize = 8_000;
 
 /// Gaps ≥ this many seconds are treated as a new conversation.
 const INITIATOR_GAP_SECS: i64 = 6 * 3_600; // 6 h
+
+/// No reply for this long after a message counts as ghosting.
+const GHOST_GAP_SECS: i64 = 24 * 3_600; // 24 h
 
 /// Top emojis stored per sender.
 const TOP_EMOJIS: usize = 10;
@@ -577,6 +597,13 @@ struct EngineState {
 
     // ── edits (stat 20) ───────────────────────────────────────────────────
     edit_counts: HashMap<String, u64>,
+
+    // ── ghosting (stat 29) ────────────────────────────────────────────────
+    ghost_counts: HashMap<String, u64>,
+    ghost_last_ts: i64,
+    ghost_last_sender: String,
+    /// Last sender different from `ghost_last_sender` (for double-text after a gap).
+    ghost_last_other: String,
 }
 
 impl EngineState {
@@ -608,6 +635,10 @@ impl EngineState {
             activity_daily: HashMap::new(),
             keywords: HashMap::new(),
             edit_counts: HashMap::new(),
+            ghost_counts: HashMap::new(),
+            ghost_last_ts: 0,
+            ghost_last_sender: String::new(),
+            ghost_last_other: String::new(),
         }
     }
 
@@ -638,6 +669,30 @@ impl EngineState {
         // ── Edits (stat 20) ───────────────────────────────────────────────
         if ev.is_edited {
             *self.edit_counts.entry(sender.clone()).or_default() += 1;
+        }
+
+        // ── Ghosting (stat 29) ────────────────────────────────────────────
+        if ev.timestamp_secs > 0 {
+            if !self.ghost_last_sender.is_empty() && self.ghost_last_ts > 0 {
+                let gap = ev.timestamp_secs - self.ghost_last_ts;
+                if gap >= GHOST_GAP_SECS {
+                    if *sender != self.ghost_last_sender {
+                        // Current sender finally replied after leaving them hanging.
+                        *self.ghost_counts.entry(sender.clone()).or_default() += 1;
+                    } else if !self.ghost_last_other.is_empty() {
+                        // Same person double-texted — the other party ghosted them.
+                        *self
+                            .ghost_counts
+                            .entry(self.ghost_last_other.clone())
+                            .or_default() += 1;
+                    }
+                }
+            }
+            if !self.ghost_last_sender.is_empty() && *sender != self.ghost_last_sender {
+                self.ghost_last_other = self.ghost_last_sender.clone();
+            }
+            self.ghost_last_ts = ev.timestamp_secs;
+            self.ghost_last_sender = sender.clone();
         }
 
         // ── Response time ─────────────────────────────────────────────────
@@ -1002,6 +1057,9 @@ impl EngineState {
         // ── Edits ─────────────────────────────────────────────────────────
         let edit_typo = build_edit_stats(&self.edit_counts);
 
+        // ── Ghosting ──────────────────────────────────────────────────────
+        let ghosting = build_ghosting_stats(&self.ghost_counts);
+
         AnalyticsResult {
             total_messages: total,
             sent_messages: self.sent_count,
@@ -1018,6 +1076,7 @@ impl EngineState {
             activity_over_time,
             keywords,
             edit_typo,
+            ghosting,
         }
     }
 }
@@ -1056,6 +1115,28 @@ fn build_edit_stats(edits: &HashMap<String, u64>) -> EditTypoStats {
     EditTypoStats {
         total_edits: edits.values().sum(),
         total_typos: 0,
+        participants,
+    }
+}
+
+fn build_ghosting_stats(counts: &HashMap<String, u64>) -> GhostingStats {
+    let total: u64 = counts.values().sum();
+    let mut participants: Vec<ParticipantCount> = counts
+        .iter()
+        .filter(|(_, &c)| c > 0)
+        .map(|(name, &count)| ParticipantCount {
+            name: name.clone(),
+            count,
+            pct: if total > 0 {
+                count as f64 * 100.0 / total as f64
+            } else {
+                0.0
+            },
+        })
+        .collect();
+    participants.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.name.cmp(&b.name)));
+    GhostingStats {
+        total,
         participants,
     }
 }
@@ -1350,11 +1431,34 @@ impl AnalysisEngine {
             .map(|r| r.result.clone())
             .collect();
 
-        let chats = merge_unique_chats([
-            &top_contacts,
-            &recent_contacts,
-            &faded_contacts,
-            &top_groups,
+        let self_name = self.display_name.as_str();
+        let mut ghost_pool: Vec<&Ranked> = personal
+            .iter()
+            .copied()
+            .filter(|r| contact_ghost_score(&r.result, self_name) > 0)
+            .collect();
+        ghost_pool.sort_by(|a, b| {
+            contact_ghost_score(&b.result, self_name)
+                .cmp(&contact_ghost_score(&a.result, self_name))
+                .then_with(|| {
+                    b.result
+                        .analytics
+                        .total_messages
+                        .cmp(&a.result.analytics.total_messages)
+                })
+        });
+        let top_ghosters: Vec<ChatResult> = ghost_pool
+            .iter()
+            .take(5)
+            .map(|r| r.result.clone())
+            .collect();
+
+        let chats = merge_unique_chats(&[
+            top_contacts.as_slice(),
+            recent_contacts.as_slice(),
+            faded_contacts.as_slice(),
+            top_groups.as_slice(),
+            top_ghosters.as_slice(),
         ]);
 
         WrapAnalytics {
@@ -1370,17 +1474,38 @@ impl AnalysisEngine {
             recent_contacts,
             faded_contacts,
             top_groups,
+            top_ghosters,
         }
     }
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 
-fn merge_unique_chats(lists: [&[ChatResult]; 4]) -> Vec<ChatResult> {
+/// How often non-self participants in this chat left someone hanging ≥ 24h.
+fn contact_ghost_score(chat: &ChatResult, self_name: &str) -> u64 {
+    chat.analytics
+        .ghosting
+        .participants
+        .iter()
+        .filter(|p| !sender_names_match(&p.name, self_name))
+        .map(|p| p.count)
+        .sum()
+}
+
+fn sender_names_match(a: &str, b: &str) -> bool {
+    let x = a.trim().to_lowercase();
+    let y = b.trim().to_lowercase();
+    if x.is_empty() || y.is_empty() {
+        return false;
+    }
+    x == y || x.contains(&y) || y.contains(&x)
+}
+
+fn merge_unique_chats(lists: &[&[ChatResult]]) -> Vec<ChatResult> {
     let mut seen = std::collections::HashSet::new();
     let mut out = Vec::new();
     for list in lists {
-        for chat in list {
+        for chat in *list {
             if seen.insert(chat.chat_id) {
                 out.push(chat.clone());
             }
@@ -1622,6 +1747,68 @@ mod tests {
         let bob = stats.participants.iter().find(|p| p.name == "Bob").unwrap();
         assert_eq!(bob.edits, 1);
         assert_eq!(bob.typos, 0);
+    }
+
+    #[test]
+    fn test_ghosting_index() {
+        let mut engine = AnalysisEngine::new("Me".into(), None, "".into(), 0);
+        // Me messages, Bob replies after 25h → Bob ghosted Me.
+        let a = make_ev("Me", true, 1_000, 10, "2024-01-01", MessageKind::Text, 5);
+        let b = make_ev(
+            "Bob",
+            false,
+            1_000 + 25 * 3_600,
+            11,
+            "2024-01-02",
+            MessageKind::Text,
+            5,
+        );
+        // Me replies after another 25h → Me ghosted Bob.
+        let c = make_ev(
+            "Me",
+            true,
+            1_000 + 50 * 3_600,
+            12,
+            "2024-01-03",
+            MessageKind::Text,
+            5,
+        );
+        // Quick Me→Bob, then Bob double-texts after 25h → Me ghosted (didn't reply).
+        let d = make_ev(
+            "Bob",
+            false,
+            1_000 + 51 * 3_600,
+            13,
+            "2024-01-03",
+            MessageKind::Text,
+            5,
+        );
+        let e = make_ev(
+            "Bob",
+            false,
+            1_000 + 76 * 3_600,
+            14,
+            "2024-01-04",
+            MessageKind::Text,
+            5,
+        );
+        engine.feed(&a);
+        engine.feed(&b);
+        engine.feed(&c);
+        engine.feed(&d);
+        engine.feed(&e);
+        let wrap = engine.finish();
+        let chat = wrap.chats.first().expect("chat");
+        let g = &chat.analytics.ghosting;
+        // Bob slow-reply + Me slow-reply + Me via Bob double-text
+        assert_eq!(g.total, 3);
+        let bob = g.participants.iter().find(|p| p.name == "Bob").unwrap();
+        let me = g.participants.iter().find(|p| p.name == "Me").unwrap();
+        assert_eq!(bob.count, 1);
+        assert_eq!(me.count, 2);
+        // Top ghosters rank contacts by non-self score → Bob.
+        assert_eq!(wrap.top_ghosters.len(), 1);
+        assert_eq!(wrap.top_ghosters[0].chat_name, "Test Chat");
     }
 
     #[test]

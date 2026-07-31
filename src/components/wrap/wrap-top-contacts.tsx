@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Clock3,
   Download,
+  Ghost,
   Loader2,
   MessagesSquare,
   UserX,
@@ -31,20 +32,48 @@ type WrapTopContactsProps = {
   onSelect: (chatId: number) => void
 }
 
-/** Contact insight cards — top DMs, recent, faded, and groups. */
+function namesMatch(a: string, b: string): boolean {
+  const x = a.trim().toLowerCase()
+  const y = b.trim().toLowerCase()
+  if (!x || !y) return false
+  return x === y || x.includes(y) || y.includes(x)
+}
+
+/** How often this contact left messages unanswered ≥ 24h (not you). */
+export function contactGhostScore(
+  chat: ChatResult,
+  selfName: string
+): number {
+  return (chat.analytics.ghosting?.participants ?? [])
+    .filter((p) => !namesMatch(p.name, selfName))
+    .reduce((sum, p) => sum + p.count, 0)
+}
+
+/** Contact insight cards — top DMs, recent, faded, ghosters, and groups. */
 export function WrapTopContacts({ analytics, onSelect }: WrapTopContactsProps) {
+  const selfName = analytics.displayName
   const topContacts = analytics.topContacts?.length
     ? analytics.topContacts
     : analytics.chats.filter((c) => !c.isGroup).slice(0, 20)
   const recent = analytics.recentContacts ?? []
   const faded = analytics.fadedContacts ?? []
   const groups = analytics.topGroups ?? []
+  const ghosters = analytics.topGhosters?.length
+    ? analytics.topGhosters
+    : [...analytics.chats]
+        .filter((c) => !c.isGroup && contactGhostScore(c, selfName) > 0)
+        .sort(
+          (a, b) =>
+            contactGhostScore(b, selfName) - contactGhostScore(a, selfName)
+        )
+        .slice(0, 5)
 
   if (
     topContacts.length === 0 &&
     recent.length === 0 &&
     faded.length === 0 &&
-    groups.length === 0
+    groups.length === 0 &&
+    ghosters.length === 0
   ) {
     return null
   }
@@ -60,7 +89,7 @@ export function WrapTopContacts({ analytics, onSelect }: WrapTopContactsProps) {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <InsightListCard
           title="Recently active"
           description="Most messages in the last 90 days"
@@ -76,6 +105,16 @@ export function WrapTopContacts({ analytics, onSelect }: WrapTopContactsProps) {
           exportName="faded-friendships"
           chats={faded}
           onSelect={onSelect}
+        />
+        <InsightListCard
+          title="Ghosting experts"
+          description="Left your messages unanswered for 24h+"
+          icon={Ghost}
+          exportName="ghosting-experts"
+          chats={ghosters}
+          onSelect={onSelect}
+          valueFn={(chat) => contactGhostScore(chat, selfName)}
+          barClassName="bg-rose-600 dark:bg-rose-400"
         />
         <InsightListCard
           title="Top groups"
@@ -133,6 +172,8 @@ function InsightListCard({
   exportName,
   chats,
   onSelect,
+  valueFn,
+  barClassName = "bg-teal-600 dark:bg-teal-400",
 }: {
   title: string
   description: string
@@ -140,12 +181,18 @@ function InsightListCard({
   exportName: string
   chats: ChatResult[]
   onSelect: (chatId: number) => void
+  /** Override the numeric metric (default: total messages). */
+  valueFn?: (chat: ChatResult) => number
+  barClassName?: string
 }) {
   const { ref, exporting, exportPng } = useDomExport<HTMLDivElement>(CARD_EXPORT)
 
   if (chats.length === 0) return null
 
-  const max = Math.max(...chats.map((c) => c.analytics.totalMessages), 1)
+  const values = chats.map((c) =>
+    valueFn ? valueFn(c) : c.analytics.totalMessages
+  )
+  const max = Math.max(...values, 1)
 
   return (
     <div
@@ -170,7 +217,8 @@ function InsightListCard({
       <ul className="divide-y divide-border/50">
         {chats.map((chat, index) => {
           const d = chatDisplay(chat)
-          const pct = (chat.analytics.totalMessages / max) * 100
+          const value = values[index] ?? 0
+          const pct = (value / max) * 100
           return (
             <li key={chat.chatId}>
               <button
@@ -192,7 +240,7 @@ function InsightListCard({
                       {d.title}
                     </p>
                     <p className="shrink-0 text-[0.65rem] text-muted-foreground tabular-nums">
-                      {fmt(chat.analytics.totalMessages)}
+                      {fmt(value)}
                     </p>
                   </div>
                   {d.subtitle ? (
@@ -207,7 +255,7 @@ function InsightListCard({
                   ) : null}
                   <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-teal-600 dark:bg-teal-400"
+                      className={cn("h-full rounded-full", barClassName)}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
