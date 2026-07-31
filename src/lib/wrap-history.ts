@@ -158,6 +158,7 @@ function emptyAnalyticsResult(
     },
     heatmap: { days: [] },
     activityOverTime: { daily: [], monthly: [], yearly: [], years: [] },
+    keywords: { counts: {} },
   }
 }
 
@@ -193,6 +194,9 @@ function normalizeChat(c: ChatResult): ChatResult {
           years: [],
         },
       contentMix: normalizeContentMix(c.analytics),
+      keywords: {
+        counts: c.analytics.keywords?.counts ?? {},
+      },
     },
   }
 }
@@ -254,6 +258,9 @@ function expandAnalytics(raw: CompactAnalytics | WrapAnalytics): WrapAnalytics {
           years: [],
         },
       contentMix: normalizeContentMix(raw.account),
+      keywords: {
+        counts: raw.account.keywords?.counts ?? {},
+      },
     },
     chats,
     topContacts: resolveChatList(

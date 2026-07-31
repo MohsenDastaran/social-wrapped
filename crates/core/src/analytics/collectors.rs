@@ -3,7 +3,7 @@
 //! ## Design
 //!
 //! Parsers produce normalized [`MessageEvent`]s one at a time.  The
-//! [`AnalysisEngine`] drives **all ten collectors** in a single sequential
+//! [`AnalysisEngine`] drives **all collectors** in a single sequential
 //! pass, keeping memory flat even for 300 MB+ exports.  Results are bundled
 //! into [`WrapAnalytics`] which is serialised to camelCase JSON for the WASM
 //! layer.
@@ -20,6 +20,7 @@
 //! | Top emojis & reactions   |  9 |
 //! | Circadian rhythm + sleep |  4 |
 //! | Activity heatmap         |  5 |
+//! | Keyword battle (per chat)|  3 |
 
 use std::collections::HashMap;
 
@@ -210,6 +211,8 @@ pub struct MessageEvent {
     pub content_kind: ContentKind,
     /// UTF-8 character count (0 for non-text messages).
     pub char_count: usize,
+    /// Lowercased word tokens from text (empty for non-text). Used for keyword battle.
+    pub words: Vec<String>,
     /// Seconds of audio/video content (0 if not applicable).
     pub voice_duration_secs: u32,
     /// Base emoji characters extracted from the message text.
@@ -406,6 +409,16 @@ pub struct ActivityTimeSeries {
     pub years: Vec<u16>,
 }
 
+// stat 3 — keyword battle (you vs them word counts)
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KeywordStats {
+    /// Lowercased word → `[you, them]` occurrence counts.
+    /// Capped at [`MAX_KEYWORDS`] most frequent words to bound storage.
+    #[serde(default)]
+    pub counts: HashMap<String, [u64; 2]>,
+}
+
 // ── Aggregate result types ────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -424,6 +437,9 @@ pub struct AnalyticsResult {
     pub circadian: CircadianStats,
     pub heatmap: HeatmapStats,
     pub activity_over_time: ActivityTimeSeries,
+    /// Per-chat keyword index for Keyword Battle (empty on account-level).
+    #[serde(default)]
+    pub keywords: KeywordStats,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -470,6 +486,9 @@ pub struct WrapAnalytics {
 
 /// Maximum response-time samples stored per participant to cap memory.
 const MAX_DELAY_SAMPLES: usize = 10_000;
+
+/// Cap keyword index size per chat so wrap JSON stays bounded.
+const MAX_KEYWORDS: usize = 8_000;
 
 /// Gaps ≥ this many seconds are treated as a new conversation.
 const INITIATOR_GAP_SECS: i64 = 6 * 3_600; // 6 h
@@ -522,6 +541,10 @@ struct EngineState {
     // ── activity over time (sent vs received) ─────────────────────────────
     /// `"YYYY-MM-DD"` → (sent, received)
     activity_daily: HashMap<String, (u64, u64)>,
+
+    // ── keyword battle (stat 3) — you vs them word counts ─────────────────
+    /// word → (you, them)
+    keywords: HashMap<String, (u64, u64)>,
 }
 
 impl EngineState {
@@ -551,6 +574,7 @@ impl EngineState {
             circ_by_sender: HashMap::new(),
             heatmap_days: HashMap::new(),
             activity_daily: HashMap::new(),
+            keywords: HashMap::new(),
         }
     }
 
@@ -654,6 +678,21 @@ impl EngineState {
                 .activity_daily
                 .entry(ev.date_str.clone())
                 .or_insert((0, 0));
+            if ev.is_mine {
+                slot.0 += 1;
+            } else {
+                slot.1 += 1;
+            }
+        }
+    }
+
+    /// Count word tokens for Keyword Battle (call only on per-chat state).
+    fn feed_keywords(&mut self, ev: &MessageEvent) {
+        if ev.words.is_empty() {
+            return;
+        }
+        for word in &ev.words {
+            let slot = self.keywords.entry(word.clone()).or_insert((0, 0));
             if ev.is_mine {
                 slot.0 += 1;
             } else {
@@ -919,6 +958,9 @@ impl EngineState {
         // ── Activity over time (sent vs received) ─────────────────────────
         let activity_over_time = build_activity_time_series(&self.activity_daily);
 
+        // ── Keywords (you vs them) ────────────────────────────────────────
+        let keywords = build_keyword_stats(self.keywords);
+
         AnalyticsResult {
             total_messages: total,
             sent_messages: self.sent_count,
@@ -933,8 +975,46 @@ impl EngineState {
             circadian,
             heatmap,
             activity_over_time,
+            keywords,
         }
     }
+}
+
+fn build_keyword_stats(map: HashMap<String, (u64, u64)>) -> KeywordStats {
+    let mut entries: Vec<(String, u64, u64, u64)> = map
+        .into_iter()
+        .map(|(word, (you, them))| {
+            let total = you.saturating_add(them);
+            (word, you, them, total)
+        })
+        .filter(|(_, _, _, total)| *total > 0)
+        .collect();
+    entries.sort_by(|a, b| b.3.cmp(&a.3).then_with(|| a.0.cmp(&b.0)));
+    if entries.len() > MAX_KEYWORDS {
+        entries.truncate(MAX_KEYWORDS);
+    }
+    let mut counts = HashMap::with_capacity(entries.len());
+    for (word, you, them, _) in entries {
+        counts.insert(word, [you, them]);
+    }
+    KeywordStats { counts }
+}
+
+/// Split message text into lowercased word tokens for Keyword Battle.
+pub fn tokenize_words(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for raw in text.split(|c: char| !(c.is_alphanumeric() || c == '\'' || c == '\u{2019}')) {
+        let token: String = raw
+            .trim_matches(|c: char| c == '\'' || c == '\u{2019}')
+            .chars()
+            .flat_map(|c| c.to_lowercase())
+            .collect();
+        let len = token.chars().count();
+        if len >= 2 && len <= 40 {
+            out.push(token);
+        }
+    }
+    out
 }
 
 fn build_activity_time_series(
@@ -1051,7 +1131,7 @@ impl AnalysisEngine {
 
     /// Feed one normalised message event.
     pub fn feed(&mut self, ev: &MessageEvent) {
-        // Account-level
+        // Account-level (no keyword index — that would dominate memory).
         self.account.feed(ev);
 
         // Per-chat
@@ -1063,6 +1143,7 @@ impl AnalysisEngine {
             state: EngineState::new(),
         });
         slot.state.feed(ev);
+        slot.state.feed_keywords(ev);
 
         // Sample messages (first 5 non-empty text snippets)
         if self.sample_messages.len() < 5 && ev.kind.is_text() && ev.char_count > 0 {
@@ -1454,10 +1535,43 @@ mod tests {
             kind: kind.clone(),
             content_kind: ContentKind::classify(&kind, false, false),
             char_count: chars,
+            words: vec![],
             voice_duration_secs: 0,
             emojis: vec![],
             reactions: vec![],
         }
+    }
+
+    #[test]
+    fn test_tokenize_words() {
+        let words = tokenize_words("Hello, sorry! Money? it's fine 😀");
+        assert!(words.contains(&"hello".into()));
+        assert!(words.contains(&"sorry".into()));
+        assert!(words.contains(&"money".into()));
+        assert!(words.contains(&"it's".into()) || words.contains(&"its".into()));
+        assert!(words.contains(&"fine".into()));
+    }
+
+    #[test]
+    fn test_keyword_battle_you_vs_them() {
+        let mut engine = AnalysisEngine::new("Me".into(), None, "".into(), 0);
+        let mut a = make_ev("Me", true, 1000, 10, "2024-01-01", MessageKind::Text, 5);
+        a.words = vec!["sorry".into(), "sorry".into()];
+        let mut b = make_ev("Bob", false, 2000, 11, "2024-01-01", MessageKind::Text, 5);
+        b.words = vec!["sorry".into()];
+        let mut c = make_ev("Bob", false, 3000, 11, "2024-01-01", MessageKind::Text, 5);
+        c.words = vec!["money".into()];
+        engine.feed(&a);
+        engine.feed(&b);
+        engine.feed(&c);
+        let wrap = engine.finish();
+        // Account-level has no keyword index.
+        assert!(wrap.account.keywords.counts.is_empty());
+        let chat = wrap.chats.first().expect("chat");
+        let sorry = chat.analytics.keywords.counts.get("sorry").copied();
+        assert_eq!(sorry, Some([2, 1]));
+        let money = chat.analytics.keywords.counts.get("money").copied();
+        assert_eq!(money, Some([0, 1]));
     }
 
     #[test]

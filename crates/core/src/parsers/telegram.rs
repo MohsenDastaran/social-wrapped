@@ -382,6 +382,11 @@ where
             } else {
                 0
             };
+            let words = if kind.is_text() && char_count > 0 {
+                crate::analytics::collectors::tokenize_words(&plain_text)
+            } else {
+                vec![]
+            };
             let emojis = if kind.is_text() {
                 extract_emojis(&plain_text)
             } else {
@@ -437,6 +442,7 @@ where
                 kind,
                 content_kind,
                 char_count,
+                words,
                 voice_duration_secs,
                 emojis,
                 reactions,

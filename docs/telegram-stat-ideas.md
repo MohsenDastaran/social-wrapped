@@ -8,12 +8,12 @@ This document contains a comprehensive list of analytical ideas to extract from 
 
 Product surfaces today:
 
-| Surface | What users see |
-| --- | --- |
-| **Main wrap** (`/wrap/:id`) | KPI strip (sent / received / total / chats), activity over time (line/bar), sent-vs-received pie, **message types** pie, top emojis (overall), circadian polar clock, GitHub-style heatmap, top-contacts insight cards (recent / faded / groups + top 20 DMs) |
-| **Contact page** (`/wrap/:id/chat/:chatId`) | Same title treatment with sky highlight, sent/received/total KPIs, activity over time, message types, **comparison KPI cards** (response time, message length, starts/closes, late night), top emojis with **All / [you] / [contact]** name toggle, circadian, heatmap |
+| Surface                                     | What users see                                                                                                                                                                                                                                                         |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Main wrap** (`/wrap/:id`)                 | KPI strip (sent / received / total / chats), activity over time (line/bar), sent-vs-received pie, **message types** pie, top emojis (overall), circadian polar clock, GitHub-style heatmap, top-contacts insight cards (recent / faded / groups + top 20 DMs)          |
+| **Contact page** (`/wrap/:id/chat/:chatId`) | Same title treatment with sky highlight, sent/received/total KPIs, activity over time, **keyword battle** (search a word → you-vs-them donut), message types, **comparison KPI cards** (response time, message length, starts/closes, late night), top emojis with **All / [you] / [contact]** name toggle, circadian, heatmap |
 
-PNG export is available on chart/KPI cards. Pie charts show % on hover; legend % appears only when a slice/legend item is selected. Tiny pie labels (&lt;5%) are hidden to avoid overlap.
+PNG export is available on chart/KPI cards. Pie charts show % on hover; legend % appears only when a slice/legend item is selected. Tiny pie labels (<5%) are hidden to avoid overlap.
 
 ---
 
@@ -32,10 +32,11 @@ These features offer the best potential for building highly interactive frontend
 - **Description:** A node graph connecting group members. The more two people reply to each other, the thicker the line between them.
 - **Appeal:** Seeing the ecosystem of a group and identifying its core members on an interactive chart is incredibly engaging.
 
-### 3. Keyword Battle 🧠
+### - ✅ 3. Keyword Battle 🧠
 
 - **Description:** The user searches for a specific word (e.g., "sorry" or "money"). The system displays a donut chart showing the percentage of usage for them versus the other person.
 - **Appeal:** Highly entertaining for exposing each other's habits in chats!
+- **Shipped:** Contact-page search + donut (you vs them). Built from a per-chat word index at import (top ~8k words). Re-import required for older wraps.
 
 ### - ✅ 4. Circadian Rhythm & Sleep Estimation
 

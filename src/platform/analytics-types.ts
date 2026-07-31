@@ -142,6 +142,13 @@ export type ActivityTimeSeries = {
   years: number[]
 }
 
+// ── Stat 3: Keyword Battle ────────────────────────────────────────────────────
+
+/** Lowercased word → `[you, them]` occurrence counts. */
+export type KeywordStats = {
+  counts: Record<string, [number, number]>
+}
+
 // ── Result types ──────────────────────────────────────────────────────────────
 
 export type AnalyticsResult = {
@@ -158,6 +165,8 @@ export type AnalyticsResult = {
   circadian: CircadianStats
   heatmap: HeatmapStats
   activityOverTime: ActivityTimeSeries
+  /** Per-chat keyword index for Keyword Battle (empty on account-level). */
+  keywords?: KeywordStats
 }
 
 export type ChatResult = {
