@@ -6,7 +6,8 @@
   ],
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@sw-remotion/*": ["./remotion/*"]
     }
   }
 }

@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { ImageIcon, Images, Video } from "lucide-react"
 
 import { MediaFullscreenChrome } from "@/components/media-fullscreen-chrome"
-import { Skiper67 } from "@/components/ui/animated/skiper67"
 import {
   StoryCarousel,
   type StoryItem,
 } from "@/components/ui/animated/story-carousel"
+import { WrapShareVideo } from "@/components/wrap/wrap-share-video"
 import { DEFAULT_APP_SHARE_TEXT } from "@/lib/media-share"
 import {
   buildMainStorySpecs,
@@ -17,8 +17,6 @@ import {
 } from "@/lib/wrap-stories"
 import type { WrapAnalytics } from "@/platform/analytics-types"
 import { cn } from "@/lib/utils"
-
-const MOCK_VIDEO_SRC = "/showreel/skiper-ui-showreel.mp4"
 
 type WrapShareMediaProps = {
   displayName: string
@@ -120,12 +118,14 @@ export function WrapShareMedia({
               Video
             </p>
           </div>
-          <Skiper67
-            compact
-            videoSrc={MOCK_VIDEO_SRC}
+          <WrapShareVideo
+            displayName={displayName}
+            totalMessages={analytics.account.totalMessages}
+            sentMessages={analytics.account.sentMessages}
+            receivedMessages={analytics.account.receivedMessages}
+            chatCount={analytics.chatCount}
             shareText={videoShareText}
             shareFileName={`social-wrapped-${displayName}.mp4`}
-            className="aspect-[3/4] h-auto rounded-2xl ring-1 ring-foreground/10"
           />
         </div>
 

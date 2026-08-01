@@ -22,8 +22,9 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@sw-remotion/*": ["./remotion/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "remotion"]
 }

@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "remocn": {
+      "source": "Remocn/remocn",
+      "sourceType": "github",
+      "skillPath": "skills/remocn/SKILL.md",
+      "computedHash": "d83c023da15b337d95b8ce232299ee30c73fc9407f72dd257a41d805d501cf12"
+    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",

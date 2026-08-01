@@ -113,6 +113,8 @@ export default defineConfig(async () => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Must not use `@remotion` — that shadows `@remotion/player` and other packages.
+      "@sw-remotion": path.resolve(__dirname, "./remotion"),
     },
   },
   build: {
