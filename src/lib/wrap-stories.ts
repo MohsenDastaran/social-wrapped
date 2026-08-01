@@ -34,6 +34,16 @@ export type ComposedWrapStory = WrapStorySpec & {
   image: string
 }
 
+export type StoryCaptureProgress = {
+  /** 0-based index of the story currently being crafted. */
+  index: number
+  total: number
+  /** Human label, e.g. card heading. */
+  label: string
+  /** 0–1 overall progress across all stories. */
+  progress: number
+}
+
 /**
  * Story slide defs for Main Analytics cards.
  * Only includes cards that have (or likely have) live DOM to capture.
@@ -474,18 +484,34 @@ function roundRectPath(
   ctx.closePath()
 }
 
+/** Pause after expand so frozen charts finish painting at the new size. */
+const CHART_CAPTURE_SETTLE_MS = 420
+/** Extra wait before first snapshot so intro animations can finish on-screen. */
+const CHART_INTRO_SETTLE_MS = 1050
+const DOM_CAPTURE_SETTLE_MS = 160
+
 /**
  * Capture each Main Analytics card and compose a shareable story slide.
  * Skips specs whose cards never appear in the DOM.
  */
 export async function generateWrapStories(
   specs: WrapStorySpec[],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onProgress?: (progress: StoryCaptureProgress) => void
 ): Promise<ComposedWrapStory[]> {
   const stories: ComposedWrapStory[] = []
+  const total = specs.length
 
-  for (const spec of specs) {
+  for (let index = 0; index < specs.length; index++) {
+    const spec = specs[index]!
     if (signal?.aborted) break
+
+    onProgress?.({
+      index,
+      total,
+      label: spec.heading,
+      progress: total > 0 ? index / total : 1,
+    })
 
     const card = await waitForExportCard(spec.exportName)
     if (!card || signal?.aborted) continue
@@ -493,7 +519,13 @@ export async function generateWrapStories(
     await waitForCardCaptureReady(card)
     if (signal?.aborted) break
 
-    const captureUi = beginStoryCaptureUi(card)
+    const captureUi = beginStoryCaptureUi(card, {
+      title: "Crafting story",
+      detail: spec.heading,
+      step: index + 1,
+      total,
+    })
+
     try {
       if (spec.id === "heatmap") {
         const composed = await captureHeatmapStory(
@@ -513,7 +545,14 @@ export async function generateWrapStories(
       const cardBlob = await captureElementPng(
         card,
         card,
-        exportOptionsFromCard(card),
+        {
+          ...exportOptionsFromCard(card),
+          freezeCharts: true,
+          settleMs:
+            exportOptionsFromCard(card).captureMode === "dom"
+              ? DOM_CAPTURE_SETTLE_MS
+              : CHART_CAPTURE_SETTLE_MS,
+        },
         captureUi
       )
       const composed = await composeStoryFrame(cardBlob, spec)
@@ -529,124 +568,196 @@ export async function generateWrapStories(
     }
   }
 
+  if (!signal?.aborted) {
+    onProgress?.({
+      index: Math.max(total - 1, 0),
+      total,
+      label: "Done",
+      progress: 1,
+    })
+  }
+
   return stories
 }
 
 type StoryCaptureUi = {
-  /** Hide loading so the PNG capture is clean. */
-  pause: () => void
-  /** Show loading again between capture steps. */
-  resume: () => void
+  setDetail: (detail: string) => void
   dispose: () => void
 }
 
-/** Show ECharts loading (or a skeleton overlay) while this card is being captured. */
-function beginStoryCaptureUi(card: HTMLElement): StoryCaptureUi {
-  card.dataset.storyCapturing = "true"
-  const charts = findEchartsIn(card)
-  let overlay: HTMLElement | null = null
-  let paused = false
-
-  const showCharts = () => {
-    for (const chart of charts) {
-      try {
-        chart.showLoading("default", {
-          text: "Capturing…",
-          color: resolveCssColor("var(--primary)", "#0d9488"),
-          textColor: resolveCssColor("var(--foreground)", "#e2e8f0"),
-          maskColor: "rgba(15, 23, 42, 0.35)",
-          zlevel: 100,
-        })
-      } catch {
-        // Tree-shaken builds may lack the default loading component.
-      }
-    }
-  }
-
-  const hideCharts = () => {
-    for (const chart of charts) {
-      try {
-        chart.hideLoading()
-      } catch {
-        // ignore
-      }
-    }
-  }
-
-  if (charts.length > 0) {
-    showCharts()
-  } else {
-    overlay = createStoryCaptureSkeleton(card)
-  }
-
-  return {
-    pause: () => {
-      if (paused) return
-      paused = true
-      hideCharts()
-      if (overlay) overlay.style.display = "none"
-    },
-    resume: () => {
-      if (!paused) return
-      paused = false
-      if (charts.length > 0) showCharts()
-      if (overlay) overlay.style.display = ""
-    },
-    dispose: () => {
-      hideCharts()
-      overlay?.remove()
-      delete card.dataset.storyCapturing
-    },
-  }
+type StoryCaptureUiOptions = {
+  title: string
+  detail: string
+  step: number
+  total: number
 }
 
-function createStoryCaptureSkeleton(card: HTMLElement): HTMLElement {
-  const overlay = document.createElement("div")
-  overlay.setAttribute("data-export-ignore", "")
-  overlay.setAttribute("data-story-capture-overlay", "")
-  overlay.setAttribute("aria-hidden", "true")
-  overlay.style.cssText = [
-    "position:absolute",
-    "inset:0",
-    "z-index:30",
+/**
+ * Fixed-position frosted shell over the card.
+ * Parks the real card off-screen (still visible to the exporter) so HD capture
+ * never flashes, while a placeholder keeps layout stable.
+ */
+function beginStoryCaptureUi(
+  card: HTMLElement,
+  opts: StoryCaptureUiOptions
+): StoryCaptureUi {
+  card.dataset.storyCapturing = "true"
+  const rect = card.getBoundingClientRect()
+  const shell = document.createElement("div")
+  shell.setAttribute("data-story-capture-shell", "")
+  shell.setAttribute("aria-live", "polite")
+  shell.style.cssText = [
+    "position:fixed",
+    `left:${Math.round(rect.left)}px`,
+    `top:${Math.round(rect.top)}px`,
+    `width:${Math.round(rect.width)}px`,
+    `height:${Math.round(rect.height)}px`,
+    "z-index:60",
     "display:flex",
     "flex-direction:column",
-    "gap:10px",
-    "padding:16px",
-    "border-radius:inherit",
-    "background:color-mix(in oklab, var(--card) 82%, transparent)",
-    "backdrop-filter:blur(2px)",
+    "align-items:center",
+    "justify-content:center",
+    "gap:14px",
+    "padding:20px",
+    "border-radius:12px",
+    "overflow:hidden",
     "pointer-events:none",
+    "box-sizing:border-box",
+    "background:linear-gradient(160deg, rgba(4,21,18,0.88), rgba(10,42,36,0.92) 45%, rgba(3,17,14,0.9))",
+    "box-shadow:inset 0 0 0 1px rgba(255,255,255,0.1), 0 18px 40px rgba(0,0,0,0.28)",
+    "backdrop-filter:blur(10px)",
+    "transition:opacity 180ms ease",
   ].join(";")
 
-  const label = document.createElement("div")
-  label.textContent = "Capturing story…"
-  label.style.cssText =
-    "font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted-foreground);margin-bottom:4px;"
-  overlay.appendChild(label)
+  const shimmer = document.createElement("div")
+  shimmer.style.cssText = [
+    "position:absolute",
+    "inset:-40%",
+    "background:linear-gradient(105deg, transparent 40%, rgba(16,185,129,0.18) 50%, transparent 60%)",
+    "animation:sw-story-shimmer 1.8s ease-in-out infinite",
+    "pointer-events:none",
+  ].join(";")
+  shell.appendChild(shimmer)
 
-  for (const width of ["72%", "100%", "88%", "64%"]) {
-    const bar = document.createElement("div")
-    bar.style.cssText = [
-      `width:${width}`,
-      "height:12px",
-      "border-radius:999px",
-      "background:color-mix(in oklab, var(--muted-foreground) 18%, transparent)",
-      "animation:sw-story-pulse 1.1s ease-in-out infinite",
-    ].join(";")
-    overlay.appendChild(bar)
+  const ring = document.createElement("div")
+  ring.style.cssText = [
+    "position:relative",
+    "width:52px",
+    "height:52px",
+    "border-radius:999px",
+    "border:2px solid rgba(16,185,129,0.25)",
+    "border-top-color:#34d399",
+    "animation:sw-story-spin 0.9s linear infinite",
+    "box-shadow:0 0 24px rgba(16,185,129,0.25)",
+  ].join(";")
+  shell.appendChild(ring)
+
+  const title = document.createElement("p")
+  title.textContent = opts.title
+  title.style.cssText =
+    "position:relative;margin:0;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:rgba(167,243,208,0.9);"
+  shell.appendChild(title)
+
+  const detail = document.createElement("p")
+  detail.textContent = opts.detail
+  detail.style.cssText =
+    "position:relative;margin:0;max-width:90%;text-align:center;font-size:14px;font-weight:600;line-height:1.35;color:#f8fafc;"
+  shell.appendChild(detail)
+
+  const step = document.createElement("p")
+  step.textContent = `Slide ${opts.step} of ${opts.total}`
+  step.style.cssText =
+    "position:relative;margin:0;font-size:12px;font-weight:500;color:rgba(255,255,255,0.55);"
+  shell.appendChild(step)
+
+  const track = document.createElement("div")
+  track.style.cssText =
+    "position:relative;width:min(180px,70%);height:4px;border-radius:999px;background:rgba(255,255,255,0.12);overflow:hidden;"
+  const fill = document.createElement("div")
+  const pct =
+    opts.total > 0 ? Math.round(((opts.step - 0.35) / opts.total) * 100) : 0
+  fill.style.cssText = [
+    "height:100%",
+    `width:${Math.max(8, Math.min(pct, 96))}%`,
+    "border-radius:999px",
+    "background:linear-gradient(90deg,#34d399,#0d9488)",
+    "transition:width 320ms ease",
+  ].join(";")
+  track.appendChild(fill)
+  shell.appendChild(track)
+
+  ensureStoryCaptureStyles()
+  document.body.appendChild(shell)
+
+  // Hold layout space while the card is parked off-screen for capture.
+  const placeholder = document.createElement("div")
+  placeholder.setAttribute("aria-hidden", "true")
+  placeholder.style.cssText = [
+    `width:${Math.round(rect.width)}px`,
+    `height:${Math.round(rect.height)}px`,
+    "flex-shrink:0",
+    "pointer-events:none",
+  ].join(";")
+  card.parentElement?.insertBefore(placeholder, card)
+
+  // Park off-screen but keep visibility/paintability for the exporter.
+  // (visibility:hidden would make dom-export skip all text/chart chrome.)
+  const prev = {
+    position: card.style.position,
+    left: card.style.left,
+    top: card.style.top,
+    width: card.style.width,
+    maxWidth: card.style.maxWidth,
+    minWidth: card.style.minWidth,
+    zIndex: card.style.zIndex,
+    pointerEvents: card.style.pointerEvents,
+    transform: card.style.transform,
   }
+  card.style.position = "fixed"
+  card.style.left = "-12000px"
+  card.style.top = "0"
+  card.style.width = `${Math.round(rect.width)}px`
+  card.style.maxWidth = `${Math.round(rect.width)}px`
+  card.style.minWidth = `${Math.round(rect.width)}px`
+  card.style.zIndex = "0"
+  card.style.pointerEvents = "none"
+  card.style.transform = "none"
 
-  ensureStoryPulseKeyframes()
-  card.appendChild(overlay)
-  return overlay
+  // Give chart hosts a beat to keep their size after reparenting to fixed.
+  window.dispatchEvent(new Event("resize"))
+
+  return {
+    setDetail: (next) => {
+      detail.textContent = next
+    },
+    dispose: () => {
+      shell.style.opacity = "0"
+      card.style.position = prev.position
+      card.style.left = prev.left
+      card.style.top = prev.top
+      card.style.width = prev.width
+      card.style.maxWidth = prev.maxWidth
+      card.style.minWidth = prev.minWidth
+      card.style.zIndex = prev.zIndex
+      card.style.pointerEvents = prev.pointerEvents
+      card.style.transform = prev.transform
+      placeholder.remove()
+      delete card.dataset.storyCapturing
+      window.dispatchEvent(new Event("resize"))
+      window.setTimeout(() => shell.remove(), 180)
+    },
+  }
 }
 
-function ensureStoryPulseKeyframes() {
+function ensureStoryCaptureStyles() {
   if (document.getElementById("sw-story-capture-style")) return
   const style = document.createElement("style")
   style.id = "sw-story-capture-style"
-  style.textContent = `@keyframes sw-story-pulse{0%,100%{opacity:.45}50%{opacity:1}}`
+  style.textContent = [
+    "@keyframes sw-story-spin{to{transform:rotate(360deg)}}",
+    "@keyframes sw-story-shimmer{0%{transform:translateX(-30%) rotate(8deg)}100%{transform:translateX(30%) rotate(8deg)}}",
+    "@keyframes sw-story-pulse{0%,100%{opacity:.45}50%{opacity:1}}",
+  ].join("")
   document.head.appendChild(style)
 }
 
@@ -668,20 +779,23 @@ function findEchartsIn(root: HTMLElement): echarts.EChartsType[] {
   return found
 }
 
-/** Rasterize with capture UI paused so loading chrome is not in the PNG. */
+/** Wait briefly, then rasterize (expand path freezes charts + settles after resize). */
 async function captureElementPng(
   card: HTMLElement,
   target: HTMLElement,
   options: DomExportOptions,
-  ui?: StoryCaptureUi
+  _ui?: StoryCaptureUi
 ): Promise<Blob> {
-  ui?.pause()
-  await delay(60)
-  try {
-    return await elementToPngBlob(target, options)
-  } finally {
-    ui?.resume()
-  }
+  const hasCharts =
+    findEchartsIn(target).length > 0 || findEchartsIn(card).length > 0
+  // Short pre-wait; post-expand settle + freezeCharts handle intro/resize animation.
+  await delay(hasCharts ? 240 : DOM_CAPTURE_SETTLE_MS)
+
+  return elementToPngBlob(target, {
+    freezeCharts: true,
+    settleMs: hasCharts ? CHART_CAPTURE_SETTLE_MS : DOM_CAPTURE_SETTLE_MS,
+    ...options,
+  })
 }
 
 /** Newest year first. */
@@ -707,7 +821,12 @@ function parseHeatmapYears(card: HTMLElement): number[] {
     .reverse()
 }
 
-async function setHeatmapYear(card: HTMLElement, year: number): Promise<void> {
+async function setHeatmapYear(
+  card: HTMLElement,
+  year: number,
+  opts?: { settle?: boolean }
+): Promise<void> {
+  const settle = opts?.settle ?? true
   if (card.dataset.heatmapYear === String(year)) return
   card.dispatchEvent(
     new CustomEvent("sw:set-heatmap-year", { detail: { year } })
@@ -716,7 +835,8 @@ async function setHeatmapYear(card: HTMLElement, year: number): Promise<void> {
   while (Date.now() - started < 4_000) {
     if (card.dataset.heatmapYear === String(year)) {
       await waitForCardCaptureReady(card)
-      await delay(180)
+      if (settle) await delay(CHART_INTRO_SETTLE_MS)
+      else await delay(120)
       return
     }
     await delay(80)
@@ -739,6 +859,8 @@ async function captureHeatmapStory(
   const options: DomExportOptions = {
     ...baseOptions,
     captureMode: "chart",
+    freezeCharts: true,
+    settleMs: CHART_CAPTURE_SETTLE_MS,
     minWidth: Math.max(baseOptions.minWidth ?? 720, 1040),
     backgroundColor:
       getComputedStyle(card).backgroundColor || baseOptions.backgroundColor,
@@ -748,7 +870,7 @@ async function captureHeatmapStory(
     const panels: Array<{ year: number; blob: Blob }> = []
     for (const year of years) {
       if (signal?.aborted) return null
-      ui?.resume()
+      ui?.setDetail(`${spec.heading} · ${year}`)
       await setHeatmapYear(card, year)
       if (signal?.aborted) return null
       const blob = await captureElementPng(card, panel, options, ui)
@@ -759,7 +881,7 @@ async function captureHeatmapStory(
     return composeHeatmapStoryFrame(panels, spec)
   } finally {
     if (previousYear != null) {
-      await setHeatmapYear(card, previousYear)
+      await setHeatmapYear(card, previousYear, { settle: false })
     }
   }
 }

@@ -27,6 +27,16 @@ export type DomExportOptions = {
    * @default "chart"
    */
   captureMode?: "chart" | "dom"
+  /**
+   * Pause after layout expand / chart resize so entrance animations can finish
+   * before the canvas is snapshotted.
+   */
+  settleMs?: number
+  /**
+   * Disable ECharts animations for the duration of the capture (restored after).
+   * Pairs well with a short `settleMs` after expand.
+   */
+  freezeCharts?: boolean
 }
 
 type StyleSnapshot = {
@@ -58,7 +68,15 @@ export async function elementToPngBlob(
   const pixelRatio = options.pixelRatio ?? 3
 
   const captureMode = options.captureMode ?? "chart"
+  const unfreeze = options.freezeCharts
+    ? freezeEchartsAnimations(element)
+    : () => {}
   const layoutRestore = await expandForExport(element, minWidth)
+
+  if (options.settleMs && options.settleMs > 0) {
+    await delay(options.settleMs)
+  }
+
   const hidden = hideExcluded(element, options.excludeSelector)
   const canvasSwaps =
     captureMode === "chart"
@@ -94,8 +112,54 @@ export async function elementToPngBlob(
     restoreCanvases(canvasSwaps)
     restoreHidden(hidden)
     layoutRestore()
+    unfreeze()
     // Let chart hosts ResizeObserver reflow back to on-screen size.
     window.dispatchEvent(new Event("resize"))
+  }
+}
+
+/** Stop in-flight ECharts intros so snapshots aren't mid-animation. */
+function freezeEchartsAnimations(root: HTMLElement): () => void {
+  const charts: Array<ReturnType<typeof echarts.getInstanceByDom>> = []
+  for (const canvas of root.querySelectorAll("canvas")) {
+    let node: HTMLElement | null = canvas.parentElement
+    while (node && node !== root.parentElement) {
+      const instance = echarts.getInstanceByDom(node)
+      if (instance) {
+        charts.push(instance)
+        try {
+          instance.setOption(
+            {
+              animation: false,
+              animationDuration: 0,
+              animationDurationUpdate: 0,
+            },
+            { lazyUpdate: false }
+          )
+        } catch {
+          // ignore
+        }
+        break
+      }
+      node = node.parentElement
+    }
+  }
+
+  return () => {
+    for (const chart of charts) {
+      if (!chart) continue
+      try {
+        // Re-enable animations for normal UI; don't force a full redraw.
+        chart.setOption(
+          {
+            animation: true,
+          },
+          { lazyUpdate: true }
+        )
+      } catch {
+        // ignore
+      }
+    }
   }
 }
 
