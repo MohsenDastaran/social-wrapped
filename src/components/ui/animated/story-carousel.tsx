@@ -171,7 +171,7 @@ export function StoryCarousel({
         opts={{ loop, duration: 20 }}
         className="h-full w-full [&>div]:h-full"
       >
-        <CarouselContent className="-ms-0 h-full">
+        <CarouselContent className="ms-0 h-full">
           {items.map((item) => (
             <CarouselItem
               key={item.id}

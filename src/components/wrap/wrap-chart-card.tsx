@@ -121,7 +121,7 @@ export function WrapChartCard({
       data-export-min-width={exportDims.minWidth}
       data-export-pixel-ratio={exportDims.pixelRatio}
       className={cn(
-        "flex flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10",
+        "relative flex flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10",
         className
       )}
     >

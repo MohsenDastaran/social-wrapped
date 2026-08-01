@@ -5,10 +5,14 @@ import {
   type DomExportOptions,
 } from "@/lib/dom-export"
 import type { WrapAnalytics } from "@/platform/analytics-types"
+import * as echarts from "echarts/core"
 
 /** Instagram-story canvas size (9:16). */
 const STORY_W = 1080
 const STORY_H = 1920
+
+/** Newest-first years included in the heatmap story slide. */
+const MAX_HEATMAP_STORY_YEARS = 4
 
 export type StoryKpi = {
   label: string
@@ -112,6 +116,8 @@ export function buildMainStorySpecs(
 
   if (a.heatmap.days.length > 0) {
     const years = heatmapYearsFromDays(a.heatmap.days)
+      .slice(0, MAX_HEATMAP_STORY_YEARS)
+      .reverse() // oldest → newest for the story
     const total = a.heatmap.days.reduce((sum, d) => sum + d.count, 0)
     const yearLabel =
       years.length === 0
@@ -120,7 +126,7 @@ export function buildMainStorySpecs(
           ? String(years[0])
           : years.length === 2
             ? `${years[0]} & ${years[1]}`
-            : `${years[years.length - 1]}–${years[0]}`
+            : `${years[0]}–${years[years.length - 1]}`
     specs.push({
       id: "heatmap",
       exportName: "main-heatmap",
@@ -487,9 +493,15 @@ export async function generateWrapStories(
     await waitForCardCaptureReady(card)
     if (signal?.aborted) break
 
+    const captureUi = beginStoryCaptureUi(card)
     try {
       if (spec.id === "heatmap") {
-        const composed = await captureHeatmapStory(card, spec, signal)
+        const composed = await captureHeatmapStory(
+          card,
+          spec,
+          signal,
+          captureUi
+        )
         if (!composed || signal?.aborted) continue
         stories.push({
           ...spec,
@@ -498,7 +510,12 @@ export async function generateWrapStories(
         continue
       }
 
-      const cardBlob = await elementToPngBlob(card, exportOptionsFromCard(card))
+      const cardBlob = await captureElementPng(
+        card,
+        card,
+        exportOptionsFromCard(card),
+        captureUi
+      )
       const composed = await composeStoryFrame(cardBlob, spec)
       if (signal?.aborted) break
       stories.push({
@@ -507,10 +524,164 @@ export async function generateWrapStories(
       })
     } catch (error) {
       console.error(`Story capture failed for ${spec.exportName}:`, error)
+    } finally {
+      captureUi.dispose()
     }
   }
 
   return stories
+}
+
+type StoryCaptureUi = {
+  /** Hide loading so the PNG capture is clean. */
+  pause: () => void
+  /** Show loading again between capture steps. */
+  resume: () => void
+  dispose: () => void
+}
+
+/** Show ECharts loading (or a skeleton overlay) while this card is being captured. */
+function beginStoryCaptureUi(card: HTMLElement): StoryCaptureUi {
+  card.dataset.storyCapturing = "true"
+  const charts = findEchartsIn(card)
+  let overlay: HTMLElement | null = null
+  let paused = false
+
+  const showCharts = () => {
+    for (const chart of charts) {
+      try {
+        chart.showLoading("default", {
+          text: "Capturing…",
+          color: resolveCssColor("var(--primary)", "#0d9488"),
+          textColor: resolveCssColor("var(--foreground)", "#e2e8f0"),
+          maskColor: "rgba(15, 23, 42, 0.35)",
+          zlevel: 100,
+        })
+      } catch {
+        // Tree-shaken builds may lack the default loading component.
+      }
+    }
+  }
+
+  const hideCharts = () => {
+    for (const chart of charts) {
+      try {
+        chart.hideLoading()
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  if (charts.length > 0) {
+    showCharts()
+  } else {
+    overlay = createStoryCaptureSkeleton(card)
+  }
+
+  return {
+    pause: () => {
+      if (paused) return
+      paused = true
+      hideCharts()
+      if (overlay) overlay.style.display = "none"
+    },
+    resume: () => {
+      if (!paused) return
+      paused = false
+      if (charts.length > 0) showCharts()
+      if (overlay) overlay.style.display = ""
+    },
+    dispose: () => {
+      hideCharts()
+      overlay?.remove()
+      delete card.dataset.storyCapturing
+    },
+  }
+}
+
+function createStoryCaptureSkeleton(card: HTMLElement): HTMLElement {
+  const overlay = document.createElement("div")
+  overlay.setAttribute("data-export-ignore", "")
+  overlay.setAttribute("data-story-capture-overlay", "")
+  overlay.setAttribute("aria-hidden", "true")
+  overlay.style.cssText = [
+    "position:absolute",
+    "inset:0",
+    "z-index:30",
+    "display:flex",
+    "flex-direction:column",
+    "gap:10px",
+    "padding:16px",
+    "border-radius:inherit",
+    "background:color-mix(in oklab, var(--card) 82%, transparent)",
+    "backdrop-filter:blur(2px)",
+    "pointer-events:none",
+  ].join(";")
+
+  const label = document.createElement("div")
+  label.textContent = "Capturing story…"
+  label.style.cssText =
+    "font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted-foreground);margin-bottom:4px;"
+  overlay.appendChild(label)
+
+  for (const width of ["72%", "100%", "88%", "64%"]) {
+    const bar = document.createElement("div")
+    bar.style.cssText = [
+      `width:${width}`,
+      "height:12px",
+      "border-radius:999px",
+      "background:color-mix(in oklab, var(--muted-foreground) 18%, transparent)",
+      "animation:sw-story-pulse 1.1s ease-in-out infinite",
+    ].join(";")
+    overlay.appendChild(bar)
+  }
+
+  ensureStoryPulseKeyframes()
+  card.appendChild(overlay)
+  return overlay
+}
+
+function ensureStoryPulseKeyframes() {
+  if (document.getElementById("sw-story-capture-style")) return
+  const style = document.createElement("style")
+  style.id = "sw-story-capture-style"
+  style.textContent = `@keyframes sw-story-pulse{0%,100%{opacity:.45}50%{opacity:1}}`
+  document.head.appendChild(style)
+}
+
+function findEchartsIn(root: HTMLElement): echarts.EChartsType[] {
+  const found: echarts.EChartsType[] = []
+  const seen = new Set<echarts.EChartsType>()
+  for (const canvas of root.querySelectorAll("canvas")) {
+    let node: HTMLElement | null = canvas.parentElement
+    while (node && node !== root.parentElement) {
+      const instance = echarts.getInstanceByDom(node)
+      if (instance && !seen.has(instance)) {
+        seen.add(instance)
+        found.push(instance)
+        break
+      }
+      node = node.parentElement
+    }
+  }
+  return found
+}
+
+/** Rasterize with capture UI paused so loading chrome is not in the PNG. */
+async function captureElementPng(
+  card: HTMLElement,
+  target: HTMLElement,
+  options: DomExportOptions,
+  ui?: StoryCaptureUi
+): Promise<Blob> {
+  ui?.pause()
+  await delay(60)
+  try {
+    return await elementToPngBlob(target, options)
+  } finally {
+    ui?.resume()
+  }
 }
 
 /** Newest year first. */
@@ -527,10 +698,13 @@ function heatmapYearsFromDays(
 
 function parseHeatmapYears(card: HTMLElement): number[] {
   const raw = card.dataset.heatmapYears ?? ""
+  // Card stores newest-first; keep the newest N, then reverse for oldest → newest.
   return raw
     .split(",")
     .map((s) => Number(s.trim()))
     .filter((n) => Number.isFinite(n))
+    .slice(0, MAX_HEATMAP_STORY_YEARS)
+    .reverse()
 }
 
 async function setHeatmapYear(card: HTMLElement, year: number): Promise<void> {
@@ -552,7 +726,8 @@ async function setHeatmapYear(card: HTMLElement, year: number): Promise<void> {
 async function captureHeatmapStory(
   card: HTMLElement,
   spec: WrapStorySpec,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  ui?: StoryCaptureUi
 ): Promise<Blob | null> {
   const years = parseHeatmapYears(card)
   if (years.length === 0) return null
@@ -573,9 +748,10 @@ async function captureHeatmapStory(
     const panels: Array<{ year: number; blob: Blob }> = []
     for (const year of years) {
       if (signal?.aborted) return null
+      ui?.resume()
       await setHeatmapYear(card, year)
       if (signal?.aborted) return null
-      const blob = await elementToPngBlob(panel, options)
+      const blob = await captureElementPng(card, panel, options, ui)
       if (signal?.aborted) return null
       panels.push({ year, blob })
     }
@@ -638,12 +814,12 @@ async function composeHeatmapStoryFrame(
   ctx.fillText("Social Wrapped", STORY_W / 2, 52)
 
   const contentTop = 100
+  const bandBottom = captionTop - 28
+  const bandH = Math.max(bandBottom - contentTop, 200)
   const yearLabelH = images.length >= 4 ? 36 : 44
   const gapBetween = images.length >= 4 ? 16 : 22
   const slots = images.length
-  const availableH =
-    captionTop - 28 - contentTop - slots * yearLabelH - (slots - 1) * gapBetween
-  const slotH = Math.max(availableH / slots, 90)
+  const maxW = STORY_W - padX * 2
 
   // Soft bottom vignette behind captions
   const vignette = ctx.createLinearGradient(0, captionTop - 140, 0, STORY_H)
@@ -653,9 +829,23 @@ async function composeHeatmapStoryFrame(
   ctx.fillStyle = vignette
   ctx.fillRect(0, captionTop - 140, STORY_W, STORY_H - (captionTop - 140))
 
-  let y = contentTop
-  for (let i = 0; i < images.length; i++) {
-    const panel = images[i]!
+  // Fit panels into the middle band, then vertically center the whole stack.
+  const slotBudget =
+    (bandH - slots * yearLabelH - (slots - 1) * gapBetween) / slots
+  const layouts = images.map((panel) => {
+    const maxH = Math.max(slotBudget - 4, 80)
+    const scale = Math.min(maxW / panel.img.width, maxH / panel.img.height)
+    const drawW = panel.img.width * scale
+    const drawH = panel.img.height * scale
+    return { panel, drawW, drawH }
+  })
+  const stackH =
+    layouts.reduce((sum, l) => sum + yearLabelH + l.drawH, 0) +
+    (slots - 1) * gapBetween
+  let y = contentTop + Math.max(0, (bandH - stackH) / 2)
+
+  for (let i = 0; i < layouts.length; i++) {
+    const { panel, drawW, drawH } = layouts[i]!
     ctx.textAlign = "left"
     ctx.textBaseline = "top"
     ctx.fillStyle = resolveCssColor("var(--primary)", "#0d9488")
@@ -663,11 +853,6 @@ async function composeHeatmapStoryFrame(
     ctx.fillText(String(panel.year), padX, y)
     y += yearLabelH
 
-    const maxW = STORY_W - padX * 2
-    const maxH = slotH - 4
-    const scale = Math.min(maxW / panel.img.width, maxH / panel.img.height)
-    const drawW = panel.img.width * scale
-    const drawH = panel.img.height * scale
     const drawX = (STORY_W - drawW) / 2
     const drawY = y
     const radius = 18
