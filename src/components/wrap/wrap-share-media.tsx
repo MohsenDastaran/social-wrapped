@@ -180,8 +180,9 @@ export function WrapShareMedia({ displayName, analytics }: WrapShareMediaProps) 
             items={carouselItems}
             interval={5000}
             alwaysShowControls
+            imageFit="contain"
             onIndexChange={setStoryIndex}
-            className="mx-0 h-dvh w-[min(100vw,calc(100dvh*9/16))] max-w-full rounded-none shadow-none sm:rounded-3xl"
+            className="mx-0 aspect-[9/16] h-auto max-h-dvh w-[min(100vw,calc(100dvh*9/16))] max-w-none rounded-none shadow-none sm:rounded-3xl"
           />
         </MediaFullscreenChrome>
       ) : null}

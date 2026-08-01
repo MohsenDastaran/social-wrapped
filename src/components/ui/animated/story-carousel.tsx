@@ -38,6 +38,12 @@ export interface StoryCarouselProps {
   alwaysShowControls?: boolean
   /** Fires whenever the active slide changes. */
   onIndexChange?: (index: number) => void
+  /**
+   * How the slide image fills the frame.
+   * Use `contain` for pre-composed story PNGs so nothing is cropped on tall phones.
+   * @default "cover"
+   */
+  imageFit?: "cover" | "contain"
 }
 
 /**
@@ -51,6 +57,7 @@ export function StoryCarousel({
   className,
   alwaysShowControls = false,
   onIndexChange,
+  imageFit = "cover",
 }: StoryCarouselProps) {
   const [api, setApi] = useState<CarouselApi>()
   const [current, setCurrent] = useState(0)
@@ -174,7 +181,10 @@ export function StoryCarousel({
                 <img
                   src={item.image}
                   alt={item.heading || "Story slide"}
-                  className="pointer-events-none absolute inset-0 size-full object-cover"
+                  className={cn(
+                    "pointer-events-none absolute inset-0 size-full",
+                    imageFit === "contain" ? "object-contain" : "object-cover"
+                  )}
                   draggable={false}
                 />
                 {item.heading || item.subtext ? (
