@@ -3,7 +3,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { MediaFullscreenChrome } from "@/components/media-fullscreen-chrome"
 import { downloadMediaUrl } from "@/lib/media-share"
-import { renderWrapVideoBlob } from "@/lib/render-wrap-video"
+import {
+  prepareChartSlidesForVideo,
+  renderWrapVideoBlob,
+} from "@/lib/render-wrap-video"
 import {
   SocialWrappedVideo,
   VIDEO_FPS,
@@ -53,11 +56,46 @@ export function WrapShareVideo({
   const [mediaUrl, setMediaUrl] = useState("")
   const [renderProgress, setRenderProgress] = useState(0)
   const [encodeStatus, setEncodeStatus] = useState<EncodeStatus>("idle")
+  const [videoSlides, setVideoSlides] = useState<VideoChartSlide[]>([])
+  const [slidesReady, setSlidesReady] = useState(chartSlides.length === 0)
   const previewRef = useRef<PlayerRef>(null)
   const fullscreenRef = useRef<PlayerRef>(null)
   const mediaUrlRef = useRef("")
   const inputPropsRef = useRef<SocialWrappedVideoProps | null>(null)
   const encodePromiseRef = useRef<Promise<string> | null>(null)
+
+  const chartSrcKey = chartSlides.map((s) => s.src).join("|")
+
+  // Compress heavy story PNGs → JPEG data URLs so Remotion Img.decode() succeeds.
+  useEffect(() => {
+    let cancelled = false
+    if (chartSlides.length === 0) {
+      setVideoSlides([])
+      setSlidesReady(true)
+      return
+    }
+
+    setSlidesReady(false)
+    void prepareChartSlidesForVideo(chartSlides)
+      .then((next) => {
+        if (cancelled) return
+        setVideoSlides(next)
+        setSlidesReady(true)
+      })
+      .catch((error) => {
+        console.error("[wrap-video] chart slide prep failed", error)
+        if (!cancelled) {
+          setVideoSlides([])
+          setSlidesReady(true)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+    // chartSrcKey tracks src identity; chartSlides array is rebuilt often.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartSrcKey])
 
   const inputProps = useMemo<SocialWrappedVideoProps>(
     () => ({
@@ -67,7 +105,7 @@ export function WrapShareVideo({
       receivedMessages,
       chatCount,
       platformName,
-      chartSlides,
+      chartSlides: videoSlides,
     }),
     [
       displayName,
@@ -76,13 +114,14 @@ export function WrapShareVideo({
       receivedMessages,
       chatCount,
       platformName,
-      chartSlides,
+      videoSlides,
     ]
   )
   inputPropsRef.current = inputProps
 
-  const durationInFrames = videoDurationFrames(chartSlides.length)
-  const playerKey = `${durationInFrames}-${chartSlides.map((s) => s.src).join("|")}`
+  const videoReady = ready && slidesReady
+  const durationInFrames = videoDurationFrames(videoSlides.length)
+  const playerKey = `${durationInFrames}-${chartSrcKey}-${videoSlides.map((s) => s.src.length).join("-")}`
 
   const clearMediaUrl = useCallback(() => {
     if (mediaUrlRef.current) {
@@ -145,7 +184,7 @@ export function WrapShareVideo({
   // Background encode once charts are ready — keyed by playerKey so we don't
   // abort/restart on every inputProps object identity change.
   useEffect(() => {
-    if (!ready) {
+    if (!videoReady) {
       setEncodeStatus("idle")
       setRenderProgress(0)
       clearMediaUrl()
@@ -166,7 +205,7 @@ export function WrapShareVideo({
       controller.abort()
       encodePromiseRef.current = null
     }
-  }, [ready, playerKey, encodeToObjectUrl, clearMediaUrl])
+  }, [videoReady, playerKey, encodeToObjectUrl, clearMediaUrl])
 
   useEffect(() => {
     return () => {
@@ -176,7 +215,7 @@ export function WrapShareVideo({
 
   // Kick silent autoplay — audio tags / unmuted context can stall the clock.
   useEffect(() => {
-    if (!ready) return
+    if (!videoReady) return
     let cancelled = false
     const kick = (ref: typeof previewRef) => {
       const player = ref.current
@@ -193,10 +232,10 @@ export function WrapShareVideo({
       cancelled = true
       timers.forEach(clearTimeout)
     }
-  }, [ready, playerKey])
+  }, [videoReady, playerKey])
 
   useEffect(() => {
-    if (!open || !ready) return
+    if (!open || !videoReady) return
     let cancelled = false
     const kick = () => {
       const player = fullscreenRef.current
@@ -213,7 +252,7 @@ export function WrapShareVideo({
       cancelled = true
       timers.forEach(clearTimeout)
     }
-  }, [open, ready, playerKey])
+  }, [open, videoReady, playerKey])
 
   const handleRequestDownload = useCallback(async () => {
     const url = await encodeToObjectUrl(
@@ -224,16 +263,18 @@ export function WrapShareVideo({
   }, [encodeStatus, encodeToObjectUrl, shareFileName])
 
   const progressPct = Math.round(
-    ready
+    videoReady
       ? Math.max(renderProgress, 0) * 100
       : (captureProgress?.progress ?? 0) * 100
   )
-  const loadingLabel = ready
-    ? encodeStatus === "error"
-      ? "Encode failed — open to retry"
-      : `Encoding video… ${progressPct}%`
-    : (captureProgress?.label ?? "Preparing charts…")
-  const showLoading = !ready
+  const loadingLabel = !ready
+    ? (captureProgress?.label ?? "Preparing charts…")
+    : !slidesReady
+      ? "Preparing video frames…"
+      : encodeStatus === "error"
+        ? "Encode failed — open to retry"
+        : `Encoding video… ${progressPct}%`
+  const showLoading = !videoReady
 
   const renderReady = encodeStatus === "ready" && Boolean(mediaUrl)
   const downloadStatus =
@@ -264,12 +305,12 @@ export function WrapShareVideo({
     <>
       <div
         role="button"
-        tabIndex={ready ? 0 : -1}
+        tabIndex={videoReady ? 0 : -1}
         onClick={() => {
-          if (ready) setOpen(true)
+          if (videoReady) setOpen(true)
         }}
         onKeyDown={(event) => {
-          if (!ready) return
+          if (!videoReady) return
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault()
             setOpen(true)
@@ -280,13 +321,13 @@ export function WrapShareVideo({
           "bg-[#041512] ring-1 ring-foreground/10",
           "transition-transform active:scale-[0.98]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
-          ready ? "cursor-pointer" : "cursor-wait",
+          videoReady ? "cursor-pointer" : "cursor-wait",
           className
         )}
-        aria-label={ready ? "Open wrap video fullscreen" : "Crafting wrap video"}
-        aria-busy={!ready}
+        aria-label={videoReady ? "Open wrap video fullscreen" : "Crafting wrap video"}
+        aria-busy={!videoReady}
       >
-        {ready ? (
+        {videoReady ? (
           <div className="pointer-events-none absolute inset-0">
             <Player
               ref={previewRef}
@@ -335,7 +376,7 @@ export function WrapShareVideo({
             Your wrap
           </p>
           <p className="mt-0.5 text-xs text-white/80">
-            {!ready
+            {!videoReady
               ? "Building shareable reel…"
               : renderReady
                 ? "Autoplaying · tap for fullscreen"
@@ -346,7 +387,7 @@ export function WrapShareVideo({
         </div>
       </div>
 
-      {open && ready ? (
+      {open && videoReady ? (
         <MediaFullscreenChrome
           title="Wrap video"
           shareText={shareText}

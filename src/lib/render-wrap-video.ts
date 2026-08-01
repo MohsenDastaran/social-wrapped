@@ -28,42 +28,82 @@ const RENDER_ATTEMPTS: RenderAttempt[] = [
   { scale: 0.5, videoBitrate: "medium", label: "540p" },
 ]
 
-async function blobOrUrlToDataUrl(src: string): Promise<string> {
-  if (src.startsWith("data:")) return src
-  const response = await fetch(src)
-  if (!response.ok) {
-    throw new Error(`Failed to read media (${response.status})`)
-  }
-  const blob = await response.blob()
-  return await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () =>
-      reject(reader.error ?? new Error("Failed to read image as data URL"))
-    reader.readAsDataURL(blob)
+/**
+ * Remotion `<Img>` calls `HTMLImageElement.decode()`, which often fails on
+ * multi‑MB 1080×1920 story PNGs (and logs EncodingError) even when the image
+ * still paints via onload. Re-encode as JPEG at video size for reliable decode.
+ */
+export async function compressImageForVideo(src: string): Promise<string> {
+  if (src.startsWith("data:image/jpeg")) return src
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image()
+    el.onload = () => resolve(el)
+    el.onerror = () => reject(new Error("Failed to load chart image"))
+    el.src = src
   })
+
+  const canvas = document.createElement("canvas")
+  canvas.width = VIDEO_WIDTH
+  canvas.height = VIDEO_HEIGHT
+  const ctx = canvas.getContext("2d")
+  if (!ctx) throw new Error("Canvas unsupported")
+
+  ctx.fillStyle = "#041512"
+  ctx.fillRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT)
+
+  const scale = Math.min(
+    VIDEO_WIDTH / Math.max(img.naturalWidth, 1),
+    VIDEO_HEIGHT / Math.max(img.naturalHeight, 1)
+  )
+  const drawW = img.naturalWidth * scale
+  const drawH = img.naturalHeight * scale
+  ctx.drawImage(
+    img,
+    (VIDEO_WIDTH - drawW) / 2,
+    (VIDEO_HEIGHT - drawH) / 2,
+    drawW,
+    drawH
+  )
+
+  return canvas.toDataURL("image/jpeg", 0.88)
 }
 
-/** Web renderer often can't resolve `blob:` URLs — bake charts into data URLs. */
-async function preparePropsForRender(
-  props: SocialWrappedVideoProps,
+/** Bake chart slides into compact JPEG data URLs for Player + web encode. */
+export async function prepareChartSlidesForVideo(
+  slides: VideoChartSlide[],
   onProgress?: (progress: number) => void
-): Promise<SocialWrappedVideoProps> {
-  const slides = props.chartSlides ?? []
-  if (slides.length === 0) return props
+): Promise<VideoChartSlide[]> {
+  if (slides.length === 0) return slides
 
   const prepared: VideoChartSlide[] = []
   for (let i = 0; i < slides.length; i++) {
     const slide = slides[i]!
     prepared.push({
       ...slide,
-      src: await blobOrUrlToDataUrl(slide.src),
+      src: await compressImageForVideo(slide.src),
     })
-    // 0 → ~8% while hydrating chart frames for encode.
     onProgress?.(((i + 1) / slides.length) * 0.08)
   }
+  return prepared
+}
 
-  return { ...props, chartSlides: prepared }
+async function preparePropsForRender(
+  props: SocialWrappedVideoProps,
+  onProgress?: (progress: number) => void
+): Promise<SocialWrappedVideoProps> {
+  const slides = props.chartSlides ?? []
+  if (slides.length === 0) return props
+  // Already JPEG data URLs from the Player prep path — skip a second pass.
+  if (slides.every((s) => s.src.startsWith("data:image/jpeg"))) {
+    onProgress?.(0.08)
+    return props
+  }
+
+  return {
+    ...props,
+    chartSlides: await prepareChartSlidesForVideo(slides, onProgress),
+  }
 }
 
 function isAbortError(error: unknown, signal?: AbortSignal): boolean {
