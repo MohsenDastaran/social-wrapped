@@ -416,12 +416,20 @@ export async function composeStoryFrame(
     paintKpiStrip(ctx, spec.kpis, y + kpiGap, padX)
   }
 
-  // App attribution (baked into download)
-  ctx.textAlign = "center"
+  // App attribution (baked into download) — brand in primary
+  const prefix = "Created with "
+  const brand = "Social Wrapped"
+  ctx.font = "500 24px ui-sans-serif, system-ui, sans-serif"
+  const prefixW = ctx.measureText(prefix).width
+  const brandW = ctx.measureText(brand).width
+  const attrX = STORY_W / 2 - (prefixW + brandW) / 2
+  const attrY = STORY_H - 28
+  ctx.textAlign = "left"
   ctx.textBaseline = "bottom"
   ctx.fillStyle = "rgba(255,255,255,0.45)"
-  ctx.font = "500 24px ui-sans-serif, system-ui, sans-serif"
-  ctx.fillText("Created with Social Wrapped", STORY_W / 2, STORY_H - 28)
+  ctx.fillText(prefix, attrX, attrY)
+  ctx.fillStyle = resolveCssColor("var(--primary)", "#0d9488")
+  ctx.fillText(brand, attrX + prefixW, attrY)
 
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob((b) => resolve(b), "image/png")
@@ -517,4 +525,15 @@ async function waitForCardCaptureReady(
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** Resolve a CSS color (e.g. `var(--primary)`) to a canvas-safe rgb/rgba string. */
+function resolveCssColor(color: string, fallback: string): string {
+  if (typeof document === "undefined") return fallback
+  const probe = document.createElement("span")
+  probe.style.color = color
+  document.body.appendChild(probe)
+  const resolved = getComputedStyle(probe).color
+  probe.remove()
+  return resolved && resolved !== "rgba(0, 0, 0, 0)" ? resolved : fallback
 }
