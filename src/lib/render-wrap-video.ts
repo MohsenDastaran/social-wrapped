@@ -134,7 +134,7 @@ async function renderOnce(
   const support = await canRenderMediaOnWeb({
     container: "mp4",
     videoCodec: "h264",
-    muted: true,
+    muted: false,
     width: Math.round(VIDEO_WIDTH * attempt.scale / 2) * 2,
     height: Math.round(VIDEO_HEIGHT * attempt.scale / 2) * 2,
   })
@@ -169,7 +169,8 @@ async function renderOnce(
     inputProps: props,
     container: "mp4",
     videoCodec: "h264",
-    muted: true,
+    muted: false,
+    audioCodec: "aac",
     scale: attempt.scale,
     videoBitrate: attempt.videoBitrate,
     // Prefer software when full-res hardware encode silently stalls.

@@ -1,5 +1,6 @@
 import React from "react"
 import { AbsoluteFill, Img, interpolate, useCurrentFrame } from "remotion"
+import { Audio } from "@remotion/media"
 import { TransitionSeries, linearTiming } from "@remotion/transitions"
 
 import { LogoEnter, type Logo } from "../src/components/remocn/logo-enter"
@@ -8,6 +9,16 @@ import { PaperSticker } from "../src/components/remocn/paper-sticker"
 import { RollingNumber } from "../src/components/remocn/rolling-number"
 import { SoftBlurIn } from "../src/components/remocn/soft-blur-in"
 import { whipPan } from "../src/components/remocn/whip-pan"
+
+/** Powerful percussion bed for the wrap reel (served from /public). */
+const SOUNDTRACK_PATH =
+  "/soundtracks/miromaxmusic-music-promotion-no-copyright-513944.mp3"
+
+function soundtrackSrc(): string {
+  if (typeof window === "undefined") return SOUNDTRACK_PATH
+  // Absolute URL — required for Player + web-renderer fetch.
+  return new URL(SOUNDTRACK_PATH, window.location.origin).href
+}
 
 export type VideoChartSlide = {
   /** Story id (activity, heatmap, circadian, …) for sequencing. */
@@ -37,19 +48,19 @@ export const VIDEO_HEIGHT = 1920
 /** Whip-pan natural length is ~26f @ 30fps → ~52f @ 60fps. */
 const WHIP = 52
 /** Scene lengths @ 60fps — hold long enough to read before the whip. */
-const SCENE_MARKER = 210 // ~3.5s
-const SCENE_CHART = 270 // ~4.5s
-const SCENE_STATS = 420 // ~7s
-const SCENE_LOGOS = 240 // ~4s — MarkerHighlight CTA + logos
+const SCENE_MARKER = 300 // ~5s
+const SCENE_CHART = 390 // ~6.5s
+const SCENE_STATS = 540 // ~9s
+const SCENE_LOGOS = 330 // ~5.5s
 const MAX_CHARTS = 5
 
 /** Deep-dive chart order (after early activity / sent-received beats). */
 const DEEP_DIVE_ORDER = ["heatmap", "circadian", "emojis"] as const
 /** Teaser sticker scenes (60fps). */
-const SCENE_HEATMAP_STICKER = 150
-const SCENE_CLOCK_STICKER = 160
-const SCENE_EMOJI_STICKER = 160
-const SCENE_PLATFORMS_STICKER = 200
+const SCENE_HEATMAP_STICKER = 220 // ~3.7s
+const SCENE_CLOCK_STICKER = 240 // ~4s
+const SCENE_EMOJI_STICKER = 240 // ~4s
+const SCENE_PLATFORMS_STICKER = 300 // ~5s
 const STICKER_STEP = 6
 const DESK = "#f1eee7"
 
@@ -538,6 +549,7 @@ export const SocialWrappedVideo: React.FC<SocialWrappedVideoProps> = ({
 
   return (
     <AbsoluteFill style={{ backgroundColor: BG }}>
+      <Audio src={soundtrackSrc()} volume={0.5} loop />
       <TransitionSeries>
         <TransitionSeries.Sequence durationInFrames={SCENE_MARKER}>
           <SceneShell>

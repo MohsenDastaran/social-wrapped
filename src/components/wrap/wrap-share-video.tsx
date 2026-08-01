@@ -1,5 +1,12 @@
 import { Player, type PlayerRef } from "@remotion/player"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react"
 
 import { MediaFullscreenChrome } from "@/components/media-fullscreen-chrome"
 import { downloadMediaUrl } from "@/lib/media-share"
@@ -40,6 +47,14 @@ type WrapShareVideoProps = {
 
 type EncodeStatus = "idle" | "encoding" | "ready" | "error"
 
+/** Fill the viewport while keeping 9:16 — width-bound on phones, height-bound on desktop. */
+const fullscreenMediaStyle: CSSProperties = {
+  width: "min(100vw, calc(100dvh * 9 / 16))",
+  height: "min(100dvh, calc(100vw * 16 / 9))",
+  maxWidth: "100%",
+  maxHeight: "100%",
+}
+
 /** Remotion-powered wrap highlight reel for the share strip. */
 export function WrapShareVideo({
   displayName,
@@ -63,6 +78,8 @@ export function WrapShareVideo({
   const [slidesReady, setSlidesReady] = useState(chartSlides.length === 0)
   const previewRef = useRef<PlayerRef>(null)
   const fullscreenRef = useRef<PlayerRef>(null)
+  const previewVideoRef = useRef<HTMLVideoElement>(null)
+  const fullscreenVideoRef = useRef<HTMLVideoElement>(null)
   const mediaUrlRef = useRef("")
   const inputPropsRef = useRef<SocialWrappedVideoProps | null>(null)
   const encodePromiseRef = useRef<Promise<string> | null>(null)
@@ -122,7 +139,13 @@ export function WrapShareVideo({
   )
   inputPropsRef.current = inputProps
 
+  // Phase 1: charts captured + compressed. Phase 2: MP4 encoded.
+  // The live <Player> is never mounted during phase 2 — running the full
+  // composition at 60fps alongside the encoder is what makes both stutter.
   const videoReady = ready && slidesReady
+  const playbackReady = encodeStatus === "ready" && Boolean(mediaUrl)
+  const useLivePlayer = videoReady && encodeStatus === "error"
+  const canPlay = playbackReady || useLivePlayer
   const durationInFrames = videoDurationFrames(videoSlides.length, {
     includeHeatmapSticker: slidesIncludeHeatmap(videoSlides),
     includeClockSticker: slidesIncludeClock(videoSlides),
@@ -220,9 +243,10 @@ export function WrapShareVideo({
     }
   }, [clearMediaUrl])
 
-  // Kick silent autoplay — audio tags / unmuted context can stall the clock.
+  // Live-player fallback only: kick silent autoplay, since audio tags /
+  // unmuted context can stall the clock.
   useEffect(() => {
-    if (!videoReady) return
+    if (!useLivePlayer) return
     let cancelled = false
     const kick = (ref: typeof previewRef) => {
       const player = ref.current
@@ -239,15 +263,16 @@ export function WrapShareVideo({
       cancelled = true
       timers.forEach(clearTimeout)
     }
-  }, [videoReady, playerKey])
+  }, [useLivePlayer, playerKey])
 
   useEffect(() => {
-    if (!open || !videoReady) return
+    if (!open || !useLivePlayer) return
     let cancelled = false
     const kick = () => {
       const player = fullscreenRef.current
       if (!player || cancelled) return
-      player.mute()
+      // User gesture opened fullscreen — safe to play the soundtrack.
+      player.unmute()
       if (!player.isPlaying()) player.play()
     }
     const timers = [
@@ -259,7 +284,27 @@ export function WrapShareVideo({
       cancelled = true
       timers.forEach(clearTimeout)
     }
-  }, [open, videoReady, playerKey])
+  }, [open, useLivePlayer, playerKey])
+
+  // Fullscreen opens from a tap, so the soundtrack may start unmuted.
+  useEffect(() => {
+    if (!open || !playbackReady) return
+    const el = fullscreenVideoRef.current
+    if (!el) return
+    el.muted = false
+    void el.play().catch(() => {
+      el.muted = true
+      void el.play().catch(() => {})
+    })
+  }, [open, playbackReady, mediaUrl])
+
+  // Don't burn decode cycles (or double the audio) behind the fullscreen view.
+  useEffect(() => {
+    const el = previewVideoRef.current
+    if (!el) return
+    if (open) el.pause()
+    else void el.play().catch(() => {})
+  }, [open, playbackReady])
 
   const handleRequestDownload = useCallback(async () => {
     const url = await encodeToObjectUrl(
@@ -279,11 +324,12 @@ export function WrapShareVideo({
     : !slidesReady
       ? "Preparing video frames…"
       : encodeStatus === "error"
-        ? "Encode failed — open to retry"
-        : `Encoding video… ${progressPct}%`
-  const showLoading = !videoReady
+        ? "Render failed — open to retry"
+        : `Rendering video… ${progressPct}%`
+  const loadingStep = videoReady ? "Step 2 of 2 · Rendering" : "Step 1 of 2 · Charts"
+  const showLoading = !canPlay
 
-  const renderReady = encodeStatus === "ready" && Boolean(mediaUrl)
+  const renderReady = playbackReady
   const downloadStatus =
     encodeStatus === "error"
       ? "Retry"
@@ -300,8 +346,9 @@ export function WrapShareVideo({
     fps: VIDEO_FPS,
     loop: true as const,
     autoPlay: true as const,
+    // Tile stays muted for browser autoplay; fullscreen unmutes for the bed.
     initiallyMuted: true as const,
-    numberOfSharedAudioTags: 0,
+    numberOfSharedAudioTags: 2,
     clickToPlay: false as const,
     doubleClickToFullscreen: false as const,
     spaceKeyToPlayOrPause: false as const,
@@ -312,12 +359,12 @@ export function WrapShareVideo({
     <>
       <div
         role="button"
-        tabIndex={videoReady ? 0 : -1}
+        tabIndex={canPlay ? 0 : -1}
         onClick={() => {
-          if (videoReady) setOpen(true)
+          if (canPlay) setOpen(true)
         }}
         onKeyDown={(event) => {
-          if (!videoReady) return
+          if (!canPlay) return
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault()
             setOpen(true)
@@ -328,13 +375,24 @@ export function WrapShareVideo({
           "bg-[#041512] ring-1 ring-foreground/10",
           "transition-transform active:scale-[0.98]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
-          videoReady ? "cursor-pointer" : "cursor-wait",
+          canPlay ? "cursor-pointer" : "cursor-wait",
           className
         )}
-        aria-label={videoReady ? "Open wrap video fullscreen" : "Crafting wrap video"}
-        aria-busy={!videoReady}
+        aria-label={canPlay ? "Open wrap video fullscreen" : "Crafting wrap video"}
+        aria-busy={!canPlay}
       >
-        {videoReady ? (
+        {playbackReady ? (
+          <video
+            ref={previewVideoRef}
+            src={mediaUrl}
+            className="pointer-events-none absolute inset-0 size-full object-cover"
+            muted
+            loop
+            autoPlay
+            playsInline
+            preload="auto"
+          />
+        ) : useLivePlayer ? (
           <div className="pointer-events-none absolute inset-0">
             <Player
               ref={previewRef}
@@ -358,7 +416,7 @@ export function WrapShareVideo({
             </span>
             <span className="text-center">
               <span className="block text-[0.65rem] font-semibold tracking-[0.16em] text-emerald-200/90 uppercase">
-                Crafting video
+                {loadingStep}
               </span>
               <span className="mt-1 block max-w-48 truncate text-xs text-white/75">
                 {loadingLabel}
@@ -383,18 +441,18 @@ export function WrapShareVideo({
             Your wrap
           </p>
           <p className="mt-0.5 text-xs text-white/80">
-            {!videoReady
-              ? "Building shareable reel…"
-              : renderReady
-                ? "Autoplaying · tap for fullscreen"
-                : encodeStatus === "error"
-                  ? "Autoplaying · download encode failed"
-                  : `Autoplaying · encoding ${progressPct}%`}
+            {playbackReady
+              ? "Tap to play fullscreen"
+              : useLivePlayer
+                ? "Preview only · render failed"
+                : !videoReady
+                  ? "Building shareable reel…"
+                  : `Rendering ${progressPct}% · playable when done`}
           </p>
         </div>
       </div>
 
-      {open && videoReady ? (
+      {open && canPlay ? (
         <MediaFullscreenChrome
           title="Wrap video"
           shareText={shareText}
@@ -406,20 +464,28 @@ export function WrapShareVideo({
           onRequestDownload={handleRequestDownload}
           onClose={() => setOpen(false)}
         >
-          <div className="flex h-full max-h-dvh w-full max-w-[min(100%,28rem)] items-center justify-center">
-            <Player
-              ref={fullscreenRef}
-              key={`fullscreen-${playerKey}`}
-              {...playerCommon}
-              style={{
-                width: "100%",
-                height: "auto",
-                aspectRatio: `${VIDEO_WIDTH} / ${VIDEO_HEIGHT}`,
-                maxHeight: "100%",
-              }}
-              controls
-              spaceKeyToPlayOrPause
-            />
+          <div className="flex size-full max-h-dvh max-w-full items-center justify-center">
+            {playbackReady ? (
+              <video
+                ref={fullscreenVideoRef}
+                src={mediaUrl}
+                style={fullscreenMediaStyle}
+                className="object-contain"
+                controls
+                autoPlay
+                loop
+                playsInline
+              />
+            ) : (
+              <Player
+                ref={fullscreenRef}
+                key={`fullscreen-${playerKey}`}
+                {...playerCommon}
+                style={fullscreenMediaStyle}
+                controls
+                spaceKeyToPlayOrPause
+              />
+            )}
           </div>
         </MediaFullscreenChrome>
       ) : null}
