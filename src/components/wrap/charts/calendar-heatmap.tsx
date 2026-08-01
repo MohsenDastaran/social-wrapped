@@ -78,6 +78,28 @@ export function CalendarHeatmap({
     if (!years.includes(year)) setYear(years[0]!)
   }, [years, year])
 
+  // Expose year controls for story capture (current + previous year panels).
+  useEffect(() => {
+    const card = document.querySelector<HTMLElement>(
+      `[data-export-name="${CSS.escape(exportName)}"]`
+    )
+    if (!card) return
+
+    card.dataset.heatmapYears = years.join(",")
+    card.dataset.heatmapYear = String(year)
+
+    const onSetYear = (event: Event) => {
+      const next = (event as CustomEvent<{ year?: number }>).detail?.year
+      if (typeof next === "number" && years.includes(next)) {
+        setYear(next)
+      }
+    }
+    card.addEventListener("sw:set-heatmap-year", onSetYear)
+    return () => {
+      card.removeEventListener("sw:set-heatmap-year", onSetYear)
+    }
+  }, [exportName, years, year])
+
   const yearDays = useMemo(() => daysInYear(days, year), [days, year])
   const total = yearDays.reduce((sum, [, n]) => sum + n, 0)
   const activeDays = yearDays.filter(([, n]) => n > 0).length
@@ -111,16 +133,18 @@ export function CalendarHeatmap({
       className={className}
       chartClassName="flex flex-col gap-2 pb-3 pt-1"
     >
-      <HeatmapScroller>
-        <HeatmapCanvas
-          key={year}
-          year={year}
-          data={yearDays}
-          width={chartWidth}
-          height={chartHeight}
-        />
-      </HeatmapScroller>
-      <HeatmapLegend />
+      <div data-heatmap-panel className="flex flex-col gap-2">
+        <HeatmapScroller>
+          <HeatmapCanvas
+            key={year}
+            year={year}
+            data={yearDays}
+            width={chartWidth}
+            height={chartHeight}
+          />
+        </HeatmapScroller>
+        <HeatmapLegend />
+      </div>
     </WrapChartCard>
   )
 }

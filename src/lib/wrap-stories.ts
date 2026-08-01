@@ -111,12 +111,24 @@ export function buildMainStorySpecs(
   }
 
   if (a.heatmap.days.length > 0) {
+    const years = heatmapYearsFromDays(a.heatmap.days)
     const total = a.heatmap.days.reduce((sum, d) => sum + d.count, 0)
+    const yearLabel =
+      years.length === 0
+        ? null
+        : years.length === 1
+          ? String(years[0])
+          : years.length === 2
+            ? `${years[0]} & ${years[1]}`
+            : `${years[years.length - 1]}–${years[0]}`
     specs.push({
       id: "heatmap",
       exportName: "main-heatmap",
       heading: "Activity heatmap",
-      subtext: `${fmt(total)} messages across ${fmt(a.heatmap.days.length)} days on the calendar.`,
+      subtext:
+        yearLabel != null
+          ? `${yearLabel} · ${fmt(total)} messages on the calendar.`
+          : `${fmt(total)} messages on the calendar.`,
     })
   }
 
@@ -476,6 +488,16 @@ export async function generateWrapStories(
     if (signal?.aborted) break
 
     try {
+      if (spec.id === "heatmap") {
+        const composed = await captureHeatmapStory(card, spec, signal)
+        if (!composed || signal?.aborted) continue
+        stories.push({
+          ...spec,
+          image: URL.createObjectURL(composed),
+        })
+        continue
+      }
+
       const cardBlob = await elementToPngBlob(card, exportOptionsFromCard(card))
       const composed = await composeStoryFrame(cardBlob, spec)
       if (signal?.aborted) break
@@ -489,6 +511,227 @@ export async function generateWrapStories(
   }
 
   return stories
+}
+
+/** Newest year first. */
+function heatmapYearsFromDays(
+  days: Array<{ date: string }>
+): number[] {
+  const set = new Set<number>()
+  for (const d of days) {
+    const y = Number(d.date.slice(0, 4))
+    if (Number.isFinite(y)) set.add(y)
+  }
+  return [...set].sort((a, b) => b - a)
+}
+
+function parseHeatmapYears(card: HTMLElement): number[] {
+  const raw = card.dataset.heatmapYears ?? ""
+  return raw
+    .split(",")
+    .map((s) => Number(s.trim()))
+    .filter((n) => Number.isFinite(n))
+}
+
+async function setHeatmapYear(card: HTMLElement, year: number): Promise<void> {
+  if (card.dataset.heatmapYear === String(year)) return
+  card.dispatchEvent(
+    new CustomEvent("sw:set-heatmap-year", { detail: { year } })
+  )
+  const started = Date.now()
+  while (Date.now() - started < 4_000) {
+    if (card.dataset.heatmapYear === String(year)) {
+      await waitForCardCaptureReady(card)
+      await delay(180)
+      return
+    }
+    await delay(80)
+  }
+}
+
+async function captureHeatmapStory(
+  card: HTMLElement,
+  spec: WrapStorySpec,
+  signal?: AbortSignal
+): Promise<Blob | null> {
+  const years = parseHeatmapYears(card)
+  if (years.length === 0) return null
+
+  const previousYear = Number(card.dataset.heatmapYear) || years[0]
+  const panel =
+    card.querySelector<HTMLElement>("[data-heatmap-panel]") ?? card
+  const baseOptions = exportOptionsFromCard(card)
+  const options: DomExportOptions = {
+    ...baseOptions,
+    captureMode: "chart",
+    minWidth: Math.max(baseOptions.minWidth ?? 720, 1040),
+    backgroundColor:
+      getComputedStyle(card).backgroundColor || baseOptions.backgroundColor,
+  }
+
+  try {
+    const panels: Array<{ year: number; blob: Blob }> = []
+    for (const year of years) {
+      if (signal?.aborted) return null
+      await setHeatmapYear(card, year)
+      if (signal?.aborted) return null
+      const blob = await elementToPngBlob(panel, options)
+      if (signal?.aborted) return null
+      panels.push({ year, blob })
+    }
+
+    return composeHeatmapStoryFrame(panels, spec)
+  } finally {
+    if (previousYear != null) {
+      await setHeatmapYear(card, previousYear)
+    }
+  }
+}
+
+/**
+ * Stack every available year heatmap with year labels; main title at the bottom.
+ */
+async function composeHeatmapStoryFrame(
+  panels: Array<{ year: number; blob: Blob }>,
+  spec: Pick<WrapStorySpec, "heading" | "subtext">
+): Promise<Blob> {
+  const images = await Promise.all(
+    panels.map(async (p) => ({
+      year: p.year,
+      img: await loadImageFromBlob(p.blob),
+    }))
+  )
+
+  const canvas = document.createElement("canvas")
+  canvas.width = STORY_W
+  canvas.height = STORY_H
+  const ctx = canvas.getContext("2d")
+  if (!ctx) throw new Error("Canvas unsupported")
+
+  paintAtmosphere(ctx)
+
+  const padX = 48
+  const footerH = 56
+  const headingSize = images.length >= 4 ? 64 : 84
+  const headingLine = images.length >= 4 ? 72 : 94
+  const subSize = 34
+  const subLine = 44
+
+  // Measure bottom caption stack (same pattern as other stories)
+  ctx.font = `700 ${headingSize}px ui-sans-serif, system-ui, sans-serif`
+  const headingLines = wrapLines(
+    ctx,
+    spec.heading,
+    STORY_W - padX * 2
+  ).slice(0, 3)
+  ctx.font = `500 ${subSize}px ui-sans-serif, system-ui, sans-serif`
+  const subLines = wrapLines(ctx, spec.subtext, STORY_W - padX * 2).slice(0, 4)
+  const captionBlockH =
+    headingLines.length * headingLine + 14 + subLines.length * subLine
+  const captionTop = STORY_H - footerH - 36 - captionBlockH
+
+  // Brand
+  ctx.textAlign = "center"
+  ctx.textBaseline = "top"
+  ctx.fillStyle = "rgba(255,255,255,0.88)"
+  ctx.font = "700 28px ui-sans-serif, system-ui, sans-serif"
+  ctx.fillText("Social Wrapped", STORY_W / 2, 52)
+
+  const contentTop = 100
+  const yearLabelH = images.length >= 4 ? 36 : 44
+  const gapBetween = images.length >= 4 ? 16 : 22
+  const slots = images.length
+  const availableH =
+    captionTop - 28 - contentTop - slots * yearLabelH - (slots - 1) * gapBetween
+  const slotH = Math.max(availableH / slots, 90)
+
+  // Soft bottom vignette behind captions
+  const vignette = ctx.createLinearGradient(0, captionTop - 140, 0, STORY_H)
+  vignette.addColorStop(0, "rgba(0,0,0,0)")
+  vignette.addColorStop(0.4, "rgba(0,0,0,0.4)")
+  vignette.addColorStop(1, "rgba(0,0,0,0.78)")
+  ctx.fillStyle = vignette
+  ctx.fillRect(0, captionTop - 140, STORY_W, STORY_H - (captionTop - 140))
+
+  let y = contentTop
+  for (let i = 0; i < images.length; i++) {
+    const panel = images[i]!
+    ctx.textAlign = "left"
+    ctx.textBaseline = "top"
+    ctx.fillStyle = resolveCssColor("var(--primary)", "#0d9488")
+    ctx.font = `700 ${images.length >= 4 ? 32 : 40}px ui-sans-serif, system-ui, sans-serif`
+    ctx.fillText(String(panel.year), padX, y)
+    y += yearLabelH
+
+    const maxW = STORY_W - padX * 2
+    const maxH = slotH - 4
+    const scale = Math.min(maxW / panel.img.width, maxH / panel.img.height)
+    const drawW = panel.img.width * scale
+    const drawH = panel.img.height * scale
+    const drawX = (STORY_W - drawW) / 2
+    const drawY = y
+    const radius = 18
+
+    ctx.save()
+    ctx.shadowColor = "rgba(0,0,0,0.4)"
+    ctx.shadowBlur = 24
+    ctx.shadowOffsetY = 10
+    ctx.fillStyle = "#0f172a"
+    roundRectPath(ctx, drawX, drawY, drawW, drawH, radius)
+    ctx.fill()
+    ctx.restore()
+
+    ctx.save()
+    roundRectPath(ctx, drawX, drawY, drawW, drawH, radius)
+    ctx.clip()
+    ctx.drawImage(panel.img, drawX, drawY, drawW, drawH)
+    ctx.restore()
+
+    ctx.strokeStyle = "rgba(255,255,255,0.12)"
+    ctx.lineWidth = 1.5
+    roundRectPath(ctx, drawX, drawY, drawW, drawH, radius)
+    ctx.stroke()
+
+    y = drawY + drawH + gapBetween
+  }
+
+  // Main title + subtext at bottom (matches other stories)
+  ctx.textAlign = "left"
+  ctx.textBaseline = "top"
+  let captionY = captionTop
+  ctx.fillStyle = "#ffffff"
+  ctx.font = `700 ${headingSize}px ui-sans-serif, system-ui, sans-serif`
+  for (const line of headingLines) {
+    ctx.fillText(line, padX, captionY)
+    captionY += headingLine
+  }
+  captionY += 10
+  ctx.fillStyle = "rgba(255,255,255,0.84)"
+  ctx.font = `500 ${subSize}px ui-sans-serif, system-ui, sans-serif`
+  for (const line of subLines) {
+    ctx.fillText(line, padX, captionY)
+    captionY += subLine
+  }
+
+  // Attribution
+  const prefix = "Created with "
+  const brand = "Social Wrapped"
+  ctx.font = "500 24px ui-sans-serif, system-ui, sans-serif"
+  const prefixW = ctx.measureText(prefix).width
+  const brandW = ctx.measureText(brand).width
+  const attrX = STORY_W / 2 - (prefixW + brandW) / 2
+  ctx.textAlign = "left"
+  ctx.textBaseline = "bottom"
+  ctx.fillStyle = "rgba(255,255,255,0.45)"
+  ctx.fillText(prefix, attrX, STORY_H - 28)
+  ctx.fillStyle = resolveCssColor("var(--primary)", "#0d9488")
+  ctx.fillText(brand, attrX + prefixW, STORY_H - 28)
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob((b) => resolve(b), "image/png")
+  )
+  if (!blob) throw new Error("Heatmap story compose produced an empty image")
+  return blob
 }
 
 export function revokeStoryUrls(stories: Array<{ image: string }>) {
