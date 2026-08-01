@@ -108,6 +108,20 @@ export function WrapShareMedia({
   const canOpenStories = storiesReady && stories.length > 0
   const progressPct = Math.round((captureProgress?.progress ?? 0) * 100)
 
+  // Prefer a short highlight set for the video reel (same captures as Stories).
+  const videoChartSlides = useMemo(
+    () =>
+      stories
+        .filter((s) =>
+          ["activity", "sent-received", "circadian", "heatmap", "emojis"].includes(
+            s.id
+          )
+        )
+        .slice(0, 4)
+        .map((s) => ({ src: s.image, heading: s.heading })),
+    [stories]
+  )
+
   return (
     <>
       <section className="grid grid-cols-2 gap-3">
@@ -124,6 +138,9 @@ export function WrapShareMedia({
             sentMessages={analytics.account.sentMessages}
             receivedMessages={analytics.account.receivedMessages}
             chatCount={analytics.chatCount}
+            chartSlides={videoChartSlides}
+            ready={storiesReady || specs.length === 0}
+            captureProgress={captureProgress}
             shareText={videoShareText}
             shareFileName={`social-wrapped-${displayName}.mp4`}
           />
@@ -145,7 +162,7 @@ export function WrapShareMedia({
               setStoriesOpen(true)
             }}
             className={cn(
-              "group relative aspect-[3/4] overflow-hidden rounded-2xl text-start ring-1 ring-foreground/10",
+              "group relative aspect-9/16 overflow-hidden rounded-2xl text-start ring-1 ring-foreground/10",
               "transition-transform active:scale-[0.98]",
               !canOpenStories && "cursor-wait"
             )}
