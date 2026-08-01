@@ -109,16 +109,23 @@ export function WrapShareMedia({
   const progressPct = Math.round((captureProgress?.progress ?? 0) * 100)
 
   // Prefer a short highlight set for the video reel (same captures as Stories).
+  // Keep heatmap (activity calendar) near the front so it isn't sliced off.
   const videoChartSlides = useMemo(
-    () =>
-      stories
-        .filter((s) =>
-          ["activity", "sent-received", "circadian", "heatmap", "emojis"].includes(
-            s.id
-          )
-        )
-        .slice(0, 4)
-        .map((s) => ({ src: s.image, heading: s.heading })),
+    () => {
+      const preferred = [
+        "activity",
+        "sent-received",
+        "heatmap",
+        "circadian",
+        "emojis",
+      ]
+      const byId = new Map(stories.map((s) => [s.id, s]))
+      return preferred
+        .map((id) => byId.get(id))
+        .filter((s): s is (typeof stories)[number] => Boolean(s?.image))
+        .slice(0, 5)
+        .map((s) => ({ src: s.image, heading: s.heading }))
+    },
     [stories]
   )
 

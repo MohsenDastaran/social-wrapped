@@ -39,7 +39,7 @@ const SCENE_TOTAL = 250 // ~4.2s
 const SCENE_CHART = 270 // ~4.5s
 const SCENE_STATS = 420 // ~7s
 const SCENE_LOGOS = 220 // ~3.7s
-const MAX_CHARTS = 4
+const MAX_CHARTS = 5
 
 const BG = "#041512"
 const INK = "#ecfdf5"
