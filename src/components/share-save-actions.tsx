@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react"
 import { Check, Download, Loader2, Share2 } from "lucide-react"
 
+import { DotmSquare12 } from "@/components/ui/dotm-square-12"
 import {
   copyShareText,
   downloadMediaUrl,
@@ -22,6 +23,20 @@ export type ShareSaveActionsProps = {
   downloadLabel?: string
   /** Compact icon-only pill (fullscreen header). */
   iconOnly?: boolean
+  /**
+   * When false, download shows a DotmSquare12 loader and stays disabled
+   * (e.g. wrap video still encoding). Defaults to ready when `mediaUrl` is set.
+   */
+  downloadReady?: boolean
+  /** 0–1 encode progress while preparing the downloadable file. */
+  downloadProgress?: number
+  /** Optional status line, e.g. "Encoding" / "Retry". */
+  downloadStatus?: string
+  /**
+   * When the file isn't ready yet (or encode failed), invoke this to finish
+   * encoding then download. If omitted, Save stays disabled until ready.
+   */
+  onRequestDownload?: () => Promise<void>
 }
 
 type ActionTone = "neutral" | "primary" | "success"
@@ -32,7 +47,9 @@ function ActionButton({
   tone,
   overlay,
   compact,
+  wide,
   disabled,
+  softDisabled,
   onClick,
 }: {
   label: string
@@ -40,23 +57,30 @@ function ActionButton({
   tone: ActionTone
   overlay: boolean
   compact: boolean
+  /** Compact but wide enough for loader + percent text. */
+  wide?: boolean
   disabled?: boolean
+  softDisabled?: boolean
   onClick: () => void
 }) {
   return (
     <button
       type="button"
-      disabled={disabled}
+      disabled={disabled || softDisabled}
       onClick={onClick}
       aria-label={label}
       title={label}
+      aria-busy={softDisabled || undefined}
       className={cn(
         "inline-flex items-center justify-center font-medium transition-all",
-        "disabled:pointer-events-none disabled:opacity-45",
+        "disabled:pointer-events-none",
+        disabled && !softDisabled && "disabled:opacity-45",
         "active:scale-[0.97]",
-        compact
-          ? "size-10 rounded-full"
-          : "min-h-11 flex-1 gap-2 rounded-xl px-4 py-2.5 text-sm",
+        compact && !wide && "size-10 rounded-full",
+        compact &&
+          wide &&
+          "h-10 gap-1.5 rounded-full px-2.5 text-[0.7rem] font-semibold tracking-tight tabular-nums",
+        !compact && "min-h-11 flex-1 gap-2 rounded-xl px-4 py-2.5 text-sm",
         overlay &&
           compact &&
           tone === "neutral" && [
@@ -115,8 +139,8 @@ function ActionButton({
       )}
     >
       {icon}
-      {!compact ? (
-        <span className={cn(overlay && "text-xs font-semibold tracking-tight")}>
+      {!compact || wide ? (
+        <span className={cn(overlay && !wide && "text-xs font-semibold tracking-tight")}>
           {label}
         </span>
       ) : null}
@@ -138,11 +162,21 @@ export function ShareSaveActions({
   shareLabel = "Share",
   downloadLabel = "Save",
   iconOnly = false,
+  downloadReady,
+  downloadProgress,
+  downloadStatus,
+  onRequestDownload,
 }: ShareSaveActionsProps) {
   const [busy, setBusy] = useState<"share" | "download" | null>(null)
   const [copied, setCopied] = useState(false)
 
   const overlay = appearance === "overlay"
+  const canDownload = Boolean(mediaUrl) && (downloadReady ?? Boolean(mediaUrl))
+  const preparingDownload = !canDownload
+  const progressPct =
+    downloadProgress != null
+      ? Math.round(Math.min(1, Math.max(0, downloadProgress)) * 100)
+      : null
 
   async function handleShare() {
     setBusy("share")
@@ -161,10 +195,17 @@ export function ShareSaveActions({
   async function handleDownload() {
     setBusy("download")
     try {
-      const name =
-        fileName ??
-        filenameFromUrl(mediaUrl, `social-wrapped-${Date.now()}.bin`)
-      await downloadMediaUrl(mediaUrl, name)
+      if (canDownload) {
+        const name =
+          fileName ??
+          filenameFromUrl(mediaUrl, `social-wrapped-${Date.now()}.bin`)
+        await downloadMediaUrl(mediaUrl, name)
+        return
+      }
+      if (onRequestDownload) {
+        await onRequestDownload()
+        return
+      }
     } catch (error) {
       console.error(error)
     } finally {
@@ -174,7 +215,19 @@ export function ShareSaveActions({
 
   const shareCaption =
     busy === "share" ? "Sharing…" : copied ? "Copied!" : shareLabel
-  const downloadCaption = busy === "download" ? "Saving…" : downloadLabel
+
+  const downloadCaption =
+    busy === "download" && canDownload
+      ? "Saving…"
+      : busy === "download" && preparingDownload
+        ? progressPct != null
+          ? `${progressPct}%`
+          : (downloadStatus ?? "Encoding…")
+        : preparingDownload
+          ? progressPct != null
+            ? `${progressPct}%`
+            : (downloadStatus ?? "Encoding…")
+          : downloadLabel
 
   const shareIcon =
     busy === "share" ? (
@@ -186,8 +239,21 @@ export function ShareSaveActions({
     )
 
   const downloadIcon =
-    busy === "download" ? (
+    busy === "download" && canDownload ? (
       <Loader2 className="size-4 animate-spin" aria-hidden />
+    ) : preparingDownload || (busy === "download" && preparingDownload) ? (
+      <DotmSquare12
+        size={18}
+        dotSize={2.6}
+        speed={1.35}
+        pattern="full"
+        color={overlay ? "#ffffff" : "#42b2ae"}
+        animated
+        opacityBase={0.12}
+        opacityMid={0.42}
+        opacityPeak={0.98}
+        ariaLabel="Preparing download"
+      />
     ) : (
       <Download className="size-4" aria-hidden />
     )
@@ -204,6 +270,8 @@ export function ShareSaveActions({
       : "w-full gap-2",
     className
   )
+
+  const downloadBlocked = preparingDownload && !onRequestDownload
 
   return (
     <div className={shellClass} role="group" aria-label="Share and save">
@@ -223,7 +291,9 @@ export function ShareSaveActions({
         tone="primary"
         overlay={overlay}
         compact={iconOnly}
-        disabled={busy !== null || !mediaUrl}
+        wide={iconOnly && preparingDownload}
+        disabled={busy !== null}
+        softDisabled={downloadBlocked}
         onClick={() => void handleDownload()}
       />
     </div>

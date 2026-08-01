@@ -1,7 +1,8 @@
 import { Player, type PlayerRef } from "@remotion/player"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { MediaFullscreenChrome } from "@/components/media-fullscreen-chrome"
+import { downloadMediaUrl } from "@/lib/media-share"
 import { renderWrapVideoBlob } from "@/lib/render-wrap-video"
 import {
   SocialWrappedVideo,
@@ -30,6 +31,8 @@ type WrapShareVideoProps = {
   className?: string
 }
 
+type EncodeStatus = "idle" | "encoding" | "ready" | "error"
+
 /** Remotion-powered wrap highlight reel for the share strip. */
 export function WrapShareVideo({
   displayName,
@@ -47,10 +50,12 @@ export function WrapShareVideo({
   const [open, setOpen] = useState(false)
   const [mediaUrl, setMediaUrl] = useState("")
   const [renderProgress, setRenderProgress] = useState(0)
-  const [renderReady, setRenderReady] = useState(false)
+  const [encodeStatus, setEncodeStatus] = useState<EncodeStatus>("idle")
   const previewRef = useRef<PlayerRef>(null)
   const fullscreenRef = useRef<PlayerRef>(null)
   const mediaUrlRef = useRef("")
+  const inputPropsRef = useRef<SocialWrappedVideoProps | null>(null)
+  const encodePromiseRef = useRef<Promise<string> | null>(null)
 
   const inputProps = useMemo<SocialWrappedVideoProps>(
     () => ({
@@ -70,60 +75,100 @@ export function WrapShareVideo({
       chartSlides,
     ]
   )
+  inputPropsRef.current = inputProps
 
   const durationInFrames = videoDurationFrames(chartSlides.length)
   const playerKey = `${durationInFrames}-${chartSlides.map((s) => s.src).join("|")}`
 
-  // Craft MP4 in the background so fullscreen Download works.
+  const clearMediaUrl = useCallback(() => {
+    if (mediaUrlRef.current) {
+      URL.revokeObjectURL(mediaUrlRef.current)
+      mediaUrlRef.current = ""
+    }
+    setMediaUrl("")
+  }, [])
+
+  const encodeToObjectUrl = useCallback(
+    async (signal?: AbortSignal, force = false): Promise<string> => {
+      if (!force && mediaUrlRef.current) return mediaUrlRef.current
+      if (!force && encodePromiseRef.current) return encodePromiseRef.current
+
+      const props = inputPropsRef.current
+      if (!props) throw new Error("Missing video props")
+
+      const run = (async () => {
+        setEncodeStatus("encoding")
+        setRenderProgress(0)
+        const blob = await renderWrapVideoBlob(props, {
+          signal,
+          onProgress: (p) => {
+            if (!signal?.aborted) setRenderProgress(p)
+          },
+        })
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
+        clearMediaUrl()
+        const url = URL.createObjectURL(blob)
+        mediaUrlRef.current = url
+        setMediaUrl(url)
+        setRenderProgress(1)
+        setEncodeStatus("ready")
+        return url
+      })()
+
+      encodePromiseRef.current = run
+      try {
+        return await run
+      } catch (error) {
+        encodePromiseRef.current = null
+        const aborted =
+          signal?.aborted ||
+          (error instanceof DOMException && error.name === "AbortError") ||
+          (error instanceof Error && /abort|cancel/i.test(error.message))
+        if (aborted) throw error
+        console.error("[wrap-video] render failed", error)
+        setEncodeStatus("error")
+        setRenderProgress(0)
+        throw error
+      } finally {
+        if (encodePromiseRef.current === run) {
+          encodePromiseRef.current = null
+        }
+      }
+    },
+    [clearMediaUrl]
+  )
+
+  // Background encode once charts are ready — keyed by playerKey so we don't
+  // abort/restart on every inputProps object identity change.
   useEffect(() => {
     if (!ready) {
-      setRenderReady(false)
+      setEncodeStatus("idle")
       setRenderProgress(0)
-      if (mediaUrlRef.current) {
-        URL.revokeObjectURL(mediaUrlRef.current)
-        mediaUrlRef.current = ""
-        setMediaUrl("")
-      }
+      clearMediaUrl()
+      encodePromiseRef.current = null
       return
     }
 
     const controller = new AbortController()
-    let cancelled = false
-    setRenderReady(false)
-    setRenderProgress(0)
-
-    void renderWrapVideoBlob(inputProps, {
-      signal: controller.signal,
-      onProgress: (p) => {
-        if (!cancelled) setRenderProgress(p)
-      },
-    })
-      .then((blob) => {
-        if (cancelled || controller.signal.aborted) return
-        if (mediaUrlRef.current) URL.revokeObjectURL(mediaUrlRef.current)
-        const url = URL.createObjectURL(blob)
-        mediaUrlRef.current = url
-        setMediaUrl(url)
-        setRenderReady(true)
-        setRenderProgress(1)
+    // Debounce past React Strict Mode remounts so we don't abort the real run.
+    const timer = window.setTimeout(() => {
+      void encodeToObjectUrl(controller.signal).catch(() => {
+        // Error / abort already reflected in encodeStatus.
       })
-      .catch((error) => {
-        if (cancelled || controller.signal.aborted) return
-        console.error("[wrap-video] render failed", error)
-        setRenderReady(false)
-      })
+    }, 400)
 
     return () => {
-      cancelled = true
+      window.clearTimeout(timer)
       controller.abort()
+      encodePromiseRef.current = null
     }
-  }, [ready, inputProps])
+  }, [ready, playerKey, encodeToObjectUrl, clearMediaUrl])
 
   useEffect(() => {
     return () => {
-      if (mediaUrlRef.current) URL.revokeObjectURL(mediaUrlRef.current)
+      clearMediaUrl()
     }
-  }, [])
+  }, [clearMediaUrl])
 
   // Kick silent autoplay — audio tags / unmuted context can stall the clock.
   useEffect(() => {
@@ -166,15 +211,33 @@ export function WrapShareVideo({
     }
   }, [open, ready, playerKey])
 
+  const handleRequestDownload = useCallback(async () => {
+    const url = await encodeToObjectUrl(
+      undefined,
+      encodeStatus === "error" || !mediaUrlRef.current
+    )
+    await downloadMediaUrl(url, shareFileName)
+  }, [encodeStatus, encodeToObjectUrl, shareFileName])
+
   const progressPct = Math.round(
     ready
       ? Math.max(renderProgress, 0) * 100
       : (captureProgress?.progress ?? 0) * 100
   )
   const loadingLabel = ready
-    ? "Encoding video…"
+    ? encodeStatus === "error"
+      ? "Encode failed — open to retry"
+      : `Encoding video… ${progressPct}%`
     : (captureProgress?.label ?? "Preparing charts…")
   const showLoading = !ready
+
+  const renderReady = encodeStatus === "ready" && Boolean(mediaUrl)
+  const downloadStatus =
+    encodeStatus === "error"
+      ? "Retry"
+      : encodeStatus === "encoding"
+        ? "Encoding"
+        : "Preparing…"
 
   const playerCommon = {
     component: SocialWrappedVideo,
@@ -272,7 +335,9 @@ export function WrapShareVideo({
               ? "Building shareable reel…"
               : renderReady
                 ? "Autoplaying · tap for fullscreen"
-                : "Autoplaying · preparing download…"}
+                : encodeStatus === "error"
+                  ? "Autoplaying · download encode failed"
+                  : `Autoplaying · encoding ${progressPct}%`}
           </p>
         </div>
       </div>
@@ -283,6 +348,10 @@ export function WrapShareVideo({
           shareText={shareText}
           mediaUrl={mediaUrl}
           fileName={shareFileName}
+          downloadReady={renderReady}
+          downloadProgress={renderProgress}
+          downloadStatus={downloadStatus}
+          onRequestDownload={handleRequestDownload}
           onClose={() => setOpen(false)}
         >
           <div className="flex h-full max-h-dvh w-full max-w-[min(100%,28rem)] items-center justify-center">

@@ -13,6 +13,13 @@ export type MediaFullscreenChromeProps = {
   onClose: () => void
   children: ReactNode
   className?: string
+  /** When false, Save shows DotmSquare12 until the file URL is ready. */
+  downloadReady?: boolean
+  /** 0–1 encode progress for the downloadable file. */
+  downloadProgress?: number
+  downloadStatus?: string
+  /** Encode-then-save when the file isn't ready yet. */
+  onRequestDownload?: () => Promise<void>
 }
 
 /** Shared fullscreen shell: close + share/save overlay the media (ported to body). */
@@ -24,6 +31,10 @@ export function MediaFullscreenChrome({
   onClose,
   children,
   className,
+  downloadReady,
+  downloadProgress,
+  downloadStatus,
+  onRequestDownload,
 }: MediaFullscreenChromeProps) {
   if (typeof document === "undefined") return null
 
@@ -53,20 +64,16 @@ export function MediaFullscreenChrome({
           <X className="size-5" strokeWidth={2.5} />
         </button>
 
-        {/* {title ? (
-          <p className="pointer-events-none min-w-0 truncate text-center text-sm font-medium text-white drop-shadow">
-            {title}
-          </p>
-        ) : (
-          <span className="min-w-0 flex-1" />
-        )} */}
-
         <ShareSaveActions
           appearance="overlay"
           iconOnly
           mediaUrl={mediaUrl}
           fileName={fileName}
           shareText={shareText}
+          downloadReady={downloadReady}
+          downloadProgress={downloadProgress}
+          downloadStatus={downloadStatus}
+          onRequestDownload={onRequestDownload}
           className="pointer-events-auto shrink-0"
         />
       </div>
