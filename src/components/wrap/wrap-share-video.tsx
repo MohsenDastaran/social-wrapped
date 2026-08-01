@@ -22,6 +22,7 @@ type WrapShareVideoProps = {
   sentMessages: number
   receivedMessages: number
   chatCount: number
+  platformName?: string
   chartSlides?: VideoChartSlide[]
   /** Same gate as Stories — wait for chart captures before showing the reel. */
   ready: boolean
@@ -40,6 +41,7 @@ export function WrapShareVideo({
   sentMessages,
   receivedMessages,
   chatCount,
+  platformName = "Telegram",
   chartSlides = [],
   ready,
   captureProgress = null,
@@ -64,6 +66,7 @@ export function WrapShareVideo({
       sentMessages,
       receivedMessages,
       chatCount,
+      platformName,
       chartSlides,
     }),
     [
@@ -72,6 +75,7 @@ export function WrapShareVideo({
       sentMessages,
       receivedMessages,
       chatCount,
+      platformName,
       chartSlides,
     ]
   )

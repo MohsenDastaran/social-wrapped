@@ -24,6 +24,7 @@
     "@remotion/cli": "4.0.503",
     "@remotion/google-fonts": "^4.0.503",
     "@remotion/player": "4.0.503",
+    "@remotion/transitions": "^4.0.503",
     "@remotion/web-renderer": "4.0.503",
     "@tailwindcss/vite": "^4",
     "@tauri-apps/api": "^2",

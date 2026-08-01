@@ -114,6 +114,7 @@ async function renderOnce(
         sentMessages: 0,
         receivedMessages: 0,
         chatCount: 0,
+        platformName: "Telegram",
         chartSlides: [],
       },
     },
@@ -126,6 +127,7 @@ async function renderOnce(
     // Prefer software when full-res hardware encode silently stalls.
     hardwareAcceleration:
       attempt.scale >= 1 ? "prefer-software" : "no-preference",
+    licenseKey: "free-license",
     signal: options?.signal,
     onProgress: ({ progress }) => {
       // Reserve 0–8% for image prep; map encode onto 8–100%.

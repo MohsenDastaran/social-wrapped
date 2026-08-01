@@ -16,6 +16,7 @@ const defaultProps = {
   sentMessages: 6120,
   receivedMessages: 6720,
   chatCount: 48,
+  platformName: "Telegram",
   chartSlides: [],
 } satisfies SocialWrappedVideoProps
 

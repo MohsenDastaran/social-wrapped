@@ -10,7 +10,10 @@ import {
   useVideoConfig,
 } from "remotion";
 
-const { fontFamily: MONO_FAMILY } = loadMono();
+const { fontFamily: MONO_FAMILY } = loadMono("normal", {
+  weights: ["800"],
+  subsets: ["latin"],
+});
 
 export interface RollingNumberProps {
   from?: number;

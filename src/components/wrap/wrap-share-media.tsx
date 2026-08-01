@@ -138,6 +138,7 @@ export function WrapShareMedia({
             sentMessages={analytics.account.sentMessages}
             receivedMessages={analytics.account.receivedMessages}
             chatCount={analytics.chatCount}
+            platformName="Telegram"
             chartSlides={videoChartSlides}
             ready={storiesReady || specs.length === 0}
             captureProgress={captureProgress}
