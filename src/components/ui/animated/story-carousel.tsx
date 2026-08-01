@@ -14,8 +14,10 @@ import { cn } from "@/lib/utils"
 export interface StoryItem {
   id: string
   image: string
-  heading: string
-  subtext: string
+  /** Optional — omit when captions are baked into the image. */
+  heading?: string
+  /** Optional — omit when captions are baked into the image. */
+  subtext?: string
 }
 
 export interface StoryCarouselProps {
@@ -171,18 +173,20 @@ export function StoryCarousel({
               <div className="relative h-full w-full">
                 <img
                   src={item.image}
-                  alt={item.heading}
+                  alt={item.heading || "Story slide"}
                   className="pointer-events-none absolute inset-0 size-full object-cover"
                   draggable={false}
                 />
-                <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-black/30 via-transparent to-black/80" />
+                {item.heading || item.subtext ? (
+                  <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-black/30 via-transparent to-black/80" />
+                ) : null}
               </div>
             </CarouselItem>
           ))}
         </CarouselContent>
       </Carousel>
 
-      <div className="absolute inset-x-4 top-4 z-20 flex h-1 gap-2">
+      <div className="absolute inset-x-4 top-[max(4.5rem,calc(env(safe-area-inset-top)+3.25rem))] z-20 flex h-1 gap-2">
         {items.map((_, index) => {
           const isPast = index < current
           const isCurrent = index === current
@@ -245,19 +249,25 @@ export function StoryCarousel({
         <ChevronRight className="size-6" />
       </button>
 
-      <div className="pointer-events-none absolute inset-x-6 bottom-10 z-20 text-white">
-        <div
-          key={current}
-          className="animate-in fade-in slide-in-from-bottom-2 duration-500"
-        >
-          <h2 className="mb-2 text-2xl font-bold leading-tight drop-shadow-md">
-            {items[current]?.heading}
-          </h2>
-          <p className="text-sm font-medium leading-relaxed text-white/90 drop-shadow-md">
-            {items[current]?.subtext}
-          </p>
+      {items[current]?.heading || items[current]?.subtext ? (
+        <div className="pointer-events-none absolute inset-x-6 bottom-10 z-20 text-white">
+          <div
+            key={current}
+            className="animate-in fade-in slide-in-from-bottom-2 duration-500"
+          >
+            {items[current]?.heading ? (
+              <h2 className="mb-2 text-2xl font-bold leading-tight drop-shadow-md">
+                {items[current]?.heading}
+              </h2>
+            ) : null}
+            {items[current]?.subtext ? (
+              <p className="text-sm font-medium leading-relaxed text-white/90 drop-shadow-md">
+                {items[current]?.subtext}
+              </p>
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   )
 }

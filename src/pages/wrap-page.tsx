@@ -102,7 +102,10 @@ export function WrapPage() {
         </p>
       ) : null}
 
-      <WrapShareMedia displayName={wrap.stats.displayName} stats={wrap.stats} />
+      <WrapShareMedia
+        displayName={wrap.stats.displayName}
+        analytics={wrap.analytics}
+      />
 
       <WrapMainAnalytics analytics={wrap.analytics} />
 

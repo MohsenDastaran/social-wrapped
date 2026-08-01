@@ -102,16 +102,24 @@ export function WrapChartCard({
   chartClassName,
   children,
 }: WrapChartCardProps) {
+  const resolvedCaptureMode =
+    captureMode ?? (layout === "flow" ? "dom" : "chart")
+  const exportDims = EXPORT_SIZES[exportSize]
+
   const { ref, exporting, exportError, exportPng } = useDomExport<HTMLDivElement>({
-    ...EXPORT_SIZES[exportSize],
+    ...exportDims,
     // Flow cards (KPI grids, emoji lists) need full HTML paint — not the chart compositor.
     // Override when a flow card still embeds an ECharts canvas.
-    captureMode: captureMode ?? (layout === "flow" ? "dom" : "chart"),
+    captureMode: resolvedCaptureMode,
   })
 
   return (
     <div
       ref={ref}
+      data-export-name={exportName}
+      data-export-mode={resolvedCaptureMode}
+      data-export-min-width={exportDims.minWidth}
+      data-export-pixel-ratio={exportDims.pixelRatio}
       className={cn(
         "flex flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10",
         className
