@@ -519,9 +519,8 @@ export async function generateWrapStories(
     await waitForCardCaptureReady(card)
     if (signal?.aborted) break
 
-    const captureUi = beginStoryCaptureUi(card, {
-      title: "Crafting story",
-      detail: spec.heading,
+    const cover = beginInFlowCaptureCover(card, {
+      label: spec.heading,
       step: index + 1,
       total,
     })
@@ -532,7 +531,15 @@ export async function generateWrapStories(
           card,
           spec,
           signal,
-          captureUi
+          (year) => {
+            cover.setLabel(`${spec.heading} · ${year}`)
+            onProgress?.({
+              index,
+              total,
+              label: `${spec.heading} · ${year}`,
+              progress: total > 0 ? (index + 0.5) / total : 1,
+            })
+          }
         )
         if (!composed || signal?.aborted) continue
         stories.push({
@@ -542,19 +549,14 @@ export async function generateWrapStories(
         continue
       }
 
-      const cardBlob = await captureElementPng(
-        card,
-        card,
-        {
-          ...exportOptionsFromCard(card),
-          freezeCharts: true,
-          settleMs:
-            exportOptionsFromCard(card).captureMode === "dom"
-              ? DOM_CAPTURE_SETTLE_MS
-              : CHART_CAPTURE_SETTLE_MS,
-        },
-        captureUi
-      )
+      const cardBlob = await captureElementPng(card, card, {
+        ...exportOptionsFromCard(card),
+        freezeCharts: true,
+        settleMs:
+          exportOptionsFromCard(card).captureMode === "dom"
+            ? DOM_CAPTURE_SETTLE_MS
+            : CHART_CAPTURE_SETTLE_MS,
+      })
       const composed = await composeStoryFrame(cardBlob, spec)
       if (signal?.aborted) break
       stories.push({
@@ -564,7 +566,7 @@ export async function generateWrapStories(
     } catch (error) {
       console.error(`Story capture failed for ${spec.exportName}:`, error)
     } finally {
-      captureUi.dispose()
+      cover.dispose()
     }
   }
 
@@ -580,132 +582,83 @@ export async function generateWrapStories(
   return stories
 }
 
-type StoryCaptureUi = {
-  setDetail: (detail: string) => void
+type CaptureCover = {
+  setLabel: (label: string) => void
   dispose: () => void
 }
 
-type StoryCaptureUiOptions = {
-  title: string
-  detail: string
-  step: number
-  total: number
-}
-
 /**
- * Fixed-position frosted shell over the card.
- * Parks the real card off-screen (still visible to the exporter) so HD capture
- * never flashes, while a placeholder keeps layout stable.
+ * In-document loading stand-in for a card.
+ * The real card is parked off-screen (still paintably visible) for HD capture,
+ * so expand/restore never flickers in the viewport. The cover scrolls with the page.
  */
-function beginStoryCaptureUi(
+function beginInFlowCaptureCover(
   card: HTMLElement,
-  opts: StoryCaptureUiOptions
-): StoryCaptureUi {
-  card.dataset.storyCapturing = "true"
-  const rect = card.getBoundingClientRect()
-  const shell = document.createElement("div")
-  shell.setAttribute("data-story-capture-shell", "")
-  shell.setAttribute("aria-live", "polite")
-  shell.style.cssText = [
-    "position:fixed",
-    `left:${Math.round(rect.left)}px`,
-    `top:${Math.round(rect.top)}px`,
-    `width:${Math.round(rect.width)}px`,
-    `height:${Math.round(rect.height)}px`,
-    "z-index:60",
+  opts: { label: string; step: number; total: number }
+): CaptureCover {
+  const width = Math.max(card.offsetWidth, 1)
+  const height = Math.max(card.offsetHeight, 1)
+  const radius = getComputedStyle(card).borderRadius || "12px"
+
+  ensureCaptureCoverStyles()
+
+  const cover = document.createElement("div")
+  cover.setAttribute("data-story-capture-cover", "")
+  cover.setAttribute("aria-busy", "true")
+  cover.setAttribute("aria-live", "polite")
+  cover.style.cssText = [
+    `width:${width}px`,
+    `height:${height}px`,
+    "flex-shrink:0",
+    "box-sizing:border-box",
+    `border-radius:${radius}`,
+    "position:relative",
+    "overflow:hidden",
     "display:flex",
     "flex-direction:column",
     "align-items:center",
     "justify-content:center",
-    "gap:14px",
+    "gap:12px",
     "padding:20px",
-    "border-radius:12px",
-    "overflow:hidden",
-    "pointer-events:none",
-    "box-sizing:border-box",
-    "background:linear-gradient(160deg, rgba(4,21,18,0.88), rgba(10,42,36,0.92) 45%, rgba(3,17,14,0.9))",
-    "box-shadow:inset 0 0 0 1px rgba(255,255,255,0.1), 0 18px 40px rgba(0,0,0,0.28)",
-    "backdrop-filter:blur(10px)",
-    "transition:opacity 180ms ease",
+    "background:linear-gradient(165deg, color-mix(in oklab, var(--card) 92%, #0d9488), var(--card))",
+    "box-shadow:inset 0 0 0 1px color-mix(in oklab, var(--foreground) 10%, transparent)",
   ].join(";")
 
   const shimmer = document.createElement("div")
-  shimmer.style.cssText = [
-    "position:absolute",
-    "inset:-40%",
-    "background:linear-gradient(105deg, transparent 40%, rgba(16,185,129,0.18) 50%, transparent 60%)",
-    "animation:sw-story-shimmer 1.8s ease-in-out infinite",
-    "pointer-events:none",
-  ].join(";")
-  shell.appendChild(shimmer)
+  shimmer.className = "sw-capture-shimmer"
+  cover.appendChild(shimmer)
 
-  const ring = document.createElement("div")
-  ring.style.cssText = [
-    "position:relative",
-    "width:52px",
-    "height:52px",
-    "border-radius:999px",
-    "border:2px solid rgba(16,185,129,0.25)",
-    "border-top-color:#34d399",
-    "animation:sw-story-spin 0.9s linear infinite",
-    "box-shadow:0 0 24px rgba(16,185,129,0.25)",
-  ].join(";")
-  shell.appendChild(ring)
+  const spinner = document.createElement("div")
+  spinner.className = "sw-capture-spinner"
+  cover.appendChild(spinner)
 
-  const title = document.createElement("p")
-  title.textContent = opts.title
-  title.style.cssText =
-    "position:relative;margin:0;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:rgba(167,243,208,0.9);"
-  shell.appendChild(title)
+  const eyebrow = document.createElement("p")
+  eyebrow.textContent = "Crafting story"
+  eyebrow.style.cssText =
+    "position:relative;margin:0;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:color-mix(in oklab, var(--primary) 80%, var(--muted-foreground));"
+  cover.appendChild(eyebrow)
 
-  const detail = document.createElement("p")
-  detail.textContent = opts.detail
-  detail.style.cssText =
-    "position:relative;margin:0;max-width:90%;text-align:center;font-size:14px;font-weight:600;line-height:1.35;color:#f8fafc;"
-  shell.appendChild(detail)
+  const labelEl = document.createElement("p")
+  labelEl.textContent = opts.label
+  labelEl.style.cssText =
+    "position:relative;margin:0;max-width:90%;text-align:center;font-size:13px;font-weight:600;line-height:1.35;color:var(--foreground);"
+  cover.appendChild(labelEl)
 
-  const step = document.createElement("p")
-  step.textContent = `Slide ${opts.step} of ${opts.total}`
-  step.style.cssText =
-    "position:relative;margin:0;font-size:12px;font-weight:500;color:rgba(255,255,255,0.55);"
-  shell.appendChild(step)
+  const stepEl = document.createElement("p")
+  stepEl.textContent = `${opts.step} / ${opts.total}`
+  stepEl.style.cssText =
+    "position:relative;margin:0;font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--muted-foreground);"
+  cover.appendChild(stepEl)
 
-  const track = document.createElement("div")
-  track.style.cssText =
-    "position:relative;width:min(180px,70%);height:4px;border-radius:999px;background:rgba(255,255,255,0.12);overflow:hidden;"
-  const fill = document.createElement("div")
-  const pct =
-    opts.total > 0 ? Math.round(((opts.step - 0.35) / opts.total) * 100) : 0
-  fill.style.cssText = [
-    "height:100%",
-    `width:${Math.max(8, Math.min(pct, 96))}%`,
-    "border-radius:999px",
-    "background:linear-gradient(90deg,#34d399,#0d9488)",
-    "transition:width 320ms ease",
-  ].join(";")
-  track.appendChild(fill)
-  shell.appendChild(track)
+  const parent = card.parentElement
+  parent?.insertBefore(cover, card)
 
-  ensureStoryCaptureStyles()
-  document.body.appendChild(shell)
-
-  // Hold layout space while the card is parked off-screen for capture.
-  const placeholder = document.createElement("div")
-  placeholder.setAttribute("aria-hidden", "true")
-  placeholder.style.cssText = [
-    `width:${Math.round(rect.width)}px`,
-    `height:${Math.round(rect.height)}px`,
-    "flex-shrink:0",
-    "pointer-events:none",
-  ].join(";")
-  card.parentElement?.insertBefore(placeholder, card)
-
-  // Park off-screen but keep visibility/paintability for the exporter.
-  // (visibility:hidden would make dom-export skip all text/chart chrome.)
+  // Park the live card off-screen for capture (keep visibility — exporter needs paint).
   const prev = {
     position: card.style.position,
     left: card.style.left,
     top: card.style.top,
+    right: card.style.right,
     width: card.style.width,
     maxWidth: card.style.maxWidth,
     minWidth: card.style.minWidth,
@@ -716,47 +669,49 @@ function beginStoryCaptureUi(
   card.style.position = "fixed"
   card.style.left = "-12000px"
   card.style.top = "0"
-  card.style.width = `${Math.round(rect.width)}px`
-  card.style.maxWidth = `${Math.round(rect.width)}px`
-  card.style.minWidth = `${Math.round(rect.width)}px`
+  card.style.right = "auto"
+  card.style.width = `${width}px`
+  card.style.maxWidth = `${width}px`
+  card.style.minWidth = `${width}px`
   card.style.zIndex = "0"
   card.style.pointerEvents = "none"
   card.style.transform = "none"
+  card.dataset.storyCapturing = "true"
 
-  // Give chart hosts a beat to keep their size after reparenting to fixed.
+  // Let chart hosts reflow at the parked size before we snapshot.
   window.dispatchEvent(new Event("resize"))
 
   return {
-    setDetail: (next) => {
-      detail.textContent = next
+    setLabel: (next) => {
+      labelEl.textContent = next
     },
     dispose: () => {
-      shell.style.opacity = "0"
       card.style.position = prev.position
       card.style.left = prev.left
       card.style.top = prev.top
+      card.style.right = prev.right
       card.style.width = prev.width
       card.style.maxWidth = prev.maxWidth
       card.style.minWidth = prev.minWidth
       card.style.zIndex = prev.zIndex
       card.style.pointerEvents = prev.pointerEvents
       card.style.transform = prev.transform
-      placeholder.remove()
       delete card.dataset.storyCapturing
+      cover.remove()
       window.dispatchEvent(new Event("resize"))
-      window.setTimeout(() => shell.remove(), 180)
     },
   }
 }
 
-function ensureStoryCaptureStyles() {
-  if (document.getElementById("sw-story-capture-style")) return
+function ensureCaptureCoverStyles() {
+  if (document.getElementById("sw-story-capture-cover-style")) return
   const style = document.createElement("style")
-  style.id = "sw-story-capture-style"
+  style.id = "sw-story-capture-cover-style"
   style.textContent = [
-    "@keyframes sw-story-spin{to{transform:rotate(360deg)}}",
-    "@keyframes sw-story-shimmer{0%{transform:translateX(-30%) rotate(8deg)}100%{transform:translateX(30%) rotate(8deg)}}",
-    "@keyframes sw-story-pulse{0%,100%{opacity:.45}50%{opacity:1}}",
+    "@keyframes sw-capture-spin{to{transform:rotate(360deg)}}",
+    "@keyframes sw-capture-shimmer{0%{transform:translateX(-45%)}100%{transform:translateX(45%)}}",
+    ".sw-capture-spinner{position:relative;width:40px;height:40px;border-radius:999px;border:2px solid color-mix(in oklab, var(--primary) 25%, transparent);border-top-color:var(--primary);animation:sw-capture-spin .85s linear infinite}",
+    ".sw-capture-shimmer{position:absolute;inset:-30%;background:linear-gradient(100deg,transparent 42%,color-mix(in oklab, var(--primary) 16%, transparent) 50%,transparent 58%);animation:sw-capture-shimmer 1.6s ease-in-out infinite;pointer-events:none}",
   ].join("")
   document.head.appendChild(style)
 }
@@ -783,12 +738,10 @@ function findEchartsIn(root: HTMLElement): echarts.EChartsType[] {
 async function captureElementPng(
   card: HTMLElement,
   target: HTMLElement,
-  options: DomExportOptions,
-  _ui?: StoryCaptureUi
+  options: DomExportOptions
 ): Promise<Blob> {
   const hasCharts =
     findEchartsIn(target).length > 0 || findEchartsIn(card).length > 0
-  // Short pre-wait; post-expand settle + freezeCharts handle intro/resize animation.
   await delay(hasCharts ? 240 : DOM_CAPTURE_SETTLE_MS)
 
   return elementToPngBlob(target, {
@@ -847,7 +800,7 @@ async function captureHeatmapStory(
   card: HTMLElement,
   spec: WrapStorySpec,
   signal?: AbortSignal,
-  ui?: StoryCaptureUi
+  onYear?: (year: number) => void
 ): Promise<Blob | null> {
   const years = parseHeatmapYears(card)
   if (years.length === 0) return null
@@ -870,10 +823,10 @@ async function captureHeatmapStory(
     const panels: Array<{ year: number; blob: Blob }> = []
     for (const year of years) {
       if (signal?.aborted) return null
-      ui?.setDetail(`${spec.heading} · ${year}`)
+      onYear?.(year)
       await setHeatmapYear(card, year)
       if (signal?.aborted) return null
-      const blob = await captureElementPng(card, panel, options, ui)
+      const blob = await captureElementPng(card, panel, options)
       if (signal?.aborted) return null
       panels.push({ year, blob })
     }
