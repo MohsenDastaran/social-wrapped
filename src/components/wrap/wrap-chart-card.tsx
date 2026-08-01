@@ -28,6 +28,12 @@ export type WrapChartCardProps = {
   /** Export frame width preset. Use `compact` for pie charts. @default "default" */
   exportSize?: WrapChartExportSize
   /**
+   * Optional fixed layout width used while crafting 9:16 story / video slides.
+   * Use for portrait-friendly grids (e.g. emoji) that look tiny when captured
+   * at full desktop card width.
+   */
+  storyCaptureWidth?: number
+  /**
    * `chart` — absolute host for ECharts (needs fixed height via `chartClassName`).
    * `flow` — normal document flow for non-chart content (emoji grids, lists).
    * @default "chart"
@@ -95,6 +101,7 @@ export function WrapChartCard({
   description,
   exportName,
   exportSize = "default",
+  storyCaptureWidth,
   layout = "chart",
   captureMode,
   headerExtra,
@@ -120,6 +127,9 @@ export function WrapChartCard({
       data-export-mode={resolvedCaptureMode}
       data-export-min-width={exportDims.minWidth}
       data-export-pixel-ratio={exportDims.pixelRatio}
+      {...(storyCaptureWidth
+        ? { "data-export-story-width": String(storyCaptureWidth) }
+        : {})}
       className={cn(
         "relative flex flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10",
         className

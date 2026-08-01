@@ -160,9 +160,18 @@ export function findExportCard(exportName: string): HTMLElement | null {
 
 function exportOptionsFromCard(el: HTMLElement): DomExportOptions {
   const mode = el.dataset.exportMode
+  const storyWidth = Number(el.dataset.exportStoryWidth)
+  const minWidth = Number(el.dataset.exportMinWidth) || 720
+  // While crafting stories, keep the portrait capture width — don't expand back
+  // out to the full desktop card width (that makes emoji grids tiny in 9:16).
+  const storyLocked =
+    el.dataset.storyCapturing === "true" &&
+    Number.isFinite(storyWidth) &&
+    storyWidth > 0
+
   return {
     captureMode: mode === "dom" || mode === "chart" ? mode : "chart",
-    minWidth: Number(el.dataset.exportMinWidth) || 720,
+    minWidth: storyLocked ? storyWidth : minWidth,
     pixelRatio: Number(el.dataset.exportPixelRatio) || 3,
   }
 }
@@ -596,6 +605,14 @@ function beginInFlowCaptureCover(
   card: HTMLElement,
   opts: { label: string; step: number; total: number }
 ): CaptureCover {
+  // Prefer a portrait-friendly capture width when the card opts in (emoji grid).
+  // Tailwind viewport breakpoints would keep a desktop 6-col layout even when
+  // the card is parked narrow — those cards use @container queries instead.
+  const storyWidth = Number(card.dataset.exportStoryWidth)
+  const captureWidth =
+    Number.isFinite(storyWidth) && storyWidth > 0
+      ? storyWidth
+      : Math.max(card.offsetWidth, 1)
   const width = Math.max(card.offsetWidth, 1)
   const height = Math.max(card.offsetHeight, 1)
   const radius = getComputedStyle(card).borderRadius || "12px"
@@ -670,15 +687,15 @@ function beginInFlowCaptureCover(
   card.style.left = "-12000px"
   card.style.top = "0"
   card.style.right = "auto"
-  card.style.width = `${width}px`
-  card.style.maxWidth = `${width}px`
-  card.style.minWidth = `${width}px`
+  card.style.width = `${captureWidth}px`
+  card.style.maxWidth = `${captureWidth}px`
+  card.style.minWidth = `${captureWidth}px`
   card.style.zIndex = "0"
   card.style.pointerEvents = "none"
   card.style.transform = "none"
   card.dataset.storyCapturing = "true"
 
-  // Let chart hosts reflow at the parked size before we snapshot.
+  // Let chart hosts / container queries reflow at the parked size before we snapshot.
   window.dispatchEvent(new Event("resize"))
 
   return {

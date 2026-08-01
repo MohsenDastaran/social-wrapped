@@ -67,6 +67,8 @@ export function TopEmojisCard({
       description={description}
       exportName={`${exportName}${scopeSuffix}`}
       exportSize="compact"
+      // Phone-width layout for 9:16 stories/video — desktop page width makes the grid tiny.
+      storyCaptureWidth={480}
       layout="flow"
       exportLines={items
         .slice(0, 5)
@@ -94,61 +96,63 @@ export function TopEmojisCard({
       }
     >
       {items.length > 0 ? (
-        <ol className="grid list-none grid-cols-3 gap-2 p-4 sm:grid-cols-4 md:grid-cols-6">
-          {items.map((entry, index) => {
-            const share = peak > 0 ? entry.count / peak : 0
-            const isTop = index === 0
-            const glyph = withEmojiPresentation(entry.emoji)
-            return (
-              <li
-                key={`${entry.emoji}-${index}`}
-                className={cn(
-                  "relative flex flex-col items-center gap-1.5 overflow-visible rounded-2xl px-2 pt-4 pb-3 text-center",
-                  isTop
-                    ? "bg-primary/10 ring-1 ring-primary/25"
-                    : "bg-muted/45 ring-1 ring-foreground/5"
-                )}
-              >
-                <span
+        <div className="@container w-full">
+          <ol className="grid list-none grid-cols-3 gap-2 p-4 @min-[500px]:grid-cols-4 @min-[740px]:grid-cols-6">
+            {items.map((entry, index) => {
+              const share = peak > 0 ? entry.count / peak : 0
+              const isTop = index === 0
+              const glyph = withEmojiPresentation(entry.emoji)
+              return (
+                <li
+                  key={`${entry.emoji}-${index}`}
                   className={cn(
-                    "absolute top-1.5 start-1.5 font-semibold tabular-nums text-muted-foreground",
-                    isTop ? "text-[0.65rem] text-primary" : "text-[0.6rem]"
-                  )}
-                >
-                  #{index + 1}
-                </span>
-                <span
-                  className={cn(
-                    // Extra leading room — emoji glyphs paint above the em-box and clip with leading-none.
-                    "inline-flex items-center justify-center pt-1 leading-[1.2] [font-variant-emoji:emoji]",
+                    "relative flex flex-col items-center gap-1.5 overflow-visible rounded-2xl px-2 pt-4 pb-3 text-center",
                     isTop
-                      ? "min-h-12 text-4xl sm:min-h-14 sm:text-[2.75rem]"
-                      : "min-h-10 text-3xl"
+                      ? "bg-primary/10 ring-1 ring-primary/25"
+                      : "bg-muted/45 ring-1 ring-foreground/5"
                   )}
-                  role="img"
-                  aria-label={`Rank ${index + 1}`}
-                >
-                  {glyph}
-                </span>
-                <span className="font-heading text-xs font-semibold tabular-nums tracking-tight text-foreground">
-                  {fmt(entry.count)}
-                </span>
-                <span
-                  className="mt-0.5 h-0.5 w-full max-w-12 overflow-hidden rounded-full bg-foreground/10"
-                  aria-hidden
                 >
                   <span
                     className={cn(
-                      "block h-full rounded-full",
-                      isTop ? "bg-primary" : "bg-foreground/35"
+                      "absolute top-1.5 start-1.5 font-semibold tabular-nums text-muted-foreground",
+                      isTop ? "text-[0.65rem] text-primary" : "text-[0.6rem]"
                     )}
-                    style={{ width: `${Math.max(share * 100, 8)}%` }}
-                  />
-                </span>
-              </li>
-            )
-          })}
-        </ol>
+                  >
+                    #{index + 1}
+                  </span>
+                  <span
+                    className={cn(
+                      // Extra leading room — emoji glyphs paint above the em-box and clip with leading-none.
+                      "inline-flex items-center justify-center pt-1 leading-[1.2] [font-variant-emoji:emoji]",
+                      isTop
+                        ? "min-h-12 text-4xl @min-[500px]:min-h-14 @min-[500px]:text-[2.75rem]"
+                        : "min-h-10 text-3xl"
+                    )}
+                    role="img"
+                    aria-label={`Rank ${index + 1}`}
+                  >
+                    {glyph}
+                  </span>
+                  <span className="font-heading text-xs font-semibold tabular-nums tracking-tight text-foreground">
+                    {fmt(entry.count)}
+                  </span>
+                  <span
+                    className="mt-0.5 h-0.5 w-full max-w-12 overflow-hidden rounded-full bg-foreground/10"
+                    aria-hidden
+                  >
+                    <span
+                      className={cn(
+                        "block h-full rounded-full",
+                        isTop ? "bg-primary" : "bg-foreground/35"
+                      )}
+                      style={{ width: `${Math.max(share * 100, 8)}%` }}
+                    />
+                  </span>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
       ) : (
         <p className="px-4 py-8 text-center text-sm text-muted-foreground">
           No emojis in this view.
