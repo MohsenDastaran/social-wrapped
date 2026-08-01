@@ -555,7 +555,8 @@ export const SocialWrappedVideo: React.FC<SocialWrappedVideoProps> = ({
             <MarkerHighlight
               before="See "
               highlight={platform}
-              after={` Analysis for ${safeName}`}
+              middle=" Analysis for "
+              highlight2={safeName}
               markerColor={MARKER}
               baseColor={INK}
               highlightedTextColor="#041512"

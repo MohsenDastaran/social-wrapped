@@ -11,6 +11,10 @@ import {
 export interface MarkerHighlightProps {
   before?: string;
   highlight: string;
+  /** Plain text between the first and second highlight. */
+  middle?: string;
+  /** Optional second marker word (e.g. the person's name). */
+  highlight2?: string;
   after?: string;
   markerColor?: string;
   baseColor?: string;
@@ -23,9 +27,42 @@ export interface MarkerHighlightProps {
   backgroundColor?: string;
 }
 
+function MarkedWord({
+  text,
+  markerScale,
+  textColor,
+  markerColor,
+}: {
+  text: string;
+  markerScale: number;
+  textColor: string;
+  markerColor: string;
+}) {
+  return (
+    <span style={{ position: "relative", display: "inline-block" }}>
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: "0 -0.1em",
+          background: markerColor,
+          transformOrigin: "left center",
+          transform: `scaleX(${markerScale})`,
+          zIndex: 0,
+        }}
+      />
+      <span style={{ position: "relative", zIndex: 1, color: textColor }}>
+        {text}
+      </span>
+    </span>
+  );
+}
+
 export function MarkerHighlight({
   before = "",
   highlight,
+  middle = "",
+  highlight2 = "",
   after = "",
   markerColor = "#facc15",
   baseColor = "#171717",
@@ -45,8 +82,23 @@ export function MarkerHighlight({
     config: { damping: 14 },
   });
 
+  const markerScale2 = spring({
+    frame: frame - 28,
+    fps,
+    config: { damping: 14 },
+  });
+
   const textColor = interpolateColors(
     interpolate(markerScale, [0.5, 0.8], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    }),
+    [0, 1],
+    [baseColor, highlightedTextColor],
+  );
+
+  const textColor2 = interpolateColors(
+    interpolate(markerScale2, [0.5, 0.8], [0, 1], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     }),
@@ -80,22 +132,21 @@ export function MarkerHighlight({
         }}
       >
         {before}
-        <span style={{ position: "relative", display: "inline-block" }}>
-          <span
-            aria-hidden
-            style={{
-              position: "absolute",
-              inset: "0 -0.1em",
-              background: markerColor,
-              transformOrigin: "left center",
-              transform: `scaleX(${markerScale})`,
-              zIndex: 0,
-            }}
+        <MarkedWord
+          text={highlight}
+          markerScale={markerScale}
+          textColor={textColor}
+          markerColor={markerColor}
+        />
+        {middle}
+        {highlight2 ? (
+          <MarkedWord
+            text={highlight2}
+            markerScale={markerScale2}
+            textColor={textColor2}
+            markerColor={markerColor}
           />
-          <span style={{ position: "relative", zIndex: 1, color: textColor }}>
-            {highlight}
-          </span>
-        </span>
+        ) : null}
         {after}
       </span>
     </div>
