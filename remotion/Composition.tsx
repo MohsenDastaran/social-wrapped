@@ -12,7 +12,7 @@ import { whipPan } from "../src/components/remocn/whip-pan"
 
 /** Powerful percussion bed for the wrap reel (served from /public). */
 const SOUNDTRACK_PATH =
-  "/soundtracks/miromaxmusic-music-promotion-no-copyright-513944.mp3"
+  "/soundtracks/miromaxmusic-music-promotion-no-copyright.mp3"
 
 function soundtrackSrc(): string {
   if (typeof window === "undefined") return SOUNDTRACK_PATH
