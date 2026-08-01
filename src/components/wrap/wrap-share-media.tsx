@@ -124,7 +124,7 @@ export function WrapShareMedia({
         .map((id) => byId.get(id))
         .filter((s): s is (typeof stories)[number] => Boolean(s?.image))
         .slice(0, 5)
-        .map((s) => ({ src: s.image, heading: s.heading }))
+        .map((s) => ({ id: s.id, src: s.image, heading: s.heading }))
     },
     [stories]
   )

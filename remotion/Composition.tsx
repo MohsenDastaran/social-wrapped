@@ -4,11 +4,14 @@ import { TransitionSeries, linearTiming } from "@remotion/transitions"
 
 import { LogoEnter, type Logo } from "../src/components/remocn/logo-enter"
 import { MarkerHighlight } from "../src/components/remocn/marker-highlight"
+import { PaperSticker } from "../src/components/remocn/paper-sticker"
 import { RollingNumber } from "../src/components/remocn/rolling-number"
 import { SoftBlurIn } from "../src/components/remocn/soft-blur-in"
 import { whipPan } from "../src/components/remocn/whip-pan"
 
 export type VideoChartSlide = {
+  /** Story id (activity, heatmap, circadian, …) for sequencing. */
+  id?: string
   /** Object URL or static path of a composed story PNG (charts + captions). */
   src: string
   heading: string
@@ -38,14 +41,36 @@ const SCENE_MARKER = 210 // ~3.5s
 const SCENE_TOTAL = 250 // ~4.2s
 const SCENE_CHART = 270 // ~4.5s
 const SCENE_STATS = 420 // ~7s
-const SCENE_LOGOS = 220 // ~3.7s
+const SCENE_LOGOS = 240 // ~4s — MarkerHighlight CTA + logos
 const MAX_CHARTS = 5
+
+/** Deep-dive chart order (after early activity / sent-received beats). */
+const DEEP_DIVE_ORDER = ["heatmap", "circadian", "emojis"] as const
+/** Teaser sticker scenes (60fps). */
+const SCENE_HEATMAP_STICKER = 150
+const SCENE_CLOCK_STICKER = 160
+const SCENE_EMOJI_STICKER = 160
+const SCENE_PLATFORMS_STICKER = 200
+const STICKER_STEP = 6
+const DESK = "#f1eee7"
+
+const HEATMAP_STICKER_LABELS = ["Your year", "on the calendar"]
+const PLATFORM_STICKER_LABELS = [
+  "for",
+  "Telegram",
+  "Instagram",
+  "WhatsApp",
+  "LinkedIn",
+  "& more",
+]
 
 const BG = "#041512"
 const INK = "#ecfdf5"
 const MUTED = "rgba(167, 243, 208, 0.78)"
 const ACCENT = "#34d399"
 const MARKER = "#facc15"
+const PAPER = "#fbfaf6"
+const PAPER_INK = "#041512"
 
 function MarkSvg({
   path,
@@ -146,25 +171,280 @@ function ChartBeat({ src }: VideoChartSlide) {
   )
 }
 
+export function slidesIncludeClock(slides: VideoChartSlide[]): boolean {
+  return slides.slice(0, MAX_CHARTS).some((s) => s.id === "circadian" && s.src)
+}
+
+export function slidesIncludeEmojis(slides: VideoChartSlide[]): boolean {
+  return slides.slice(0, MAX_CHARTS).some((s) => s.id === "emojis" && s.src)
+}
+
+export function slidesIncludeHeatmap(slides: VideoChartSlide[]): boolean {
+  return slides.slice(0, MAX_CHARTS).some((s) => s.id === "heatmap" && s.src)
+}
+
 /** Must be TransitionSeries.Transition itself — wrappers fail Remotion's child-type check. */
 const whipTiming = linearTiming({ durationInFrames: WHIP })
 const whipPresentation = whipPan({ direction: "left", blur: 22 })
 
 /**
- * TransitionSeries duration = sum(scene) − sum(transitions).
- * Scenes: marker → totals → charts|stats → logos.
+ * Raw remocn PaperSticker stack — cream desk, staggered slap-ins, no PaperWobble.
+ * `at={i * step * 2}` mirrors the docs' `at={i * 6}` at step 3, scaled for 60fps.
  */
-export function videoDurationFrames(chartCount: number): number {
+function RawStickerScene({ labels }: { labels: string[] }) {
+  return (
+    <AbsoluteFill
+      style={{
+        background: DESK,
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
+        gap: 22,
+        padding: 72,
+      }}
+    >
+      {labels.map((label, i) => (
+        <PaperSticker
+          key={`${label}-${i}`}
+          at={i * STICKER_STEP * 2}
+          seed={label}
+          step={STICKER_STEP}
+        >
+          <span
+            style={{
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              fontSize: 40,
+              color: "#26242c",
+            }}
+          >
+            {label}
+          </span>
+        </PaperSticker>
+      ))}
+    </AbsoluteFill>
+  )
+}
+
+const stickerLabelStyle: React.CSSProperties = {
+  fontFamily: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+  fontWeight: 700,
+  color: PAPER_INK,
+  letterSpacing: "-0.03em",
+  lineHeight: 1.2,
+  textAlign: "center",
+}
+
+/** Paper sticker tease right before “Your clock”. */
+function ClockStickerIntro() {
+  return (
+    <SceneShell>
+      <AbsoluteFill
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 28,
+          padding: "0 72px",
+        }}
+      >
+        <PaperSticker
+          at={12}
+          seed="clock-tease-main"
+          step={STICKER_STEP}
+          background={PAPER}
+          borderColor="rgba(4,21,18,0.35)"
+          padding="26px 34px"
+          maxTilt={2.2}
+        >
+          <span style={{ ...stickerLabelStyle, fontSize: 44, maxWidth: 760 }}>
+            See when you sent your messages
+          </span>
+        </PaperSticker>
+        <PaperSticker
+          at={36}
+          seed="clock-tease-sub"
+          step={STICKER_STEP}
+          background="#ecfdf5"
+          borderColor="rgba(13,148,136,0.45)"
+          padding="14px 22px"
+          maxTilt={1.6}
+        >
+          <span
+            style={{ ...stickerLabelStyle, fontSize: 26, color: "#0f766e" }}
+          >
+            Your daily rhythm, hour by hour
+          </span>
+        </PaperSticker>
+      </AbsoluteFill>
+    </SceneShell>
+  )
+}
+
+/** Paper sticker tease right before “Top emojis”. */
+function EmojiStickerIntro() {
+  return (
+    <SceneShell>
+      <AbsoluteFill
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 28,
+          padding: "0 72px",
+        }}
+      >
+        <PaperSticker
+          at={12}
+          seed="emoji-tease-main"
+          step={STICKER_STEP}
+          background={PAPER}
+          borderColor="rgba(4,21,18,0.35)"
+          padding="26px 34px"
+          maxTilt={2.2}
+        >
+          <span style={{ ...stickerLabelStyle, fontSize: 44, maxWidth: 760 }}>
+            The emojis you reached for most
+          </span>
+        </PaperSticker>
+        <PaperSticker
+          at={36}
+          seed="emoji-tease-sub"
+          step={STICKER_STEP}
+          background="#ecfdf5"
+          borderColor="rgba(13,148,136,0.45)"
+          padding="14px 22px"
+          maxTilt={1.6}
+        >
+          <span
+            style={{ ...stickerLabelStyle, fontSize: 26, color: "#0f766e" }}
+          >
+            Your reaction vocabulary, ranked
+          </span>
+        </PaperSticker>
+      </AbsoluteFill>
+    </SceneShell>
+  )
+}
+
+function chartSequenceNodes(
+  slides: VideoChartSlide[],
+  keyPrefix: string
+): React.ReactNode[] {
+  return slides.flatMap((slide, index) => {
+    const chartNodes = [
+      <TransitionSeries.Transition
+        key={`whip-${keyPrefix}-${index}`}
+        timing={whipTiming}
+        presentation={whipPresentation}
+      />,
+      <TransitionSeries.Sequence
+        key={`chart-${keyPrefix}-${slide.id ?? index}-${index}`}
+        durationInFrames={SCENE_CHART}
+      >
+        <ChartBeat id={slide.id} src={slide.src} heading={slide.heading} />
+      </TransitionSeries.Sequence>,
+    ]
+
+    if (slide.id === "heatmap") {
+      return [
+        <TransitionSeries.Transition
+          key="whip-heatmap-sticker"
+          timing={whipTiming}
+          presentation={whipPresentation}
+        />,
+        <TransitionSeries.Sequence
+          key="heatmap-sticker"
+          durationInFrames={SCENE_HEATMAP_STICKER}
+        >
+          <RawStickerScene labels={HEATMAP_STICKER_LABELS} />
+        </TransitionSeries.Sequence>,
+        ...chartNodes,
+      ]
+    }
+
+    if (slide.id === "circadian") {
+      return [
+        <TransitionSeries.Transition
+          key="whip-clock-sticker"
+          timing={whipTiming}
+          presentation={whipPresentation}
+        />,
+        <TransitionSeries.Sequence
+          key="clock-sticker"
+          durationInFrames={SCENE_CLOCK_STICKER}
+        >
+          <ClockStickerIntro />
+        </TransitionSeries.Sequence>,
+        ...chartNodes,
+      ]
+    }
+
+    if (slide.id === "emojis") {
+      return [
+        <TransitionSeries.Transition
+          key="whip-emoji-sticker"
+          timing={whipTiming}
+          presentation={whipPresentation}
+        />,
+        <TransitionSeries.Sequence
+          key="emoji-sticker"
+          durationInFrames={SCENE_EMOJI_STICKER}
+        >
+          <EmojiStickerIntro />
+        </TransitionSeries.Sequence>,
+        ...chartNodes,
+      ]
+    }
+
+    return chartNodes
+  })
+}
+
+/**
+ * TransitionSeries duration = sum(scene) − sum(transitions).
+ * Scenes: marker → totals → charts (+ sticker teasers) → platform stickers → logos.
+ */
+export function videoDurationFrames(
+  chartCount: number,
+  options?: {
+    includeHeatmapSticker?: boolean
+    includeClockSticker?: boolean
+    includeEmojiSticker?: boolean
+  }
+): number {
   const charts = Math.min(Math.max(chartCount, 0), MAX_CHARTS)
+  const heatmap = options?.includeHeatmapSticker ? SCENE_HEATMAP_STICKER : 0
+  const heatmapWhip = options?.includeHeatmapSticker ? 1 : 0
+  const clock = options?.includeClockSticker ? SCENE_CLOCK_STICKER : 0
+  const clockWhip = options?.includeClockSticker ? 1 : 0
+  const emoji = options?.includeEmojiSticker ? SCENE_EMOJI_STICKER : 0
+  const emojiWhip = options?.includeEmojiSticker ? 1 : 0
+  // Platforms sticker always precedes the logos outro.
+  const platforms = SCENE_PLATFORMS_STICKER
+  const platformsWhip = 1
+
   if (charts === 0) {
-    return SCENE_MARKER + SCENE_TOTAL + SCENE_STATS + SCENE_LOGOS - WHIP * 3
+    return (
+      SCENE_MARKER +
+      SCENE_TOTAL +
+      SCENE_STATS +
+      platforms +
+      SCENE_LOGOS -
+      WHIP * (3 + platformsWhip)
+    )
   }
   return (
     SCENE_MARKER +
     SCENE_TOTAL +
     charts * SCENE_CHART +
+    heatmap +
+    clock +
+    emoji +
+    platforms +
     SCENE_LOGOS -
-    WHIP * (2 + charts)
+    WHIP * (2 + charts + heatmapWhip + clockWhip + emojiWhip + platformsWhip)
   )
 }
 
@@ -190,21 +470,17 @@ export const SocialWrappedVideo: React.FC<SocialWrappedVideoProps> = ({
 
   const slides = chartSlides.slice(0, MAX_CHARTS).filter((s) => s.src)
   const hasCharts = slides.length > 0
+  const deepIdSet = new Set<string>([...DEEP_DIVE_ORDER])
+  const earlySlides = slides.filter((s) => !s.id || !deepIdSet.has(s.id))
+  const deepSlides = DEEP_DIVE_ORDER.map((id) =>
+    slides.find((s) => s.id === id)
+  ).filter((s): s is VideoChartSlide => Boolean(s?.src))
 
   const midScenes = hasCharts
-    ? slides.flatMap((slide, index) => [
-        <TransitionSeries.Transition
-          key={`whip-chart-${index}`}
-          timing={whipTiming}
-          presentation={whipPresentation}
-        />,
-        <TransitionSeries.Sequence
-          key={`chart-${slide.src}-${index}`}
-          durationInFrames={SCENE_CHART}
-        >
-          <ChartBeat src={slide.src} heading={slide.heading} />
-        </TransitionSeries.Sequence>,
-      ])
+    ? [
+        ...chartSequenceNodes(earlySlides, "early"),
+        ...chartSequenceNodes(deepSlides, "deep"),
+      ]
     : [
         <TransitionSeries.Transition
           key="whip-stats"
@@ -277,9 +553,9 @@ export const SocialWrappedVideo: React.FC<SocialWrappedVideoProps> = ({
         <TransitionSeries.Sequence durationInFrames={SCENE_MARKER}>
           <SceneShell>
             <MarkerHighlight
-              before="Made "
+              before="See "
               highlight={platform}
-              after={` analysis for ${safeName}`}
+              after={` Analysis for ${safeName}`}
               markerColor={MARKER}
               baseColor={INK}
               highlightedTextColor="#041512"
@@ -326,44 +602,51 @@ export const SocialWrappedVideo: React.FC<SocialWrappedVideoProps> = ({
           presentation={whipPresentation}
         />
 
+        <TransitionSeries.Sequence durationInFrames={SCENE_PLATFORMS_STICKER}>
+          <RawStickerScene labels={PLATFORM_STICKER_LABELS} />
+        </TransitionSeries.Sequence>
+
+        <TransitionSeries.Transition
+          timing={whipTiming}
+          presentation={whipPresentation}
+        />
+
         <TransitionSeries.Sequence durationInFrames={SCENE_LOGOS}>
           <SceneShell>
-            <AbsoluteFill style={{ top: "-42%" }}>
-              <SoftBlurIn
-                text="Supported platforms"
-                fontSize={34}
-                fontWeight={600}
-                color={MUTED}
-                speed={1.2}
+            <AbsoluteFill style={{ top: "-28%" }}>
+              <MarkerHighlight
+                before="Use "
+                highlight="Social Wrapped"
+                after=""
+                markerColor={MARKER}
+                baseColor={INK}
+                highlightedTextColor="#041512"
+                backgroundColor="transparent"
+                fontSize={58}
+                fontWeight={700}
+                speed={1.05}
               />
             </AbsoluteFill>
-            <LogoEnter
-              logos={SUPPORTED_PLATFORM_LOGOS}
-              diameter={96}
-              overlap={28}
-              ringColor={BG}
-              orientation="horizontal"
-              stagger={7}
-              speed={1}
-            />
-            <AbsoluteFill style={{ top: "18%" }}>
+            <AbsoluteFill style={{ top: "8%" }}>
+              <LogoEnter
+                logos={SUPPORTED_PLATFORM_LOGOS}
+                diameter={96}
+                overlap={28}
+                ringColor={BG}
+                orientation="horizontal"
+                stagger={7}
+                speed={1}
+              />
+            </AbsoluteFill>
+            {/* <AbsoluteFill style={{ top: "34%" }}>
               <SoftBlurIn
                 text="& more"
-                fontSize={36}
+                fontSize={32}
                 fontWeight={600}
                 color={MUTED}
                 speed={1.15}
               />
-            </AbsoluteFill>
-            <AbsoluteFill style={{ top: "36%" }}>
-              <SoftBlurIn
-                text="Made with Social Wrapped"
-                fontSize={28}
-                fontWeight={600}
-                color={ACCENT}
-                speed={1.15}
-              />
-            </AbsoluteFill>
+            </AbsoluteFill> */}
           </SceneShell>
         </TransitionSeries.Sequence>
       </TransitionSeries>

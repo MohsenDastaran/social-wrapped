@@ -12,6 +12,9 @@ import {
   VIDEO_FPS,
   VIDEO_HEIGHT,
   VIDEO_WIDTH,
+  slidesIncludeClock,
+  slidesIncludeEmojis,
+  slidesIncludeHeatmap,
   videoDurationFrames,
   type SocialWrappedVideoProps,
   type VideoChartSlide,
@@ -120,7 +123,11 @@ export function WrapShareVideo({
   inputPropsRef.current = inputProps
 
   const videoReady = ready && slidesReady
-  const durationInFrames = videoDurationFrames(videoSlides.length)
+  const durationInFrames = videoDurationFrames(videoSlides.length, {
+    includeHeatmapSticker: slidesIncludeHeatmap(videoSlides),
+    includeClockSticker: slidesIncludeClock(videoSlides),
+    includeEmojiSticker: slidesIncludeEmojis(videoSlides),
+  })
   const playerKey = `${durationInFrames}-${chartSrcKey}-${videoSlides.map((s) => s.src.length).join("-")}`
 
   const clearMediaUrl = useCallback(() => {

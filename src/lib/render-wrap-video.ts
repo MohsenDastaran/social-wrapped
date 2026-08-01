@@ -8,6 +8,9 @@ import {
   VIDEO_FPS,
   VIDEO_HEIGHT,
   VIDEO_WIDTH,
+  slidesIncludeClock,
+  slidesIncludeEmojis,
+  slidesIncludeHeatmap,
   videoDurationFrames,
   type SocialWrappedVideoProps,
   type VideoChartSlide,
@@ -121,7 +124,12 @@ async function renderOnce(
     onProgress?: (progress: number) => void
   }
 ): Promise<Blob> {
-  const durationInFrames = videoDurationFrames(props.chartSlides?.length ?? 0)
+  const slides = props.chartSlides ?? []
+  const durationInFrames = videoDurationFrames(slides.length, {
+    includeHeatmapSticker: slidesIncludeHeatmap(slides),
+    includeClockSticker: slidesIncludeClock(slides),
+    includeEmojiSticker: slidesIncludeEmojis(slides),
+  })
 
   const support = await canRenderMediaOnWeb({
     container: "mp4",
