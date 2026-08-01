@@ -38,7 +38,6 @@ export const VIDEO_HEIGHT = 1920
 const WHIP = 52
 /** Scene lengths @ 60fps — hold long enough to read before the whip. */
 const SCENE_MARKER = 210 // ~3.5s
-const SCENE_TOTAL = 250 // ~4.2s
 const SCENE_CHART = 270 // ~4.5s
 const SCENE_STATS = 420 // ~7s
 const SCENE_LOGOS = 240 // ~4s — MarkerHighlight CTA + logos
@@ -54,7 +53,7 @@ const SCENE_PLATFORMS_STICKER = 200
 const STICKER_STEP = 6
 const DESK = "#f1eee7"
 
-const HEATMAP_STICKER_LABELS = ["Your year", "on the calendar"]
+const HEATMAP_STICKER_LABELS = ["Your", "activity", "on the", "calendar"]
 const PLATFORM_STICKER_LABELS = [
   "for",
   "Telegram",
@@ -404,7 +403,7 @@ function chartSequenceNodes(
 
 /**
  * TransitionSeries duration = sum(scene) − sum(transitions).
- * Scenes: marker → totals → charts (+ sticker teasers) → platform stickers → logos.
+ * Scenes: marker → charts (+ sticker teasers) → platform stickers → logos.
  */
 export function videoDurationFrames(
   chartCount: number,
@@ -426,35 +425,26 @@ export function videoDurationFrames(
   const platformsWhip = 1
 
   if (charts === 0) {
-    return (
-      SCENE_MARKER +
-      SCENE_TOTAL +
-      SCENE_STATS +
-      platforms +
-      SCENE_LOGOS -
-      WHIP * (3 + platformsWhip)
-    )
+    return SCENE_MARKER + SCENE_STATS + platforms + SCENE_LOGOS - WHIP * 3
   }
   return (
     SCENE_MARKER +
-    SCENE_TOTAL +
     charts * SCENE_CHART +
     heatmap +
     clock +
     emoji +
     platforms +
     SCENE_LOGOS -
-    WHIP * (2 + charts + heatmapWhip + clockWhip + emojiWhip + platformsWhip)
+    WHIP * (1 + charts + heatmapWhip + clockWhip + emojiWhip + platformsWhip)
   )
 }
 
 /**
  * Portrait wrap highlight reel for the share-media video tile.
- * MarkerHighlight intro → stats/charts → LogoEnter supported platforms.
+ * MarkerHighlight intro → charts → LogoEnter supported platforms.
  */
 export const SocialWrappedVideo: React.FC<SocialWrappedVideoProps> = ({
   displayName,
-  totalMessages,
   sentMessages,
   receivedMessages,
   chatCount,
@@ -463,7 +453,6 @@ export const SocialWrappedVideo: React.FC<SocialWrappedVideoProps> = ({
 }) => {
   const safeName = displayName.trim() || "you"
   const platform = platformName.trim() || "Telegram"
-  const total = Math.max(0, Math.floor(totalMessages))
   const sent = Math.max(0, Math.floor(sentMessages))
   const received = Math.max(0, Math.floor(receivedMessages))
   const chats = Math.max(0, Math.floor(chatCount))
@@ -565,34 +554,6 @@ export const SocialWrappedVideo: React.FC<SocialWrappedVideoProps> = ({
               fontWeight={700}
               speed={1.05}
             />
-          </SceneShell>
-        </TransitionSeries.Sequence>
-
-        <TransitionSeries.Transition
-          timing={whipTiming}
-          presentation={whipPresentation}
-        />
-
-        <TransitionSeries.Sequence durationInFrames={SCENE_TOTAL}>
-          <SceneShell>
-            <AbsoluteFill>
-              <RollingNumber
-                from={0}
-                to={total}
-                fontSize={92}
-                color={INK}
-                speed={3.4}
-              />
-            </AbsoluteFill>
-            <AbsoluteFill style={{ top: "14%" }}>
-              <SoftBlurIn
-                text="messages"
-                fontSize={36}
-                fontWeight={500}
-                color={MUTED}
-                speed={1.25}
-              />
-            </AbsoluteFill>
           </SceneShell>
         </TransitionSeries.Sequence>
 
