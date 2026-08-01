@@ -158,7 +158,7 @@ export function StoryCarousel({
   return (
     <div
       className={cn(
-        "group relative mx-auto aspect-[9/16] w-full max-w-sm select-none overflow-hidden rounded-3xl bg-neutral-950 shadow-2xl",
+        "group relative mx-auto aspect-[9/16] w-full max-w-sm overflow-hidden rounded-3xl bg-neutral-950 shadow-2xl select-none",
         className
       )}
       onMouseEnter={handlePause}
@@ -201,7 +201,7 @@ export function StoryCarousel({
           "z-20 flex h-1 gap-2",
           alwaysShowControls
             ? // Fullscreen: sit under close/share chrome (viewport-fixed).
-              "fixed inset-x-4 top-[calc(max(0.75rem,env(safe-area-inset-top))+4rem)] z-[215]"
+              "fixed inset-x-4 top-[calc(max(0.75rem,env(safe-area-inset-top))+4rem)] z-215"
             : "absolute inset-x-4 top-4"
         )}
       >
@@ -271,15 +271,15 @@ export function StoryCarousel({
         <div className="pointer-events-none absolute inset-x-6 bottom-10 z-20 text-white">
           <div
             key={current}
-            className="animate-in fade-in slide-in-from-bottom-2 duration-500"
+            className="animate-in duration-500 fade-in slide-in-from-bottom-2"
           >
             {items[current]?.heading ? (
-              <h2 className="mb-2 text-2xl font-bold leading-tight drop-shadow-md">
+              <h2 className="mb-2 text-2xl leading-tight font-bold drop-shadow-md">
                 {items[current]?.heading}
               </h2>
             ) : null}
             {items[current]?.subtext ? (
-              <p className="text-sm font-medium leading-relaxed text-white/90 drop-shadow-md">
+              <p className="text-sm leading-relaxed font-medium text-white/90 drop-shadow-md">
                 {items[current]?.subtext}
               </p>
             ) : null}

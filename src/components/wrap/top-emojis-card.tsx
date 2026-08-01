@@ -103,7 +103,7 @@ export function TopEmojisCard({
               <li
                 key={`${entry.emoji}-${index}`}
                 className={cn(
-                  "relative flex flex-col items-center gap-1.5 rounded-2xl px-2 py-3 text-center",
+                  "relative flex flex-col items-center gap-1.5 overflow-visible rounded-2xl px-2 pt-4 pb-3 text-center",
                   isTop
                     ? "bg-primary/10 ring-1 ring-primary/25"
                     : "bg-muted/45 ring-1 ring-foreground/5"
@@ -119,8 +119,11 @@ export function TopEmojisCard({
                 </span>
                 <span
                   className={cn(
-                    "leading-none [font-variant-emoji:emoji]",
-                    isTop ? "text-4xl sm:text-[2.75rem]" : "text-3xl"
+                    // Extra leading room — emoji glyphs paint above the em-box and clip with leading-none.
+                    "inline-flex items-center justify-center pt-1 leading-[1.2] [font-variant-emoji:emoji]",
+                    isTop
+                      ? "min-h-12 text-4xl sm:min-h-14 sm:text-[2.75rem]"
+                      : "min-h-10 text-3xl"
                   )}
                   role="img"
                   aria-label={`Rank ${index + 1}`}

@@ -699,19 +699,23 @@ function paintTextOverlays(
         const r = range.getBoundingClientRect()
         if (r.width >= 1 && r.height >= 1) {
           const alpha = Number.parseFloat(cs.opacity || "1")
+          const fontSize = Number.parseFloat(cs.fontSize) || 16
+          // Emoji glyphs often paint above the CSS em-box; pad the clip so tops aren't shaved.
+          const emoji = looksLikeEmoji(text)
+          const padX = emoji ? Math.ceil(fontSize * 0.15) : 0
+          const padY = emoji ? Math.ceil(fontSize * 0.25) : 0
           ctx.save()
           ctx.globalAlpha = Number.isFinite(alpha) ? alpha : 1
           ctx.fillStyle = cssColorToRgb(cs.color)
           ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
           ctx.textBaseline = "top"
-          // Clip to the parent box so truncated labels don't overflow.
           const parentRect = parent.getBoundingClientRect()
           ctx.beginPath()
           ctx.rect(
-            parentRect.left - root.left,
-            parentRect.top - root.top,
-            parentRect.width,
-            parentRect.height
+            parentRect.left - root.left - padX,
+            parentRect.top - root.top - padY,
+            parentRect.width + padX * 2,
+            parentRect.height + padY * 2
           )
           ctx.clip()
           ctx.fillText(text, r.left - root.left, r.top - root.top)
@@ -720,6 +724,15 @@ function paintTextOverlays(
       }
     }
     node = walker.nextNode()
+  }
+}
+
+function looksLikeEmoji(text: string): boolean {
+  try {
+    return /\p{Extended_Pictographic}/u.test(text)
+  } catch {
+    // Older engines without Unicode property escapes.
+    return text.length <= 8 && /[^\u0000-\u00ff]/.test(text)
   }
 }
 
