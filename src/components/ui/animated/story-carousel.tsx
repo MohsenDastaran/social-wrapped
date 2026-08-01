@@ -196,7 +196,15 @@ export function StoryCarousel({
         </CarouselContent>
       </Carousel>
 
-      <div className="absolute inset-x-4 top-[max(4.5rem,calc(env(safe-area-inset-top)+3.25rem))] z-20 flex h-1 gap-2">
+      <div
+        className={cn(
+          "z-20 flex h-1 gap-2",
+          alwaysShowControls
+            ? // Fullscreen: sit under close/share chrome (viewport-fixed).
+              "fixed inset-x-4 top-[calc(max(0.75rem,env(safe-area-inset-top))+4rem)] z-[215]"
+            : "absolute inset-x-4 top-4"
+        )}
+      >
         {items.map((_, index) => {
           const isPast = index < current
           const isCurrent = index === current
