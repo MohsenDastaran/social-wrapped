@@ -36,6 +36,7 @@ type ActivityOverTimeChartProps = {
 /**
  * Hero chart — sent vs received over time.
  * Toggle line (area) vs grouped bars; yearly vs monthly aggregation.
+ * Yearly mode is only offered when the series spans at least 2 calendar years.
  */
 export function ActivityOverTimeChart({
   series,
@@ -45,10 +46,19 @@ export function ActivityOverTimeChart({
   receivedLabel = "Received",
   defaultChartType = "line",
 }: ActivityOverTimeChartProps) {
-  const [timeMode, setTimeMode] = useState<TimeMode>(
-    series.yearly.length > 0 || series.years.length > 0 ? "yearly" : "monthly"
+  const yearCount = useMemo(() => countDistinctYears(series), [series])
+  const yearlyAvailable = yearCount >= 2
+
+  const [timeMode, setTimeMode] = useState<TimeMode>(() =>
+    yearlyAvailable && (series.yearly.length > 0 || series.years.length > 0)
+      ? "yearly"
+      : "monthly"
   )
   const [chartType, setChartType] = useState<ChartType>(defaultChartType)
+
+  // If data shrinks below 2 years (e.g. chat drill-down), drop yearly mode.
+  const effectiveTimeMode: TimeMode =
+    yearlyAvailable && timeMode === "yearly" ? "yearly" : "monthly"
 
   const config = useMemo(
     () =>
@@ -72,7 +82,7 @@ export function ActivityOverTimeChart({
   )
 
   const data: ChartRow[] = useMemo(() => {
-    if (timeMode === "yearly") {
+    if (effectiveTimeMode === "yearly") {
       const points =
         series.yearly.length > 0
           ? series.yearly
@@ -89,7 +99,7 @@ export function ActivityOverTimeChart({
       sent: p.sent,
       received: p.received,
     }))
-  }, [timeMode, series])
+  }, [effectiveTimeMode, series])
 
   const totalSent = data.reduce((s, d) => s + d.sent, 0)
   const totalReceived = data.reduce((s, d) => s + d.received, 0)
@@ -98,7 +108,7 @@ export function ActivityOverTimeChart({
     return null
   }
 
-  const periodLabel = timeMode === "yearly" ? "year" : "month"
+  const periodLabel = effectiveTimeMode === "yearly" ? "year" : "month"
   const typeHint =
     chartType === "line"
       ? "drag the brush to zoom"
@@ -111,7 +121,7 @@ export function ActivityOverTimeChart({
       exportName={exportName}
       exportSize="wide"
       exportLines={[
-        `Mode ${timeMode}`,
+        `Mode ${effectiveTimeMode}`,
         `Chart ${chartType}`,
         `${sentLabel} ${fmt(totalSent)}`,
         `${receivedLabel} ${fmt(totalReceived)}`,
@@ -121,20 +131,22 @@ export function ActivityOverTimeChart({
       <div className="flex h-full w-full flex-col">
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-2">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5">
-              <ModeButton
-                active={timeMode === "yearly"}
-                onClick={() => setTimeMode("yearly")}
-              >
-                Yearly
-              </ModeButton>
-              <ModeButton
-                active={timeMode === "monthly"}
-                onClick={() => setTimeMode("monthly")}
-              >
-                Monthly
-              </ModeButton>
-            </div>
+            {yearlyAvailable ? (
+              <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5">
+                <ModeButton
+                  active={effectiveTimeMode === "yearly"}
+                  onClick={() => setTimeMode("yearly")}
+                >
+                  Yearly
+                </ModeButton>
+                <ModeButton
+                  active={effectiveTimeMode === "monthly"}
+                  onClick={() => setTimeMode("monthly")}
+                >
+                  Monthly
+                </ModeButton>
+              </div>
+            ) : null}
 
             <div
               className="flex items-center gap-1 rounded-lg bg-muted p-0.5"
@@ -308,4 +320,22 @@ function aggregateYearsFromMonthly(
   return [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([period, v]) => ({ period, sent: v.sent, received: v.received }))
+}
+
+/** Distinct calendar years present in yearly points, years list, or monthly. */
+function countDistinctYears(series: ActivityTimeSeries): number {
+  const years = new Set<string>()
+  for (const y of series.years ?? []) {
+    const key = String(y).slice(0, 4)
+    if (/^\d{4}$/.test(key)) years.add(key)
+  }
+  for (const p of series.yearly) {
+    const key = p.period.slice(0, 4)
+    if (/^\d{4}$/.test(key)) years.add(key)
+  }
+  for (const p of series.monthly) {
+    const key = p.period.slice(0, 4)
+    if (/^\d{4}$/.test(key)) years.add(key)
+  }
+  return years.size
 }
