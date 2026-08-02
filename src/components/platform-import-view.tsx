@@ -8,7 +8,7 @@ import { WhatsAppIdentityPicker } from "@/components/whatsapp-identity-picker"
 import { Button } from "@/components/ui/button"
 import { platformDocsPath, type PlatformConfig } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
-import { saveWrap, wrapPath } from "@/lib/wrap-history"
+import { saveWrap, wrapEntryPath } from "@/lib/wrap-history"
 import { formatInvokeError } from "@/platform/api"
 import {
   importPlatformFile,
@@ -122,7 +122,7 @@ export function PlatformImportView({
         fileName: file.name,
         analytics,
       })
-      navigate(wrapPath(wrap.id), { replace: true })
+      navigate(wrapEntryPath(wrap), { replace: true })
     } catch (err) {
       setError(formatInvokeError(err))
       setProgress(null)

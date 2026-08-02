@@ -9,7 +9,7 @@ import { WrapMainAnalytics } from "@/components/wrap/wrap-main-analytics"
 import { WrapShareMedia } from "@/components/wrap/wrap-share-media"
 import { WrapTopContacts } from "@/components/wrap/wrap-top-contacts"
 import { getPlatform } from "@/lib/platforms"
-import { getWrap, wrapChatPath, type WrapRecord } from "@/lib/wrap-history"
+import { getWrap, wrapChatPath, wrapEntryPath, type WrapRecord } from "@/lib/wrap-history"
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -52,6 +52,11 @@ export function WrapPage() {
 
   if (!wrap?.analytics?.account) {
     return <Navigate to="/history" replace />
+  }
+
+  // WhatsApp is a single chat export — account wrap isn't useful.
+  if (wrap.platformId === "whatsapp") {
+    return <Navigate to={wrapEntryPath(wrap)} replace />
   }
 
   const platform = getPlatform(wrap.platformId)

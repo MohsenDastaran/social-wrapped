@@ -499,6 +499,20 @@ export function wrapChatPath(wrapId: string, chatId: number): string {
   return `/wrap/${wrapId}/chat/${chatId}`
 }
 
+/**
+ * Landing route after import / from History.
+ * WhatsApp exports are a single chat, so open the chat analytics page directly.
+ */
+export function wrapEntryPath(
+  wrap: Pick<WrapRecord, "id" | "platformId" | "analytics">
+): string {
+  if (wrap.platformId === "whatsapp") {
+    const chatId = wrap.analytics.chats[0]?.chatId ?? 1
+    return wrapChatPath(wrap.id, chatId)
+  }
+  return wrapPath(wrap.id)
+}
+
 export async function saveWrap(input: {
   platformId: PlatformId
   fileName: string

@@ -65,11 +65,15 @@ export function WrapChatPage() {
           variant="ghost"
           size="sm"
           className="-ms-2 mb-1 h-8 text-muted-foreground"
-          render={<Link to={wrapPath(wrap.id)} />}
+          render={
+            <Link
+              to={wrap.platformId === "whatsapp" ? "/history" : wrapPath(wrap.id)}
+            />
+          }
           nativeButton={false}
         >
           <ArrowLeft data-icon="inline-start" />
-          Back to wrap
+          {wrap.platformId === "whatsapp" ? "History" : "Back to wrap"}
         </Button>
         <h1 className="font-heading text-xl font-semibold tracking-tight sm:text-2xl">
           <MarkerHighlight

@@ -6,7 +6,7 @@ import { AppLoader } from "@/components/app-loader"
 import { PlatformLogo } from "@/components/platform-logo"
 import { getPlatform } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
-import { listWraps, wrapPath, type WrapRecord } from "@/lib/wrap-history"
+import { listWraps, wrapEntryPath, type WrapRecord } from "@/lib/wrap-history"
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -83,7 +83,7 @@ export function HistoryPage() {
           return (
             <li key={wrap.id}>
               <Link
-                to={wrapPath(wrap.id)}
+                to={wrapEntryPath(wrap)}
                 className="flex items-center gap-3 rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10 transition-colors hover:bg-muted/40"
               >
                 {platform ? (
