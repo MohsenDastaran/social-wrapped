@@ -156,17 +156,38 @@ stub_parser!(TelegramParser, Platform::Telegram, |path: &Path| {
 });
 
 stub_parser!(WhatsAppParser, Platform::WhatsApp, |path: &Path| {
-    if path.extension().and_then(|ext| ext.to_str()) != Some("txt") {
-        return false;
+    if path.extension().and_then(|ext| ext.to_str()) == Some("txt") {
+        return first_line(path)
+            .map(|line| {
+                let trimmed = line.trim_start_matches('[');
+                trimmed.chars().take(16).any(|ch| ch.is_ascii_digit())
+                    && (trimmed.contains('/') || trimmed.contains('.') || trimmed.contains('-'))
+            })
+            .unwrap_or(false);
     }
 
-    first_line(path)
-        .map(|line| {
-            let trimmed = line.trim_start_matches('[');
-            trimmed.chars().take(16).any(|ch| ch.is_ascii_digit())
-                && (trimmed.contains('/') || trimmed.contains('.') || trimmed.contains('-'))
-        })
-        .unwrap_or(false)
+    if path.extension().and_then(|ext| ext.to_str()) == Some("zip") {
+        return peek_zip(path)
+            .map(|entries| {
+                entries.iter().any(|entry| {
+                    let lower = entry.to_ascii_lowercase();
+                    if !lower.ends_with(".txt") {
+                        return false;
+                    }
+                    let base = Path::new(entry)
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("")
+                        .to_ascii_lowercase();
+                    base == "_chat.txt"
+                        || base.starts_with("whatsapp chat")
+                        || base.contains("whatsapp")
+                })
+            })
+            .unwrap_or(false);
+    }
+
+    false
 });
 
 stub_parser!(XParser, Platform::X, |path: &Path| {

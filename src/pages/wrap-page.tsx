@@ -105,6 +105,7 @@ export function WrapPage() {
       <WrapShareMedia
         displayName={wrap.stats.displayName}
         analytics={wrap.analytics}
+        platformName={platform?.name ?? "Export"}
       />
 
       <WrapMainAnalytics analytics={wrap.analytics} />

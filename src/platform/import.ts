@@ -74,6 +74,10 @@ export function importOverallPercent(
 
 export type ImportWorkerRequest = { file: File }
 
+export type WhatsAppImportWorkerRequest =
+  | { type: "file"; file: File }
+  | { type: "identity"; meName: string }
+
 export type ImportWorkerResponse =
   | {
       type: "progress"
@@ -81,48 +85,69 @@ export type ImportWorkerResponse =
       current: number
       total: number
     }
+  | {
+      type: "need_identity"
+      chatName: string
+      senders: string[]
+    }
   | { type: "done"; analyticsJson: string }
   | { type: "error"; message: string }
+
+export type NeedIdentityHandler = (
+  senders: string[],
+  chatName: string
+) => Promise<string>
 
 function normalizeProgressPhase(value: unknown): ImportProgressPhase {
   return value === "computing" ? "computing" : "reading"
 }
 
 function validateFile(platform: PlatformConfig, file: File): void {
-  if (platform.id !== "telegram") {
-    throw new Error(
-      `${platform.name} import isn't wired yet. Only Telegram JSON exports can be analyzed right now.`
-    )
+  const lower = file.name.toLowerCase()
+
+  if (platform.id === "telegram") {
+    if (lower.endsWith(".zip")) {
+      throw new Error(
+        "ZIP archives aren't supported yet. Open your Telegram export folder and choose result.json."
+      )
+    }
+    if (!lower.endsWith(".json")) {
+      throw new Error("Please choose a Telegram result.json export.")
+    }
+    return
   }
 
-  const lower = file.name.toLowerCase()
-  if (lower.endsWith(".zip")) {
-    throw new Error(
-      "ZIP archives aren't supported yet. Open your Telegram export folder and choose result.json."
-    )
+  if (platform.id === "whatsapp") {
+    if (!lower.endsWith(".txt") && !lower.endsWith(".zip")) {
+      throw new Error("Please choose a WhatsApp chat export (.txt or .zip).")
+    }
+    return
   }
-  if (!lower.endsWith(".json")) {
-    throw new Error("Please choose a Telegram result.json export.")
-  }
+
+  throw new Error(
+    `${platform.name} import isn't wired yet. Only Telegram and WhatsApp exports can be analyzed right now.`
+  )
 }
 
-/**
- * Central entry point for importing a platform export.
- *
- * Parsing happens inside a dedicated Web Worker so the UI thread never
- * freezes, even for multi-hundred-MB exports. Works identically in the
- * browser and in Tauri webviews (Linux, Android, …) since both run the
- * same WASM parser off the main thread.
- *
- * Returns the full {@link WrapAnalytics} object.
- */
-export function importPlatformFile(
-  platform: PlatformConfig,
+function normalizeAnalytics(analytics: WrapAnalytics): WrapAnalytics {
+  analytics.account = {
+    ...analytics.account,
+    contentMix: normalizeContentMix(analytics.account),
+  }
+  analytics.chats = (analytics.chats ?? []).map((c) => ({
+    ...c,
+    analytics: {
+      ...c.analytics,
+      contentMix: normalizeContentMix(c.analytics),
+    },
+  }))
+  return analytics
+}
+
+function importTelegramFile(
   file: File,
   onProgress?: (progress: ImportProgress) => void
 ): Promise<WrapAnalytics> {
-  validateFile(platform, file)
-
   return new Promise((resolve, reject) => {
     const worker = new Worker(
       new URL("../workers/telegram-import.worker.ts", import.meta.url),
@@ -149,20 +174,11 @@ export function importPlatformFile(
       worker.terminate()
       if (message.type === "done") {
         const analytics = JSON.parse(message.analyticsJson) as WrapAnalytics
-        analytics.account = {
-          ...analytics.account,
-          contentMix: normalizeContentMix(analytics.account),
-        }
-        analytics.chats = (analytics.chats ?? []).map((c) => ({
-          ...c,
-          analytics: {
-            ...c.analytics,
-            contentMix: normalizeContentMix(c.analytics),
-          },
-        }))
-        resolve(analytics)
-      } else {
+        resolve(normalizeAnalytics(analytics))
+      } else if (message.type === "error") {
         reject(new Error(message.message))
+      } else {
+        reject(new Error("Unexpected response from Telegram import worker."))
       }
     }
 
@@ -173,4 +189,121 @@ export function importPlatformFile(
 
     worker.postMessage({ file } satisfies ImportWorkerRequest)
   })
+}
+
+function importWhatsAppFile(
+  file: File,
+  onProgress?: (progress: ImportProgress) => void,
+  onNeedIdentity?: NeedIdentityHandler
+): Promise<WrapAnalytics> {
+  if (!onNeedIdentity) {
+    return Promise.reject(
+      new Error("WhatsApp import requires choosing which sender is you.")
+    )
+  }
+
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL("../workers/whatsapp-import.worker.ts", import.meta.url),
+      { type: "module", name: "whatsapp-import" }
+    )
+
+    let settled = false
+
+    const fail = (error: Error) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      reject(error)
+    }
+
+    const succeed = (analytics: WrapAnalytics) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      resolve(normalizeAnalytics(analytics))
+    }
+
+    worker.onmessage = (event: MessageEvent<ImportWorkerResponse>) => {
+      const message = event.data
+      if (message.type === "progress") {
+        const phase = normalizeProgressPhase(message.phase)
+        const { current, total } = message
+        const percent =
+          total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0
+        onProgress?.({
+          phase,
+          percent,
+          overallPercent: importOverallPercent(phase, percent),
+          current,
+          total,
+        })
+        return
+      }
+
+      if (message.type === "need_identity") {
+        void onNeedIdentity(message.senders, message.chatName)
+          .then((meName) => {
+            if (settled) return
+            worker.postMessage({
+              type: "identity",
+              meName,
+            } satisfies WhatsAppImportWorkerRequest)
+          })
+          .catch((error: unknown) => {
+            fail(
+              error instanceof Error
+                ? error
+                : new Error("Identity selection was cancelled.")
+            )
+          })
+        return
+      }
+
+      if (message.type === "done") {
+        const analytics = JSON.parse(message.analyticsJson) as WrapAnalytics
+        succeed(analytics)
+        return
+      }
+
+      fail(new Error(message.message || "WhatsApp import failed."))
+    }
+
+    worker.onerror = (event) => {
+      fail(new Error(event.message || "Import worker failed to start."))
+    }
+
+    worker.postMessage({
+      type: "file",
+      file,
+    } satisfies WhatsAppImportWorkerRequest)
+  })
+}
+
+/**
+ * Central entry point for importing a platform export.
+ *
+ * Parsing happens inside a dedicated Web Worker so the UI thread never
+ * freezes, even for multi-hundred-MB exports. Works identically in the
+ * browser and in Tauri webviews (Linux, Android, …) since both run the
+ * same WASM parser off the main thread.
+ *
+ * Returns the full {@link WrapAnalytics} object.
+ *
+ * For WhatsApp, `onNeedIdentity` must resolve with the user's display name
+ * from the export (shown in a “Who are you?” picker).
+ */
+export function importPlatformFile(
+  platform: PlatformConfig,
+  file: File,
+  onProgress?: (progress: ImportProgress) => void,
+  onNeedIdentity?: NeedIdentityHandler
+): Promise<WrapAnalytics> {
+  validateFile(platform, file)
+
+  if (platform.id === "whatsapp") {
+    return importWhatsAppFile(file, onProgress, onNeedIdentity)
+  }
+
+  return importTelegramFile(file, onProgress)
 }

@@ -21,12 +21,15 @@ import { cn } from "@/lib/utils"
 type WrapShareMediaProps = {
   displayName: string
   analytics: WrapAnalytics
+  /** Platform label shown in share video (e.g. Telegram, WhatsApp). */
+  platformName?: string
 }
 
 /** Share strip — video + stories tiles in one row; fullscreen on tap. */
 export function WrapShareMedia({
   displayName,
   analytics,
+  platformName = "Telegram",
 }: WrapShareMediaProps) {
   const specs = useMemo(
     () => buildMainStorySpecs(displayName, analytics),
@@ -145,7 +148,7 @@ export function WrapShareMedia({
             sentMessages={analytics.account.sentMessages}
             receivedMessages={analytics.account.receivedMessages}
             chatCount={analytics.chatCount}
-            platformName="Telegram"
+            platformName={platformName}
             chartSlides={videoChartSlides}
             ready={storiesReady || specs.length === 0}
             captureProgress={captureProgress}

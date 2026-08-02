@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router"
 
 import { AppLoader } from "@/components/app-loader"
 import { PlatformLogo } from "@/components/platform-logo"
+import { WhatsAppIdentityPicker } from "@/components/whatsapp-identity-picker"
 import { Button } from "@/components/ui/button"
 import { platformDocsPath, type PlatformConfig } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
@@ -28,6 +29,13 @@ export type PlatformImportViewProps = {
   className?: string
 }
 
+type IdentityPrompt = {
+  chatName: string
+  senders: string[]
+  resolve: (meName: string) => void
+  reject: (error: Error) => void
+}
+
 /** Shared import UI — used by every platform’s dedicated import route. */
 export function PlatformImportView({
   platform,
@@ -45,6 +53,9 @@ export function PlatformImportView({
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState("")
   const [progress, setProgress] = useState<ImportProgress | null>(null)
+  const [identityPrompt, setIdentityPrompt] = useState<IdentityPrompt | null>(
+    null
+  )
   const loading = progress !== null
 
   function takeFile(next: File | null) {
@@ -80,6 +91,15 @@ export function PlatformImportView({
     takeFile(next)
   }
 
+  function promptIdentity(
+    senders: string[],
+    chatName: string
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      setIdentityPrompt({ chatName, senders, resolve, reject })
+    })
+  }
+
   async function handleAnalyze() {
     if (!file) return
     setError("")
@@ -91,7 +111,12 @@ export function PlatformImportView({
       total: file.size,
     })
     try {
-      const analytics = await importPlatformFile(platform, file, setProgress)
+      const analytics = await importPlatformFile(
+        platform,
+        file,
+        setProgress,
+        platform.id === "whatsapp" ? promptIdentity : undefined
+      )
       const wrap = await saveWrap({
         platformId: platform.id,
         fileName: file.name,
@@ -101,8 +126,18 @@ export function PlatformImportView({
     } catch (err) {
       setError(formatInvokeError(err))
       setProgress(null)
+      setIdentityPrompt(null)
     }
   }
+
+  const progressHint =
+    platform.id === "whatsapp"
+      ? progress?.phase === "computing"
+        ? "Building your wrap from this chat"
+        : "Reading your WhatsApp export"
+      : progress?.phase === "computing"
+        ? "Building your wrap from chats and messages"
+        : "Parsing JSON on your device"
 
   return (
     <div
@@ -245,15 +280,19 @@ export function PlatformImportView({
               label={
                 progress.phase === "computing"
                   ? "Computing stats"
-                  : "Reading export"
+                  : identityPrompt
+                    ? "Waiting for you"
+                    : "Reading export"
               }
               className="shrink-0"
             />
             <span className="tabular-nums">
-              {progress.phase === "computing"
-                ? "Computing stats…"
-                : "Reading export…"}{" "}
-              {progress.overallPercent}%
+              {identityPrompt
+                ? "Choose your name…"
+                : progress.phase === "computing"
+                  ? "Computing stats…"
+                  : "Reading export…"}{" "}
+              {!identityPrompt ? `${progress.overallPercent}%` : null}
             </span>
           </>
         ) : (
@@ -261,7 +300,7 @@ export function PlatformImportView({
         )}
       </Button>
 
-      {progress ? (
+      {progress && !identityPrompt ? (
         <div className="mt-3" aria-hidden>
           <div className="mb-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>
@@ -278,11 +317,29 @@ export function PlatformImportView({
             />
           </div>
           <p className="mt-1.5 text-center text-xs text-muted-foreground">
-            {progress.phase === "computing"
-              ? "Building your wrap from chats and messages"
-              : "Parsing JSON on your device"}
+            {progressHint}
           </p>
         </div>
+      ) : null}
+
+      {identityPrompt ? (
+        <WhatsAppIdentityPicker
+          key={identityPrompt.senders.join("\0")}
+          open
+          chatName={identityPrompt.chatName}
+          senders={identityPrompt.senders}
+          onConfirm={(meName) => {
+            const prompt = identityPrompt
+            setIdentityPrompt(null)
+            prompt.resolve(meName)
+          }}
+          onCancel={() => {
+            const prompt = identityPrompt
+            setIdentityPrompt(null)
+            setProgress(null)
+            prompt.reject(new Error("Identity selection was cancelled."))
+          }}
+        />
       ) : null}
     </div>
   )

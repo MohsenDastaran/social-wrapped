@@ -162,7 +162,7 @@ async function renderOnce(
         sentMessages: 0,
         receivedMessages: 0,
         chatCount: 0,
-        platformName: "Telegram",
+        platformName: props.platformName || "Telegram",
         chartSlides: [],
       },
     },

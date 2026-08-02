@@ -3,7 +3,7 @@ import type { PlatformLogoId } from "@/components/platform-logo"
 /** Single source of truth for whether a platform is available to use. */
 export const PLATFORM_ENABLED = {
   telegram: true,
-  whatsapp: false,
+  whatsapp: true,
   x: false,
   google: false,
   instagram: false,
@@ -83,12 +83,14 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     steps: [
       "Open an individual or group chat.",
       "Use Export Chat and choose whether to include media.",
-      "Save the .txt (and media folder if included).",
-      "Import into Social Wrapped when WhatsApp support ships.",
+      "Save the .txt, or the ZIP if you included media.",
+      "In Social Wrapped, import that .txt or ZIP from Home → WhatsApp.",
     ],
+    importHint:
+      "ZIP exports with media work — we read the chat .txt inside and ignore media binaries.",
     importTitle: "Import WhatsApp data",
     importDescription:
-      "Upload a WhatsApp chat export (.txt). Media folders are optional.",
+      "Upload a WhatsApp chat export (.txt) or a ZIP that includes media. Everything is processed on your device.",
     acceptedFiles: [".txt", ".zip"],
     accept: ".txt,.zip,text/plain,application/zip",
   },

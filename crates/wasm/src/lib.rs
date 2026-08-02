@@ -109,3 +109,44 @@ pub fn analyze_telegram_bytes_with_progress(
     })
     .map_err(|e| JsValue::from_str(&e.to_string()))
 }
+
+/// Scan a WhatsApp `.txt` / ZIP export and return preview JSON
+/// (`chatName`, `senders`, `messageCount`, `fileSizeBytes`).
+#[wasm_bindgen]
+pub fn preview_whatsapp_bytes(
+    data: &[u8],
+    file_name: Option<String>,
+) -> Result<String, JsValue> {
+    app_core::parsers::whatsapp::preview_export_bytes(data, file_name.as_deref())
+        .and_then(|preview| preview.to_json())
+        .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// Full WhatsApp analytics pass after the user picks their sender name.
+///
+/// Invokes `on_progress(phase, current, total)` with `"reading"` | `"computing"`.
+#[wasm_bindgen]
+pub fn analyze_whatsapp_bytes_with_progress(
+    data: &[u8],
+    me_name: &str,
+    file_name: Option<String>,
+    on_progress: &js_sys::Function,
+) -> Result<String, JsValue> {
+    app_core::parsers::whatsapp::analyze_export_bytes_with_progress(
+        data,
+        me_name,
+        file_name.as_deref(),
+        |phase, current, total| {
+            let _ = on_progress.call3(
+                &JsValue::NULL,
+                &JsValue::from_str(phase.as_str()),
+                &JsValue::from_f64(current as f64),
+                &JsValue::from_f64(total as f64),
+            );
+        },
+    )
+    .and_then(|analytics| {
+        serde_json::to_string(&analytics).map_err(app_core::CoreError::from)
+    })
+    .map_err(|e| JsValue::from_str(&e.to_string()))
+}
