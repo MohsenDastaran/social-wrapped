@@ -103,7 +103,11 @@ export function HistoryPage() {
                 ) : null}
                 <div className="min-w-0 flex-1 text-start">
                   <p className="truncate font-heading text-sm font-semibold tracking-tight">
-                    {wrap.stats.displayName}
+                    {wrap.platformId === "whatsapp"
+                      ? wrap.analytics.chats[0]?.chatName ||
+                        wrap.stats.aboutPreview ||
+                        wrap.stats.displayName
+                      : wrap.stats.displayName}
                     {platform ? (
                       <span className="ms-1.5 font-sans text-xs font-medium text-muted-foreground">
                         · {platform.name}

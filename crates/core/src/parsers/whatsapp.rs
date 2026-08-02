@@ -74,8 +74,13 @@ pub fn preview_export_bytes(
     let messages = parse_messages(&text)?;
     let senders = unique_senders(&messages);
     let suggested_me = obvious_me_sender(&senders);
+    let is_group = senders.len() >= 3;
+    let labeled_chat = suggested_me
+        .as_deref()
+        .map(|me| resolve_chat_label(me, &senders, &chat_name, is_group))
+        .unwrap_or(chat_name);
     Ok(WhatsAppPreview {
-        chat_name,
+        chat_name: labeled_chat,
         senders,
         suggested_me,
         message_count: messages.len() as u64,
@@ -135,10 +140,12 @@ where
     }
 
     let is_group = senders.len() >= 3;
+    // Prefer the other party's phone/name over a useless export filename ("chat").
+    let chat_label = resolve_chat_label(me, &senders, &chat_name, is_group);
     let mut engine = AnalysisEngine::new(
         me.to_string(),
         None,
-        chat_name.clone(),
+        chat_label.clone(),
         total_bytes,
     );
 
@@ -178,7 +185,7 @@ where
 
         let ev = MessageEvent {
             chat_id: 1,
-            chat_name: chat_name.clone(),
+            chat_name: chat_label.clone(),
             is_group,
             is_channel: false,
             is_deleted: false,
@@ -372,6 +379,43 @@ pub fn obvious_me_sender(senders: &[String]) -> Option<String> {
     } else {
         None
     }
+}
+
+fn is_generic_chat_filename(name: &str) -> bool {
+    let n = name.trim().to_ascii_lowercase();
+    n.is_empty()
+        || n == "chat"
+        || n == "whatsapp chat"
+        || n == "_chat"
+        || n == "whatsapp"
+}
+
+/// Label shown as the other party / group name in analytics headers.
+fn resolve_chat_label(me: &str, senders: &[String], filename_hint: &str, is_group: bool) -> String {
+    let others: Vec<&String> = senders.iter().filter(|s| s.as_str() != me).collect();
+
+    if is_group {
+        if !is_generic_chat_filename(filename_hint) {
+            return filename_hint.to_string();
+        }
+        return "Group chat".to_string();
+    }
+
+    // 1:1 — use the contact's phone/name from the export.
+    if others.len() == 1 {
+        return others[0].clone();
+    }
+    if !others.is_empty() {
+        return others
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .join(", ");
+    }
+    if !is_generic_chat_filename(filename_hint) {
+        return filename_hint.to_string();
+    }
+    "WhatsApp Chat".to_string()
 }
 
 // ── Line parsing ──────────────────────────────────────────────────────────────
@@ -705,6 +749,19 @@ multiline message
     fn no_suggestion_without_you_label() {
         let preview = preview_export_bytes(ANDROID_SAMPLE.as_bytes(), None).unwrap();
         assert!(preview.suggested_me.is_none());
+    }
+
+    #[test]
+    fn dm_chat_label_uses_peer_phone() {
+        let sample = "\
+01/01/24, 10:00 - You: hi
+01/01/24, 10:01 - +31 6 19910646: hey
+";
+        let analytics =
+            analyze_export_bytes(sample.as_bytes(), "You", Some("chat.txt")).unwrap();
+        assert_eq!(analytics.about_preview, "+31 6 19910646");
+        assert_eq!(analytics.chats[0].chat_name, "+31 6 19910646");
+        assert_eq!(analytics.display_name, "You");
     }
 
     #[test]
