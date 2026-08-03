@@ -8,33 +8,49 @@ import {
 } from "@/components/ui/animated/story-carousel"
 import { WrapShareVideo } from "@/components/wrap/wrap-share-video"
 import { DEFAULT_APP_SHARE_TEXT } from "@/lib/media-share"
+import type { PlatformId } from "@/lib/platforms"
+import { buildPlatformStoryCatalog } from "@/lib/wrap-story-catalog"
 import {
-  buildMainStorySpecs,
   generateWrapStories,
   revokeStoryUrls,
   type ComposedWrapStory,
   type StoryCaptureProgress,
 } from "@/lib/wrap-stories"
-import type { WrapAnalytics } from "@/platform/analytics-types"
+import type {
+  InstagramSocialInsights,
+  WrapAnalytics,
+} from "@/platform/analytics-types"
 import { cn } from "@/lib/utils"
+import type { VideoChartSlide } from "../../remotion/Composition"
 
 type WrapShareMediaProps = {
   displayName: string
   analytics: WrapAnalytics
+  platformId: PlatformId
   /** Platform label shown in share video (e.g. Telegram, WhatsApp). */
   platformName?: string
+  instagramSocial?: InstagramSocialInsights | null
 }
 
 /** Share strip — video + stories tiles in one row; fullscreen on tap. */
 export function WrapShareMedia({
   displayName,
   analytics,
+  platformId,
   platformName = "Telegram",
+  instagramSocial = null,
 }: WrapShareMediaProps) {
-  const specs = useMemo(
-    () => buildMainStorySpecs(displayName, analytics),
-    [displayName, analytics]
+  const catalog = useMemo(
+    () =>
+      buildPlatformStoryCatalog({
+        platformId,
+        displayName,
+        analytics,
+        instagramSocial,
+      }),
+    [platformId, displayName, analytics, instagramSocial]
   )
+  const specs = catalog.storySpecs
   const [stories, setStories] = useState<ComposedWrapStory[]>([])
   const [storiesReady, setStoriesReady] = useState(false)
   const [captureProgress, setCaptureProgress] =
@@ -64,13 +80,13 @@ export function WrapShareMedia({
 
     void generateWrapStories(specs, controller.signal, (progress) => {
       if (!cancelled) setCaptureProgress(progress)
-    }).then((next) => {
+    }).then((result) => {
       if (cancelled || controller.signal.aborted) {
-        revokeStoryUrls(next)
+        revokeStoryUrls(result.stories, result.videoPanSources)
         return
       }
-      storiesRef.current = next
-      setStories(next)
+      storiesRef.current = result.stories
+      setStories(result.stories)
       setStoriesReady(true)
       setCaptureProgress(null)
     })
@@ -111,26 +127,21 @@ export function WrapShareMedia({
   const canOpenStories = storiesReady && stories.length > 0
   const progressPct = Math.round((captureProgress?.progress ?? 0) * 100)
 
-  // Prefer a short highlight set for the video reel (same captures as Stories).
-  // Keep heatmap (activity calendar) near the front so it isn't sliced off.
-  const videoChartSlides = useMemo(
-    () => {
-      const preferred = [
-        "activity",
-        "sent-received",
-        "heatmap",
-        "circadian",
-        "emojis",
-      ]
-      const byId = new Map(stories.map((s) => [s.id, s]))
-      return preferred
-        .map((id) => byId.get(id))
-        .filter((s): s is (typeof stories)[number] => Boolean(s?.image))
-        .slice(0, 5)
-        .map((s) => ({ id: s.id, src: s.image, heading: s.heading }))
-    },
-    [stories]
-  )
+  const videoChartSlides = useMemo((): VideoChartSlide[] => {
+    const byId = new Map(stories.map((s) => [s.id, s]))
+    return catalog.videoSlideIds
+      .map((id) => {
+        const story = byId.get(id)
+        if (!story?.image) return null
+        return {
+          id: story.id,
+          src: story.image,
+          heading: story.heading,
+          motion: "fit",
+        } satisfies VideoChartSlide
+      })
+      .filter((s): s is VideoChartSlide => Boolean(s))
+  }, [stories, catalog.videoSlideIds])
 
   return (
     <>

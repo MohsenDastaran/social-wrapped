@@ -19,19 +19,30 @@ export type StoryKpi = {
   value: string
 }
 
+/** How a slide plays in the Remotion reel. Stories ignore this. */
+export type StoryVideoMotion = "fit" | "pan"
+
 export type WrapStorySpec = {
   id: string
-  /** Matches `data-export-name` on a live `WrapChartCard`. */
+  /** Matches `data-export-name` on a live `WrapChartCard` / export host. */
   exportName: string
   heading: string
   subtext: string
   /** Optional metric chips (used on the first / overview slide). */
   kpis?: StoryKpi[]
+  /** Video-only: pan wide charts instead of using the composed story frame. */
+  videoMotion?: StoryVideoMotion
 }
 
 export type ComposedWrapStory = WrapStorySpec & {
   /** Object URL of the composed 9:16 PNG (captions baked in). */
   image: string
+}
+
+export type StoryGenerationResult = {
+  stories: ComposedWrapStory[]
+  /** Raw chart captures for `videoMotion: "pan"` slides (id → blob URL). */
+  videoPanSources: Record<string, string>
 }
 
 export type StoryCaptureProgress = {
@@ -45,10 +56,10 @@ export type StoryCaptureProgress = {
 }
 
 /**
- * Story slide defs for Main Analytics cards.
+ * Messaging Main Analytics story slides (Telegram / WhatsApp / IG DM section).
  * Only includes cards that have (or likely have) live DOM to capture.
  */
-export function buildMainStorySpecs(
+export function buildMessagingStorySpecs(
   displayName: string,
   analytics: WrapAnalytics
 ): WrapStorySpec[] {
@@ -81,6 +92,7 @@ export function buildMainStorySpecs(
       heading: `${fmt(a.totalMessages)} messages`,
       subtext: `${displayName}'s volume over time — every chat, one timeline.`,
       kpis: overviewKpis,
+      videoMotion: "pan",
     })
   }
 
@@ -150,6 +162,9 @@ export function buildMainStorySpecs(
 
   return specs
 }
+
+/** @deprecated Use {@link buildMessagingStorySpecs}. */
+export const buildMainStorySpecs = buildMessagingStorySpecs
 
 /** Find a live export card by its `data-export-name`. */
 export function findExportCard(exportName: string): HTMLElement | null {
@@ -517,15 +532,17 @@ const CHART_INTRO_SETTLE_MS = 1050
 const DOM_CAPTURE_SETTLE_MS = 160
 
 /**
- * Capture each Main Analytics card and compose a shareable story slide.
+ * Capture each export card and compose a shareable story slide.
+ * For `videoMotion: "pan"` specs, also keeps a raw chart blob for the reel.
  * Skips specs whose cards never appear in the DOM.
  */
 export async function generateWrapStories(
   specs: WrapStorySpec[],
   signal?: AbortSignal,
   onProgress?: (progress: StoryCaptureProgress) => void
-): Promise<ComposedWrapStory[]> {
+): Promise<StoryGenerationResult> {
   const stories: ComposedWrapStory[] = []
+  const videoPanSources: Record<string, string> = {}
   const total = specs.length
 
   for (let index = 0; index < specs.length; index++) {
@@ -572,6 +589,10 @@ export async function generateWrapStories(
           ...spec,
           image: URL.createObjectURL(composed),
         })
+        if (spec.videoMotion === "pan") {
+          const panUrl = await captureRawChartPanUrl(card)
+          if (panUrl) videoPanSources[spec.id] = panUrl
+        }
         continue
       }
 
@@ -586,6 +607,9 @@ export async function generateWrapStories(
             ? DOM_CAPTURE_SETTLE_MS
             : CHART_CAPTURE_SETTLE_MS,
       })
+      if (spec.videoMotion === "pan") {
+        videoPanSources[spec.id] = URL.createObjectURL(cardBlob)
+      }
       const composed = await composeStoryFrame(cardBlob, spec)
       if (signal?.aborted) break
       stories.push({
@@ -608,7 +632,30 @@ export async function generateWrapStories(
     })
   }
 
-  return stories
+  return { stories, videoPanSources }
+}
+
+/** One more chart-region snapshot for video pan (after story compose path). */
+async function captureRawChartPanUrl(
+  card: HTMLElement
+): Promise<string | null> {
+  try {
+    const target = resolveStoryCaptureTarget(card)
+    const opts = exportOptionsFromCard(card)
+    const blob = await captureElementPng(card, target, {
+      ...opts,
+      freezeCharts: true,
+      backgroundColor: cardBackground(card) ?? opts.backgroundColor,
+      settleMs:
+        opts.captureMode === "dom"
+          ? DOM_CAPTURE_SETTLE_MS
+          : CHART_CAPTURE_SETTLE_MS,
+    })
+    return URL.createObjectURL(blob)
+  } catch (error) {
+    console.error("Raw pan chart capture failed:", error)
+    return null
+  }
 }
 
 type CaptureCover = {
@@ -1036,10 +1083,18 @@ async function composeHeatmapStoryFrame(
   return blob
 }
 
-export function revokeStoryUrls(stories: Array<{ image: string }>) {
+export function revokeStoryUrls(
+  stories: Array<{ image: string }>,
+  videoPanSources?: Record<string, string>
+) {
   for (const story of stories) {
     if (story.image.startsWith("blob:")) {
       URL.revokeObjectURL(story.image)
+    }
+  }
+  if (videoPanSources) {
+    for (const url of Object.values(videoPanSources)) {
+      if (url.startsWith("blob:")) URL.revokeObjectURL(url)
     }
   }
 }

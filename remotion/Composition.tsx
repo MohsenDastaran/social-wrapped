@@ -23,9 +23,14 @@ function soundtrackSrc(): string {
 export type VideoChartSlide = {
   /** Story id (activity, heatmap, circadian, …) for sequencing. */
   id?: string
-  /** Object URL or static path of a composed story PNG (charts + captions). */
+  /**
+   * Chart / story frame source.
+   * `fit` usually uses a composed 9:16 story PNG; `pan` uses a raw wide chart.
+   */
   src: string
   heading: string
+  /** Default `fit` — slight scale-in. `pan` = Ken Burns zoom + horizontal reveal. */
+  motion?: "fit" | "pan"
 }
 
 export type SocialWrappedVideoProps = {
@@ -181,6 +186,85 @@ function ChartBeat({ src }: VideoChartSlide) {
   )
 }
 
+/** Wide chart: start zoomed, pan left→right, optional heading overlay. */
+function PanChartBeat({ src, heading }: VideoChartSlide) {
+  const frame = useCurrentFrame()
+  const opacity = interpolate(
+    frame,
+    [0, 14, SCENE_CHART - 22, SCENE_CHART],
+    [0, 1, 1, 0.9],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    }
+  )
+  const scale = interpolate(frame, [0, 20], [1.35, 1.2], {
+    extrapolateRight: "clamp",
+  })
+  // Percent of frame width — oversized cover image slides under the crop.
+  const panX = interpolate(frame, [0, SCENE_CHART], [10, -10], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  })
+  const labelOpacity = interpolate(frame, [8, 28, SCENE_CHART - 30, SCENE_CHART - 12], [0, 1, 1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  })
+
+  return (
+    <SceneShell>
+      <AbsoluteFill style={{ opacity, overflow: "hidden" }}>
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: "-15%",
+            width: "130%",
+            height: "100%",
+            transform: `scale(${scale}) translateX(${panX}%)`,
+          }}
+        >
+          <Img
+            src={src}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center",
+            }}
+          />
+        </div>
+        {heading ? (
+          <AbsoluteFill
+            style={{
+              opacity: labelOpacity,
+              justifyContent: "flex-end",
+              padding: "0 56px 96px",
+              background:
+                "linear-gradient(to top, rgba(4,21,18,0.72) 0%, transparent 42%)",
+            }}
+          >
+            <div
+              style={{
+                fontFamily:
+                  'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+                fontWeight: 700,
+                fontSize: 52,
+                letterSpacing: "-0.03em",
+                color: INK,
+                lineHeight: 1.15,
+                maxWidth: 920,
+              }}
+            >
+              {heading}
+            </div>
+          </AbsoluteFill>
+        ) : null}
+      </AbsoluteFill>
+    </SceneShell>
+  )
+}
+
 export function slidesIncludeClock(slides: VideoChartSlide[]): boolean {
   return slides.slice(0, MAX_CHARTS).some((s) => s.id === "circadian" && s.src)
 }
@@ -190,7 +274,12 @@ export function slidesIncludeEmojis(slides: VideoChartSlide[]): boolean {
 }
 
 export function slidesIncludeHeatmap(slides: VideoChartSlide[]): boolean {
-  return slides.slice(0, MAX_CHARTS).some((s) => s.id === "heatmap" && s.src)
+  return slides
+    .slice(0, MAX_CHARTS)
+    .some(
+      (s) =>
+        (s.id === "heatmap") && Boolean(s.src)
+    )
 }
 
 /** Must be TransitionSeries.Transition itself — wrappers fail Remotion's child-type check. */
@@ -353,7 +442,16 @@ function chartSequenceNodes(
         key={`chart-${keyPrefix}-${slide.id ?? index}-${index}`}
         durationInFrames={SCENE_CHART}
       >
-        <ChartBeat id={slide.id} src={slide.src} heading={slide.heading} />
+        {slide.motion === "pan" ? (
+          <PanChartBeat
+            id={slide.id}
+            src={slide.src}
+            heading={slide.heading}
+            motion="pan"
+          />
+        ) : (
+          <ChartBeat id={slide.id} src={slide.src} heading={slide.heading} />
+        )}
       </TransitionSeries.Sequence>,
     ]
 

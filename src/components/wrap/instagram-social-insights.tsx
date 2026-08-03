@@ -1,4 +1,5 @@
 import { fmt } from "@/components/wrap/chart-theme"
+import { StoryExportHost } from "@/components/wrap/story-export-host"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import type {
   IgCountedHandle,
@@ -75,26 +76,28 @@ export function InstagramSocialInsights({
         </h2>
       </header>
 
-      <div className="grid grid-cols-3 gap-3 sm:gap-4">
-        <WrapKpi
-          label="Followers"
-          value={hasNetwork ? fmt(data.followerCount) : "—"}
-          icon={Users}
-          accent="teal"
-        />
-        <WrapKpi
-          label="Following"
-          value={hasNetwork ? fmt(data.followingCount) : "—"}
-          icon={UserPlus}
-          accent="sky"
-        />
-        <WrapKpi
-          label="Unfollowed recently"
-          value={hasNetwork ? fmt(data.unfollowedRecentlyCount) : "—"}
-          icon={UserRoundMinus}
-          accent="amber"
-        />
-      </div>
+      <StoryExportHost exportName="ig-network-kpis">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          <WrapKpi
+            label="Followers"
+            value={hasNetwork ? fmt(data.followerCount) : "—"}
+            icon={Users}
+            accent="teal"
+          />
+          <WrapKpi
+            label="Following"
+            value={hasNetwork ? fmt(data.followingCount) : "—"}
+            icon={UserPlus}
+            accent="sky"
+          />
+          <WrapKpi
+            label="Unfollowed recently"
+            value={hasNetwork ? fmt(data.unfollowedRecentlyCount) : "—"}
+            icon={UserRoundMinus}
+            accent="amber"
+          />
+        </div>
+      </StoryExportHost>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <HandleList
@@ -114,20 +117,44 @@ export function InstagramSocialInsights({
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <CountedList
-          title="Who you like most"
-          description="Accounts behind posts and reels you’ve liked"
-          icon={Heart}
-          items={data.topLikedAccounts}
-          emptyLabel="No liked posts in this ZIP."
-        />
-        <CountedList
-          title="Stories you’ve liked most"
-          description="Accounts whose stories you’ve hearted"
-          icon={Users}
-          items={data.topStoryLikedAccounts}
-          emptyLabel="No story likes in this ZIP."
-        />
+        {data.topLikedAccounts.length > 0 ? (
+          <StoryExportHost exportName="ig-top-liked">
+            <CountedList
+              title="Who you like most"
+              description="Accounts behind posts and reels you’ve liked"
+              icon={Heart}
+              items={data.topLikedAccounts}
+              emptyLabel="No liked posts in this ZIP."
+            />
+          </StoryExportHost>
+        ) : (
+          <CountedList
+            title="Who you like most"
+            description="Accounts behind posts and reels you’ve liked"
+            icon={Heart}
+            items={data.topLikedAccounts}
+            emptyLabel="No liked posts in this ZIP."
+          />
+        )}
+        {data.topStoryLikedAccounts.length > 0 ? (
+          <StoryExportHost exportName="ig-story-hearts">
+            <CountedList
+              title="Stories you’ve liked most"
+              description="Accounts whose stories you’ve hearted"
+              icon={Users}
+              items={data.topStoryLikedAccounts}
+              emptyLabel="No story likes in this ZIP."
+            />
+          </StoryExportHost>
+        ) : (
+          <CountedList
+            title="Stories you’ve liked most"
+            description="Accounts whose stories you’ve hearted"
+            icon={Users}
+            items={data.topStoryLikedAccounts}
+            emptyLabel="No story likes in this ZIP."
+          />
+        )}
       </div>
     </section>
   )

@@ -118,13 +118,14 @@ export function WrapPage() {
       <WrapShareMedia
         displayName={wrap.stats.displayName}
         analytics={wrap.analytics}
+        platformId={wrap.platformId}
         platformName={platform?.name ?? "Export"}
+        instagramSocial={igSocial}
       />
 
       {igSocial ? (
         <>
           <InstagramSocialInsights data={igSocial} />
-          <InstagramEngagement data={igSocial} />
           <InstagramSaved data={igSocial} />
           <header className="text-start">
             <h2 className="font-heading text-xl font-semibold tracking-tight">
@@ -134,10 +135,12 @@ export function WrapPage() {
               Direct messages and message requests from this download.
             </p>
           </header>
+          <WrapMainAnalytics analytics={wrap.analytics} />
+          <InstagramEngagement data={igSocial} />
         </>
-      ) : null}
-
-      <WrapMainAnalytics analytics={wrap.analytics} />
+      ) : (
+        <WrapMainAnalytics analytics={wrap.analytics} />
+      )}
 
       <WrapTopContacts
         analytics={wrap.analytics}
