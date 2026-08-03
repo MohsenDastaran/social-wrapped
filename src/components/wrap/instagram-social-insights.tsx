@@ -125,6 +125,7 @@ export function InstagramSocialInsights({
               icon={Heart}
               items={data.topLikedAccounts}
               emptyLabel="No liked posts in this ZIP."
+              embedded
             />
           </StoryExportHost>
         ) : (
@@ -144,6 +145,7 @@ export function InstagramSocialInsights({
               icon={Users}
               items={data.topStoryLikedAccounts}
               emptyLabel="No story likes in this ZIP."
+              embedded
             />
           </StoryExportHost>
         ) : (
@@ -168,6 +170,8 @@ function ListPanel({
   children,
   empty,
   emptyLabel,
+  /** Drop outer ring when already inside StoryExportHost card chrome. */
+  embedded = false,
 }: {
   title: string
   description: string
@@ -176,9 +180,17 @@ function ListPanel({
   children: ReactNode
   empty: boolean
   emptyLabel: string
+  embedded?: boolean
 }) {
   return (
-    <div className="flex min-h-0 flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10">
+    <div
+      className={cn(
+        "flex min-h-0 flex-col overflow-hidden",
+        embedded
+          ? "rounded-xl"
+          : "rounded-xl ring-1 ring-foreground/10"
+      )}
+    >
       <div className="flex shrink-0 items-start gap-2 border-b border-border/60 bg-muted/25 px-3 py-2.5">
         <Icon
           className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
@@ -262,6 +274,7 @@ function CountedList({
   emptyLabel,
   /** Cap for UI + story capture — long lists freeze DOM export. */
   limit = 10,
+  embedded = false,
 }: {
   title: string
   description: string
@@ -269,6 +282,7 @@ function CountedList({
   items: IgCountedHandle[]
   emptyLabel: string
   limit?: number
+  embedded?: boolean
 }) {
   const visible = items.slice(0, limit)
   const max = Math.max(...visible.map((i) => i.count), 1)
@@ -281,6 +295,7 @@ function CountedList({
       count={visible.length}
       empty={items.length === 0}
       emptyLabel={emptyLabel}
+      embedded={embedded}
     >
       <ul className="divide-y divide-border/50">
         {visible.map((item, index) => {

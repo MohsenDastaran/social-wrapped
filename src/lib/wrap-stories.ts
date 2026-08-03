@@ -688,6 +688,7 @@ function beginInFlowCaptureCover(
   const width = Math.max(card.offsetWidth, 1)
   const height = Math.max(card.offsetHeight, 1)
   const radius = getComputedStyle(card).borderRadius || "12px"
+  const compact = height < 140 || width < 220
 
   ensureCaptureCoverStyles()
 
@@ -697,7 +698,7 @@ function beginInFlowCaptureCover(
   cover.setAttribute("aria-live", "polite")
   cover.style.cssText = [
     `width:${width}px`,
-    `height:${height}px`,
+    `height:${Math.max(height, compact ? 96 : 120)}px`,
     "flex-shrink:0",
     "box-sizing:border-box",
     `border-radius:${radius}`,
@@ -707,8 +708,8 @@ function beginInFlowCaptureCover(
     "flex-direction:column",
     "align-items:center",
     "justify-content:center",
-    "gap:12px",
-    "padding:20px",
+    compact ? "gap:8px" : "gap:12px",
+    compact ? "padding:12px" : "padding:20px",
     "background:linear-gradient(165deg, color-mix(in oklab, var(--card) 92%, #0d9488), var(--card))",
     "box-shadow:inset 0 0 0 1px color-mix(in oklab, var(--foreground) 10%, transparent)",
   ].join(";")
@@ -718,25 +719,52 @@ function beginInFlowCaptureCover(
   cover.appendChild(shimmer)
 
   const spinner = document.createElement("div")
-  spinner.className = "sw-capture-spinner"
+  spinner.className = compact ? "sw-capture-spinner sw-capture-spinner-sm" : "sw-capture-spinner"
   cover.appendChild(spinner)
 
   const eyebrow = document.createElement("p")
   eyebrow.textContent = "Crafting story"
-  eyebrow.style.cssText =
-    "position:relative;margin:0;font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:color-mix(in oklab, var(--primary) 80%, var(--muted-foreground));"
+  eyebrow.style.cssText = [
+    "position:relative",
+    "margin:0",
+    compact ? "font-size:9px" : "font-size:10px",
+    "font-weight:700",
+    "letter-spacing:0.16em",
+    "text-transform:uppercase",
+    "color:color-mix(in oklab, var(--primary) 80%, var(--muted-foreground))",
+  ].join(";")
   cover.appendChild(eyebrow)
 
   const labelEl = document.createElement("p")
   labelEl.textContent = opts.label
-  labelEl.style.cssText =
-    "position:relative;margin:0;max-width:90%;text-align:center;font-size:13px;font-weight:600;line-height:1.35;color:var(--foreground);"
+  labelEl.style.cssText = [
+    "position:relative",
+    "margin:0",
+    "max-width:90%",
+    "text-align:center",
+    compact ? "font-size:12px" : "font-size:13px",
+    "font-weight:600",
+    "line-height:1.35",
+    "color:var(--foreground)",
+    // Keep one line on short KPI / narrow cards
+    compact
+      ? "overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+      : "",
+  ]
+    .filter(Boolean)
+    .join(";")
   cover.appendChild(labelEl)
 
   const stepEl = document.createElement("p")
   stepEl.textContent = `${opts.step} / ${opts.total}`
-  stepEl.style.cssText =
-    "position:relative;margin:0;font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--muted-foreground);"
+  stepEl.style.cssText = [
+    "position:relative",
+    "margin:0",
+    compact ? "font-size:10px" : "font-size:11px",
+    "font-weight:500",
+    "font-variant-numeric:tabular-nums",
+    "color:var(--muted-foreground)",
+  ].join(";")
   cover.appendChild(stepEl)
 
   const parent = card.parentElement
@@ -793,14 +821,17 @@ function beginInFlowCaptureCover(
 }
 
 function ensureCaptureCoverStyles() {
-  if (document.getElementById("sw-story-capture-cover-style")) return
+  if (document.getElementById("sw-story-capture-cover-style-v2")) return
+  document.getElementById("sw-story-capture-cover-style")?.remove()
   const style = document.createElement("style")
-  style.id = "sw-story-capture-cover-style"
+  style.id = "sw-story-capture-cover-style-v2"
   style.textContent = [
     "@keyframes sw-capture-spin{to{transform:rotate(360deg)}}",
     "@keyframes sw-capture-shimmer{0%{transform:translateX(-45%)}100%{transform:translateX(45%)}}",
     ".sw-capture-spinner{position:relative;width:40px;height:40px;border-radius:999px;border:2px solid color-mix(in oklab, var(--primary) 25%, transparent);border-top-color:var(--primary);animation:sw-capture-spin .85s linear infinite}",
+    ".sw-capture-spinner-sm{width:28px;height:28px;border-width:2px}",
     ".sw-capture-shimmer{position:absolute;inset:-30%;background:linear-gradient(100deg,transparent 42%,color-mix(in oklab, var(--primary) 16%, transparent) 50%,transparent 58%);animation:sw-capture-shimmer 1.6s ease-in-out infinite;pointer-events:none}",
+    "[data-story-capturing=\"true\"] [data-story-capture-hide]{display:none!important}",
   ].join("")
   document.head.appendChild(style)
 }

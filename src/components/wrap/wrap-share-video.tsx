@@ -8,7 +8,7 @@ import {
   type CSSProperties,
 } from "react"
 import { createPortal } from "react-dom"
-import { Gauge, Sparkles, X } from "lucide-react"
+import { Gauge, Play, Sparkles, X } from "lucide-react"
 
 import { AppLoader } from "@/components/app-loader"
 import { MediaFullscreenChrome } from "@/components/media-fullscreen-chrome"
@@ -427,13 +427,24 @@ export function WrapShareVideo({
 
         <span className="absolute inset-0 bg-black/25" />
 
+        {playerReady && !encoding ? (
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="flex size-12 items-center justify-center rounded-full bg-white/25 text-white ring-1 ring-white/40 backdrop-blur-sm transition-transform group-hover:scale-105 sm:size-14">
+              <Play
+                className="ms-0.5 size-5 fill-white sm:size-6"
+                aria-hidden
+              />
+            </span>
+          </span>
+        ) : null}
+
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent px-3 pt-10 pb-3 text-white">
           <p className="font-heading text-base font-semibold tracking-tight">
             Your wrap
           </p>
           <p className="mt-0.5 text-xs text-white/80">
             {playerReady
-              ? "Tap to play · download when ready"
+              ? "Tap to play fullscreen"
               : "Preparing preview…"}
           </p>
         </div>

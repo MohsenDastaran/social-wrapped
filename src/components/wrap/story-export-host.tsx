@@ -15,7 +15,7 @@ type StoryExportHostProps = {
 }
 
 /**
- * Minimal capture host for list/KPI panels that aren't WrapChartCards.
+ * Capture host for list/KPI panels that aren't WrapChartCards.
  * Stories/video look up `[data-export-name]` + prefer `[data-export-region="chart"]`.
  */
 export function StoryExportHost({
@@ -32,11 +32,11 @@ export function StoryExportHost({
       data-export-story-width={storyCaptureWidth}
       data-export-pixel-ratio={3}
       className={cn(
-        "rounded-2xl bg-card text-card-foreground ring-1 ring-foreground/8",
+        "min-w-0 overflow-hidden rounded-2xl bg-card text-card-foreground ring-1 ring-foreground/10",
         className
       )}
     >
-      <div data-export-region="chart" className="p-3 sm:p-4">
+      <div data-export-region="chart" className="min-w-0 p-3 sm:p-4">
         {children}
       </div>
     </div>
