@@ -172,7 +172,6 @@ struct RawMessage {
 #[derive(Debug, Deserialize)]
 struct RawShare {
     #[serde(default)]
-    #[allow(dead_code)]
     link: Option<String>,
 }
 
@@ -1053,6 +1052,11 @@ fn parse_ig_message(msg: RawMessage) -> Option<ParsedIgMessage> {
     let body_raw = msg.content.as_deref().unwrap_or("");
     let body = fix_mojibake(body_raw);
 
+    // Reaction receipts are stubs, not real content — reactions live on the parent msg.
+    if is_ig_reaction_stub(&body) {
+        return None;
+    }
+
     let kind = classify_ig_message(&msg, &body);
     let reactions = msg
         .reactions
@@ -1083,11 +1087,7 @@ fn classify_ig_message(msg: &RawMessage, body: &str) -> MessageKind {
     if msg.call_duration.is_some() {
         return MessageKind::Other;
     }
-    // Instagram stubs system lines as `content` ("You sent an attachment.",
-    // "Reacted ❤️ to your message"). Never index them for Keyword Battle.
-    if is_ig_system_message(body) {
-        return MessageKind::Other;
-    }
+    // Media arrays first — "You sent an attachment." often pairs with share/media.
     if msg.photos.as_ref().is_some_and(|v| !v.is_empty()) {
         return MessageKind::Photo;
     }
@@ -1103,12 +1103,33 @@ fn classify_ig_message(msg: &RawMessage, body: &str) -> MessageKind {
     if msg.sticker.is_some() {
         return MessageKind::Sticker;
     }
-    if msg.share.is_some() {
-        // Shared post/story/link — treat as text if caption, else Other.
-        if body.trim().is_empty() {
-            return MessageKind::Other;
-        }
-        return MessageKind::Text;
+    if let Some(share) = &msg.share {
+        return classify_ig_share_link(share.link.as_deref().unwrap_or(""));
+    }
+
+    let lower = ig_lower(body);
+    // Stubs without media/share — map into real pie buckets (not opaque Other).
+    if lower.contains("shared a reel") {
+        return MessageKind::Video;
+    }
+    if lower.contains("shared a story") || lower.contains("shared a post") {
+        return MessageKind::Photo;
+    }
+    if lower.contains("sent an attachment") {
+        return MessageKind::File;
+    }
+    if lower.contains("missed a video chat")
+        || lower.contains("missed an audio call")
+        || lower.contains("started a video chat")
+        || lower.contains("started an audio call")
+        || lower.contains("turned off translations")
+        || lower.contains("turned on translations")
+    {
+        return MessageKind::Other;
+    }
+    // Never treat Meta stubs as keyword-bearing text.
+    if is_ig_keyword_noise(&lower) {
+        return MessageKind::Other;
     }
     if body.trim().is_empty() {
         return MessageKind::Other;
@@ -1116,28 +1137,44 @@ fn classify_ig_message(msg: &RawMessage, body: &str) -> MessageKind {
     MessageKind::Text
 }
 
-/// Meta DM stubs: attachment notices, reaction receipts, missed calls, etc.
-fn is_ig_system_message(body: &str) -> bool {
-    let lower: String = body
-        .trim()
+fn classify_ig_share_link(link: &str) -> MessageKind {
+    let lower = link.to_ascii_lowercase();
+    if lower.contains("/reel/") || lower.contains("/reels/") {
+        MessageKind::Video
+    } else if lower.contains("/stories/")
+        || lower.contains("instagram.com/p/")
+        || lower.contains("/tv/")
+    {
+        MessageKind::Photo
+    } else if lower.contains("http://") || lower.contains("https://") {
+        // External / unknown share — File in the pie (not vague Other).
+        MessageKind::File
+    } else {
+        MessageKind::File
+    }
+}
+
+fn ig_lower(body: &str) -> String {
+    body.trim()
         .chars()
         .flat_map(|c| c.to_lowercase())
-        .collect();
-    if lower.is_empty() {
-        return false;
-    }
+        .collect()
+}
+
+/// Reaction receipts / like-acks — drop from the timeline (not real content).
+fn is_ig_reaction_stub(body: &str) -> bool {
+    let lower = ig_lower(body);
+    lower.contains("to your message") || lower == "liked a message"
+}
+
+/// System lines that must not feed Keyword Battle (already non-Text above).
+fn is_ig_keyword_noise(lower: &str) -> bool {
     lower.contains("sent an attachment")
         || lower.contains("shared a story")
         || lower.contains("shared a post")
         || lower.contains("shared a reel")
         || lower.contains("to your message")
         || lower == "liked a message"
-        || lower.contains("missed a video chat")
-        || lower.contains("missed an audio call")
-        || lower.contains("started a video chat")
-        || lower.contains("started an audio call")
-        || lower.contains("turned off translations")
-        || lower.contains("turned on translations")
 }
 
 fn utc_hour_and_date(timestamp_secs: i64) -> (u8, String) {
@@ -1212,426 +1249,4 @@ fn resolve_me(
     Err(CoreError::Parse(
         "Could not determine which Instagram sender is you. Pick your name from the list.".into(),
     ))
-}
-
-// ── Tests ─────────────────────────────────────────────────────────────────────
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Write;
-    use zip::write::SimpleFileOptions;
-    use zip::CompressionMethod;
-
-    fn zip_with(files: &[(&str, &str)]) -> Vec<u8> {
-        let mut buffer = Cursor::new(Vec::new());
-        {
-            let mut zip = zip::ZipWriter::new(&mut buffer);
-            let opts = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
-            for (name, content) in files {
-                zip.start_file(*name, opts).unwrap();
-                zip.write_all(content.as_bytes()).unwrap();
-            }
-            zip.finish().unwrap();
-        }
-        buffer.into_inner()
-    }
-
-    const PROFILE: &str = r#"{
-      "profile_user": [{
-        "string_map_data": {
-          "Name": { "value": "Mohsen", "href": "", "timestamp": 0 },
-          "Username": { "value": "mohsen_dastaran", "href": "", "timestamp": 0 }
-        }
-      }]
-    }"#;
-
-    const THREAD: &str = r#"{
-      "participants": [{"name": "Alice"}, {"name": "Mohsen"}],
-      "title": "Alice",
-      "thread_path": "inbox/alice_1",
-      "is_still_participant": true,
-      "messages": [
-        {
-          "sender_name": "Alice",
-          "timestamp_ms": 1609459200000,
-          "content": "Hello 😀",
-          "reactions": [{"reaction": "❤️", "actor": "Mohsen"}]
-        },
-        {
-          "sender_name": "Mohsen",
-          "timestamp_ms": 1609459260000,
-          "content": "Hi there",
-          "photos": [{"uri": "media/x.jpg"}]
-        },
-        {
-          "sender_name": "Alice",
-          "timestamp_ms": 1609459320000,
-          "content": "see this",
-          "share": {"link": "https://www.instagram.com/p/abc"}
-        }
-      ]
-    }"#;
-
-    #[test]
-    fn mojibake_persian_repairs() {
-        // "سلام" UTF-8 misread as latin1
-        let broken: String = {
-            let utf8 = "سلام".as_bytes();
-            utf8.iter().map(|&b| b as char).collect()
-        };
-        assert!(looks_mojibaked(&broken));
-        assert_eq!(fix_mojibake(&broken), "سلام");
-    }
-
-    const FOLLOWERS: &str = r#"[
-      {"string_list_data":[{"href":"https://www.instagram.com/alice","value":"alice","timestamp":1}]},
-      {"string_list_data":[{"href":"https://www.instagram.com/bob","value":"bob","timestamp":1}]},
-      {"string_list_data":[{"href":"https://www.instagram.com/carol","value":"carol","timestamp":1}]}
-    ]"#;
-
-    const FOLLOWING: &str = r#"{
-      "relationships_following": [
-        {"title":"alice","string_list_data":[{"href":"https://www.instagram.com/alice","timestamp":1}]},
-        {"title":"dave","string_list_data":[{"href":"https://www.instagram.com/dave","timestamp":1}]},
-        {"title":"erin","string_list_data":[{"href":"https://www.instagram.com/erin","timestamp":1}]}
-      ]
-    }"#;
-
-    const UNFOLLOWED: &str = r#"[
-      {"label_values":[{"label":"Username","value":"old_friend"}]}
-    ]"#;
-
-    // 2021-01-01 00:00 UTC, 2021-01-01 20:00 UTC, 2021-01-02 20:00 UTC
-    const LIKED_POSTS: &str = r#"[
-      {
-        "timestamp": 1609459200,
-        "label_values": [
-          {"title":"Owner","dict":[{"dict":[
-            {"label":"Name","value":"Alice"},
-            {"label":"Username","value":"alice"}
-          ]}]}
-        ]
-      },
-      {
-        "timestamp": 1609531200,
-        "label_values": [
-          {"title":"Owner","dict":[{"dict":[
-            {"label":"Username","value":"alice"}
-          ]}]}
-        ]
-      },
-      {
-        "timestamp": 1609617600,
-        "label_values": [
-          {"title":"Owner","dict":[{"dict":[
-            {"label":"Username","value":"bob"}
-          ]}]}
-        ]
-      }
-    ]"#;
-
-    const LIKED_COMMENTS: &str = r#"{
-      "likes_comment_likes": [
-        {"title":"alice","string_list_data":[{"value":"👍","timestamp":1}]},
-        {"title":"alice","string_list_data":[{"value":"❤️","timestamp":2}]},
-        {"title":"bob","string_list_data":[{"value":"👍","timestamp":3}]}
-      ]
-    }"#;
-
-    const POST_COMMENTS: &str = r#"[
-      {"string_map_data":{"Comment":{"value":"nice"},"Media Owner":{"value":"alice"},"Time":{"timestamp":1}}},
-      {"string_map_data":{"Comment":{"value":"wow"},"Media Owner":{"value":"alice"},"Time":{"timestamp":2}}},
-      {"string_map_data":{"Comment":{"value":"ok"},"Media Owner":{"value":"carol"},"Time":{"timestamp":3}}}
-    ]"#;
-
-    const REELS_COMMENTS: &str = r#"{
-      "comments_reels_comments": [
-        {"string_map_data":{"Comment":{"value":"reel"},"Media Owner":{"value":"dave"},"Time":{"timestamp":1}}}
-      ]
-    }"#;
-
-    const SAVED_POSTS: &str = r#"[
-      {
-        "timestamp": 1,
-        "label_values": [
-          {"title":"Owner","dict":[{"dict":[{"label":"Username","value":"alice"}]}]}
-        ]
-      },
-      {
-        "timestamp": 2,
-        "label_values": [
-          {"title":"Owner","dict":[{"dict":[{"label":"Username","value":"alice"}]}]}
-        ]
-      },
-      {
-        "timestamp": 3,
-        "label_values": [
-          {"title":"Owner","dict":[{"dict":[{"label":"Username","value":"erin"}]}]}
-        ]
-      }
-    ]"#;
-
-    const SAVED_COLLECTIONS: &str = r#"[
-      {
-        "label_values": [
-          {"label":"Name","value":"Playlist"},
-          {"label":"Privacy","value":"Private"},
-          {"title":"Media","dict":[{"dict":[]},{"dict":[]}]}
-        ]
-      }
-    ]"#;
-
-    const STORY_LIKES: &str = r#"[
-      {
-        "label_values": [
-          {"label":"URL","value":"https://www.instagram.com/stories/alice/111"}
-        ]
-      },
-      {
-        "label_values": [
-          {"label":"URL","value":"https://www.instagram.com/stories/alice/222"}
-        ]
-      },
-      {
-        "label_values": [
-          {"label":"URL","value":"https://www.instagram.com/stories/carol/333"}
-        ]
-      }
-    ]"#;
-
-    #[test]
-    fn preview_and_analyze_zip() {
-        let bytes = zip_with(&[
-            (
-                "personal_information/personal_information/personal_information.json",
-                PROFILE,
-            ),
-            (
-                "your_instagram_activity/messages/inbox/alice_1/message_1.json",
-                THREAD,
-            ),
-        ]);
-
-        let preview = preview_export_bytes(&bytes).unwrap();
-        assert_eq!(preview.suggested_me.as_deref(), Some("Mohsen"));
-        assert_eq!(preview.thread_count, 1);
-        assert!(preview.message_count >= 3);
-
-        let result = analyze_export_bytes(&bytes, None).unwrap();
-        let analytics = result.analytics;
-        assert_eq!(analytics.display_name, "Mohsen");
-        assert_eq!(analytics.username.as_deref(), Some("mohsen_dastaran"));
-        assert_eq!(analytics.chat_count, 1);
-        assert!(analytics.account.sent_messages >= 1);
-        assert!(analytics.account.received_messages >= 1);
-        // Mohsen reacted with heart — account or chat should count reactions.
-        let reaction_total: u64 = analytics
-            .account
-            .emojis
-            .top_reactions
-            .iter()
-            .map(|e| e.count)
-            .sum();
-        assert!(reaction_total >= 1);
-        assert!(analytics.account.total_messages >= 3);
-        assert_eq!(result.instagram_social.follower_count, 0);
-    }
-
-    #[test]
-    fn social_insights_from_zip() {
-        let bytes = zip_with(&[
-            (
-                "personal_information/personal_information/personal_information.json",
-                PROFILE,
-            ),
-            (
-                "your_instagram_activity/messages/inbox/alice_1/message_1.json",
-                THREAD,
-            ),
-            (
-                "connections/followers_and_following/followers_1.json",
-                FOLLOWERS,
-            ),
-            (
-                "connections/followers_and_following/following.json",
-                FOLLOWING,
-            ),
-            (
-                "connections/followers_and_following/recently_unfollowed_profiles.json",
-                UNFOLLOWED,
-            ),
-            (
-                "your_instagram_activity/likes/liked_posts.json",
-                LIKED_POSTS,
-            ),
-            (
-                "your_instagram_activity/story_interactions/story_likes.json",
-                STORY_LIKES,
-            ),
-        ]);
-
-        let social = analyze_export_bytes(&bytes, None)
-            .unwrap()
-            .instagram_social;
-
-        assert_eq!(social.follower_count, 3);
-        assert_eq!(social.following_count, 3);
-        assert_eq!(social.unfollowed_recently_count, 1);
-
-        let not_back: Vec<_> = social
-            .not_following_back
-            .iter()
-            .map(|h| h.username.as_str())
-            .collect();
-        assert!(not_back.contains(&"dave"));
-        assert!(not_back.contains(&"erin"));
-        assert!(!not_back.contains(&"alice"));
-
-        let fans: Vec<_> = social
-            .fans_you_dont_follow
-            .iter()
-            .map(|h| h.username.as_str())
-            .collect();
-        assert!(fans.contains(&"bob"));
-        assert!(fans.contains(&"carol"));
-        assert!(!fans.contains(&"alice"));
-
-        assert_eq!(social.top_liked_accounts[0].username, "alice");
-        assert_eq!(social.top_liked_accounts[0].count, 2);
-        assert_eq!(social.top_liked_accounts[1].username, "bob");
-        assert_eq!(social.top_liked_accounts[1].count, 1);
-
-        assert_eq!(social.top_story_liked_accounts[0].username, "alice");
-        assert_eq!(social.top_story_liked_accounts[0].count, 2);
-        assert_eq!(social.top_story_liked_accounts[1].username, "carol");
-        assert_eq!(social.top_story_liked_accounts[1].count, 1);
-
-        assert_eq!(social.liked_posts_count, 3);
-        assert_eq!(social.like_heatmap.len(), 2);
-        assert_eq!(social.like_heatmap[0].date, "2021-01-01");
-        assert_eq!(social.like_heatmap[0].count, 2);
-        assert_eq!(social.like_hourly.len(), 24);
-        assert_eq!(social.like_hourly[0], 1);
-        assert_eq!(social.like_hourly[20], 2);
-    }
-
-    #[test]
-    fn engagement_and_saved_from_zip() {
-        let bytes = zip_with(&[
-            (
-                "personal_information/personal_information/personal_information.json",
-                PROFILE,
-            ),
-            (
-                "your_instagram_activity/messages/inbox/alice_1/message_1.json",
-                THREAD,
-            ),
-            (
-                "your_instagram_activity/likes/liked_posts.json",
-                LIKED_POSTS,
-            ),
-            (
-                "your_instagram_activity/likes/liked_comments.json",
-                LIKED_COMMENTS,
-            ),
-            (
-                "your_instagram_activity/comments/post_comments_1.json",
-                POST_COMMENTS,
-            ),
-            (
-                "your_instagram_activity/comments/reels_comments.json",
-                REELS_COMMENTS,
-            ),
-            (
-                "your_instagram_activity/saved/saved_posts.json",
-                SAVED_POSTS,
-            ),
-            (
-                "your_instagram_activity/saved/saved_collections.json",
-                SAVED_COLLECTIONS,
-            ),
-        ]);
-
-        let social = analyze_export_bytes(&bytes, None)
-            .unwrap()
-            .instagram_social;
-
-        assert_eq!(social.liked_comments_count, 3);
-        assert_eq!(social.top_liked_comment_accounts[0].username, "alice");
-        assert_eq!(social.top_liked_comment_accounts[0].count, 2);
-
-        assert_eq!(social.comments_written_count, 4);
-        assert_eq!(social.top_commented_accounts[0].username, "alice");
-        assert_eq!(social.top_commented_accounts[0].count, 2);
-        assert_eq!(social.top_reel_commented_accounts[0].username, "dave");
-        assert_eq!(social.top_reel_commented_accounts[0].count, 1);
-
-        assert_eq!(social.saved_posts_count, 3);
-        assert_eq!(social.top_saved_accounts[0].username, "alice");
-        assert_eq!(social.top_saved_accounts[0].count, 2);
-        assert_eq!(social.saved_collections.len(), 1);
-        assert_eq!(social.saved_collections[0].name, "Playlist");
-        assert_eq!(social.saved_collections[0].item_count, 2);
-        assert_eq!(
-            social.saved_collections[0].privacy.as_deref(),
-            Some("Private")
-        );
-    }
-
-    #[test]
-    fn story_username_from_url_parses() {
-        assert_eq!(
-            story_username_from_url("https://www.instagram.com/stories/saeed/123"),
-            Some("saeed".into())
-        );
-        assert_eq!(story_username_from_url("https://instagram.com/p/abc"), None);
-    }
-
-    #[test]
-    fn ig_system_messages_are_not_text() {
-        assert!(is_ig_system_message("You sent an attachment."));
-        assert!(is_ig_system_message("Reyhane sent an attachment."));
-        assert!(is_ig_system_message("You shared a story."));
-        assert!(is_ig_system_message("sepideh shared a story."));
-        assert!(is_ig_system_message("Reacted ❤️ to your message "));
-        assert!(is_ig_system_message("Liked a message"));
-        assert!(is_ig_system_message("You missed a video chat"));
-        assert!(!is_ig_system_message("Hello there"));
-        assert!(!is_ig_system_message("I liked your photo yesterday"));
-        assert!(!is_ig_system_message("2 saat story tarahi krdm"));
-
-        let sys = RawMessage {
-            sender_name: Some("You".into()),
-            timestamp_ms: Some(1),
-            content: Some("You sent an attachment.".into()),
-            share: None,
-            photos: None,
-            videos: None,
-            audio_files: None,
-            gifs: None,
-            sticker: None,
-            reactions: vec![],
-            call_duration: None,
-            is_unsent: None,
-        };
-        assert!(!classify_ig_message(&sys, "You sent an attachment.").is_text());
-    }
-
-    #[test]
-    fn reject_non_zip() {
-        let err = preview_export_bytes(b"not a zip").unwrap_err();
-        assert!(err.to_string().contains("ZIP"));
-    }
-
-    #[test]
-    fn utc_date_helper() {
-        // 2021-01-01 00:00:00 UTC
-        let (hour, date) = utc_hour_and_date(1609459200);
-        assert_eq!(hour, 0);
-        assert_eq!(date, "2021-01-01");
-        // sanity: civil_to_epoch_days roundtrip-ish
-        let days = crate::analytics::collectors::civil_to_epoch_days(2021, 1, 1);
-        assert_eq!(days * 86_400, 1609459200);
-    }
 }

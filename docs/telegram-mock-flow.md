@@ -4,10 +4,10 @@
 
 **Everything happens in Rust. No database is used for this button.**
 
-| Approach | Used here? | Why |
-|---|---|---|
-| **Rust + `serde_json`** | Yes | One-pass parse of your 362 MB `result.json`, count messages in memory, return a text summary |
-| **DuckDB** (`AnalyticsEngine`) | No | Opt-in only (`--features analytics`). Not used for this feature. DuckDB struggled with this file shape (nested `chats.list[].messages[]`, heterogeneous `text` field) and its bundled C++ build is heavy on RAM |
+| Approach                       | Used here? | Why                                                                                                                                                                                                             |
+| ------------------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rust + `serde_json`**        | Yes        | One-pass parse of your 362 MB `result.json`, count messages in memory, return a text summary                                                                                                                    |
+| **DuckDB** (`AnalyticsEngine`) | No         | Opt-in only (`--features analytics`). Not used for this feature. DuckDB struggled with this file shape (nested `chats.list[].messages[]`, heterogeneous `text` field) and its bundled C++ build is heavy on RAM |
 
 DuckDB is still in the project for future OLAP queries (`top_senders`, `messages_by_day`) on simpler export shapes. The Telegram mock button is a separate, lightweight summarizer.
 
@@ -74,17 +74,17 @@ sequenceDiagram
 
 ## Layer map
 
-| Layer | File(s) | Role |
-|---|---|---|
-| UI | `src/App.tsx` | Button, loading state, display result |
-| Platform API | `src/platform/api.ts` | Tauri vs browser routing, error formatting |
-| WASM (browser only) | `crates/wasm/src/lib.rs` | Fetch mock JSON, call core parser |
-| Vite dev server | `vite.config.ts` (`mockFixtures`) | Serve fixtures at `/mock/…` |
-| Tauri shell | `src-tauri/src/lib.rs` | Registers commands |
-| Tauri command | `src-tauri/src/commands/telegram_mock.rs` | Thin bridge: find file → call core |
-| Mock paths | `crates/core/src/mock/provider.rs` | Resolve fixture file on disk (Tauri path) |
-| Business logic | `crates/core/src/parsers/telegram.rs` | Parse JSON, aggregate stats, format text |
-| Data file | `crates/core/src/mock/telegram/result.json` | Your Telegram export (gitignored) |
+| Layer               | File(s)                                     | Role                                       |
+| ------------------- | ------------------------------------------- | ------------------------------------------ |
+| UI                  | `src/App.tsx`                               | Button, loading state, display result      |
+| Platform API        | `src/platform/api.ts`                       | Tauri vs browser routing, error formatting |
+| WASM (browser only) | `crates/wasm/src/lib.rs`                    | Fetch mock JSON, call core parser          |
+| Vite dev server     | `vite.config.ts` (`mockFixtures`)           | Serve fixtures at `/mock/…`                |
+| Tauri shell         | `src-tauri/src/lib.rs`                      | Registers commands                         |
+| Tauri command       | `src-tauri/src/commands/telegram_mock.rs`   | Thin bridge: find file → call core         |
+| Mock paths          | `crates/core/src/mock/provider.rs`          | Resolve fixture file on disk (Tauri path)  |
+| Business logic      | `crates/core/src/parsers/telegram.rs`       | Parse JSON, aggregate stats, format text   |
+| Data file           | `crates/core/src/mock/telegram/result.json` | Your Telegram export (gitignored)          |
 
 ---
 
@@ -110,6 +110,7 @@ sequenceDiagram
 ```
 
 **What happens:**
+
 - `onClick` calls `handleTelegramMock()`
 - Button shows "Loading…" and is disabled while work runs
 - Result goes into `<pre>` as plain text
@@ -152,6 +153,7 @@ return wasm.load_telegram_mock()
 ```
 
 **What happens:**
+
 - In the **Tauri desktop/mobile app**: `invoke` sends an IPC message to Rust (filesystem access)
 - In **browser** (`localhost`): loads WASM and calls `load_telegram_mock()`, which fetches the fixture from the Vite dev server
 
@@ -188,6 +190,7 @@ const MOCK_URL: &str = "/mock/telegram/result.json";
 **File:** [`vite.config.ts`](../vite.config.ts) (`mockFixtures` plugin)
 
 Serves files from:
+
 1. `crates/core/mock/`
 2. `crates/core/src/mock/`
 
@@ -214,6 +217,7 @@ summarize_export(&path)
 ```
 
 **What happens:**
+
 1. Build a `MockDataProvider` (paths rooted at `app-core` crate dir)
 2. Check that `telegram/result.json` exists
 3. Resolve the absolute path
@@ -228,6 +232,7 @@ summarize_export(&path)
 **File:** [`crates/core/src/mock/provider.rs`](../crates/core/src/mock/provider.rs) (`resolve_fixture`, lines 132–154)
 
 Searches in order:
+
 1. `crates/core/mock/telegram/result.json` (canonical)
 2. `crates/core/src/mock/telegram/result.json` (where your file is)
 
@@ -251,19 +256,21 @@ let export: RawExport = serde_json::from_reader(reader)?;
 ```
 
 **What happens:**
+
 1. Read file size from metadata (Tauri) or fetch buffer length (browser)
 2. Stream-read with a 256 KB buffer
 3. Deserialize into `RawExport` — only fields we care about:
 
-| Struct field | Used for |
-|---|---|
-| `about` | About preview (first 200 chars) |
-| `personal_information` | Name, username, `user_id` for sent/received |
-| `chats.list[].messages[]` | Message counts and samples |
+| Struct field              | Used for                                    |
+| ------------------------- | ------------------------------------------- |
+| `about`                   | About preview (first 200 chars)             |
+| `personal_information`    | Name, username, `user_id` for sent/received |
+| `chats.list[].messages[]` | Message counts and samples                  |
 
 Fields like `contacts`, `stories`, `sessions` are **skipped** by serde (not in the struct).
 
 **Why Rust + serde_json, not DuckDB:**
+
 - Your export is one huge nested JSON object (`chats.list[].messages[]`), not a flat `messages[]` array
 - `text` is sometimes a string, sometimes an array of rich-text objects — awkward for DuckDB `read_json_auto`
 - DuckDB `bundled` compiles hundreds of MB of C++ and can freeze the machine
@@ -292,6 +299,7 @@ received_messages = total_messages - sent_messages;
 ```
 
 **Sent vs received logic:**
+
 - `me_id` = `"user" + personal_information.user_id` (e.g. `"user302402513"`)
 - If `message.from_id == me_id` → **sent**
 - Otherwise → **received**
@@ -307,23 +315,6 @@ received_messages = total_messages - sent_messages;
 **File:** [`crates/core/src/parsers/telegram.rs`](../crates/core/src/parsers/telegram.rs) (`to_text_report`, lines 100–131)
 
 Produces output like:
-
-```
-Telegram Export Summary
-=======================
-Account : Mohsen (@MohsenDastaran)
-About   : Here is the data you requested...
-File    : 346.0 MB
-
-Chats            : 184
-Total messages   : 123456
-  Sent           : 60000
-  Received       : 63456
-
-Sample messages:
-  Alice: hi there
-  ...
-```
 
 **Why plain text:** You asked for "not fancy, just text". A `String` crosses the Tauri/WASM boundary easily; React renders it in `<pre>`.
 
@@ -347,12 +338,12 @@ On error, `formatInvokeError()` in `api.ts` handles Tauri rejections (often plai
 
 ## What is NOT involved
 
-| Component | Status | Notes |
-|---|---|---|
-| **DuckDB** | Not used | Opt-in via `--features analytics`; disabled by default |
-| **`AnalyticsEngine`** | Not used | For future `top_senders()` etc. on simpler schemas |
-| **`PlatformParser` trait** | Not used | Telegram parser in `detector.rs` is still a stub |
-| **Database / SQLite** | Not used | Everything is in-memory Rust |
+| Component                  | Status   | Notes                                                  |
+| -------------------------- | -------- | ------------------------------------------------------ |
+| **DuckDB**                 | Not used | Opt-in via `--features analytics`; disabled by default |
+| **`AnalyticsEngine`**      | Not used | For future `top_senders()` etc. on simpler schemas     |
+| **`PlatformParser` trait** | Not used | Telegram parser in `detector.rs` is still a stub       |
+| **Database / SQLite**      | Not used | Everything is in-memory Rust                           |
 
 ---
 
@@ -361,6 +352,7 @@ On error, `formatInvokeError()` in `api.ts` handles Tauri rejections (often plai
 **Files:** [`crates/core/src/storage/engine.rs`](../crates/core/src/storage/engine.rs), [`crates/core/src/analytics/queries.rs`](../crates/core/src/analytics/queries.rs)
 
 DuckDB fits when you have:
+
 - Normalized `UniversalMessage` rows in memory or on disk
 - Repeated aggregations (`top senders`, `messages per day`)
 - Simpler JSON shapes (e.g. single-chat `result.json` with top-level `messages[]`)
