@@ -99,6 +99,7 @@ export function InstagramEngagement({ data }: InstagramEngagementProps) {
           title="When you like"
           description={`Peak ${peak} · ${fmt(likeTotal)} likes (UTC)`}
           exportName="ig-like-hours"
+          exportSize="compact"
           exportLines={[`Peak ${peak}`, `Total ${fmt(likeTotal)}`]}
           chartClassName="h-80 sm:h-[22rem]"
         >

@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import {
+  useEffect,
+  useRef,
+  useState,
+  type HTMLAttributes,
+  type ReactNode,
+} from "react"
 import { Download, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -60,10 +66,11 @@ export type WrapChartCardProps = {
 function SizedChartHost({
   className,
   children,
+  ...rest
 }: {
   className?: string
   children: ReactNode
-}) {
+} & HTMLAttributes<HTMLDivElement>) {
   const ref = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
 
@@ -89,7 +96,11 @@ function SizedChartHost({
   }, [])
 
   return (
-    <div ref={ref} className={cn("relative w-full shrink-0", className)}>
+    <div
+      ref={ref}
+      className={cn("relative w-full shrink-0", className)}
+      {...rest}
+    >
       {ready ? <div className="absolute inset-0 min-h-0">{children}</div> : null}
     </div>
   )
@@ -174,9 +185,19 @@ export function WrapChartCard({
         </div>
       </div>
       {layout === "flow" ? (
-        <div className={cn("w-full", chartClassName)}>{children}</div>
+        <div
+          data-export-region="chart"
+          className={cn("w-full", chartClassName)}
+        >
+          {children}
+        </div>
       ) : (
-        <SizedChartHost className={chartClassName}>{children}</SizedChartHost>
+        <SizedChartHost
+          data-export-region="chart"
+          className={chartClassName}
+        >
+          {children}
+        </SizedChartHost>
       )}
     </div>
   )

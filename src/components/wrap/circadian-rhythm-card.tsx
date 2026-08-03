@@ -69,6 +69,7 @@ export function CircadianRhythmCard({
           : `Peak ${peak} · ${fmt(totalMsgs)} messages`
       }
       exportName={exportName}
+      exportSize="compact"
       exportLines={[
         `Peak ${peak}`,
         `Total ${fmt(totalMsgs)}`,

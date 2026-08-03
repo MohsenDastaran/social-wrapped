@@ -158,20 +158,37 @@ export function findExportCard(exportName: string): HTMLElement | null {
   )
 }
 
+/**
+ * Prefer the chart body for story/video slides (title/export chrome is baked
+ * into the 9:16 frame). Normal card Export still captures the full card.
+ */
+function resolveStoryCaptureTarget(card: HTMLElement): HTMLElement {
+  return (
+    card.querySelector<HTMLElement>('[data-export-region="chart"]') ??
+    card.querySelector<HTMLElement>("[data-heatmap-panel]") ??
+    card
+  )
+}
+
+function cardBackground(card: HTMLElement): string | undefined {
+  const bg = getComputedStyle(card).backgroundColor
+  if (!bg || bg === "rgba(0, 0, 0, 0)" || bg === "transparent") return undefined
+  return bg
+}
+
 function exportOptionsFromCard(el: HTMLElement): DomExportOptions {
   const mode = el.dataset.exportMode
-  const storyWidth = Number(el.dataset.exportStoryWidth)
   const minWidth = Number(el.dataset.exportMinWidth) || 720
-  // While crafting stories, keep the portrait capture width — don't expand back
-  // out to the full desktop card width (that makes emoji grids tiny in 9:16).
-  const storyLocked =
-    el.dataset.storyCapturing === "true" &&
-    Number.isFinite(storyWidth) &&
-    storyWidth > 0
+  // Stories park the card at a portrait-friendly width — don't expand back out
+  // to the on-screen desktop width (that makes pies tiny in 9:16).
+  const storyLocked = el.dataset.storyCapturing === "true"
+  const storyWidth = Number(el.dataset.exportStoryWidth)
+  const storyMin =
+    Number.isFinite(storyWidth) && storyWidth > 0 ? storyWidth : minWidth
 
   return {
     captureMode: mode === "dom" || mode === "chart" ? mode : "chart",
-    minWidth: storyLocked ? storyWidth : minWidth,
+    minWidth: storyLocked ? storyMin : minWidth,
     pixelRatio: Number(el.dataset.exportPixelRatio) || 3,
   }
 }
@@ -558,11 +575,14 @@ export async function generateWrapStories(
         continue
       }
 
-      const cardBlob = await captureElementPng(card, card, {
-        ...exportOptionsFromCard(card),
+      const target = resolveStoryCaptureTarget(card)
+      const opts = exportOptionsFromCard(card)
+      const cardBlob = await captureElementPng(card, target, {
+        ...opts,
         freezeCharts: true,
+        backgroundColor: cardBackground(card) ?? opts.backgroundColor,
         settleMs:
-          exportOptionsFromCard(card).captureMode === "dom"
+          opts.captureMode === "dom"
             ? DOM_CAPTURE_SETTLE_MS
             : CHART_CAPTURE_SETTLE_MS,
       })
@@ -605,14 +625,19 @@ function beginInFlowCaptureCover(
   card: HTMLElement,
   opts: { label: string; step: number; total: number }
 ): CaptureCover {
-  // Prefer a portrait-friendly capture width when the card opts in (emoji grid).
+  // Park at a portrait-friendly width so square charts (pies, clock) fill the
+  // 9:16 frame. Explicit `data-export-story-width` wins (emoji grids); else use
+  // the card's export min width (compact=480) instead of full desktop ~1000px.
   // Tailwind viewport breakpoints would keep a desktop 6-col layout even when
   // the card is parked narrow — those cards use @container queries instead.
   const storyWidth = Number(card.dataset.exportStoryWidth)
+  const exportMin = Number(card.dataset.exportMinWidth)
   const captureWidth =
     Number.isFinite(storyWidth) && storyWidth > 0
       ? storyWidth
-      : Math.max(card.offsetWidth, 1)
+      : Number.isFinite(exportMin) && exportMin > 0
+        ? exportMin
+        : Math.max(card.offsetWidth, 1)
   const width = Math.max(card.offsetWidth, 1)
   const height = Math.max(card.offsetHeight, 1)
   const radius = getComputedStyle(card).borderRadius || "12px"
@@ -824,7 +849,8 @@ async function captureHeatmapStory(
 
   const previousYear = Number(card.dataset.heatmapYear) || years[0]
   const panel =
-    card.querySelector<HTMLElement>("[data-heatmap-panel]") ?? card
+    card.querySelector<HTMLElement>("[data-heatmap-panel]") ??
+    resolveStoryCaptureTarget(card)
   const baseOptions = exportOptionsFromCard(card)
   const options: DomExportOptions = {
     ...baseOptions,
@@ -832,8 +858,7 @@ async function captureHeatmapStory(
     freezeCharts: true,
     settleMs: CHART_CAPTURE_SETTLE_MS,
     minWidth: Math.max(baseOptions.minWidth ?? 720, 1040),
-    backgroundColor:
-      getComputedStyle(card).backgroundColor || baseOptions.backgroundColor,
+    backgroundColor: cardBackground(card) ?? baseOptions.backgroundColor,
   }
 
   try {
