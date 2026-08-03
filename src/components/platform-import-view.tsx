@@ -115,7 +115,9 @@ export function PlatformImportView({
         platform,
         file,
         setProgress,
-        platform.id === "whatsapp" ? promptIdentity : undefined
+        platform.id === "whatsapp" || platform.id === "instagram"
+          ? promptIdentity
+          : undefined
       )
       const wrap = await saveWrap({
         platformId: platform.id,
@@ -135,9 +137,13 @@ export function PlatformImportView({
       ? progress?.phase === "computing"
         ? "Building your wrap from this chat"
         : "Reading your WhatsApp export"
-      : progress?.phase === "computing"
-        ? "Building your wrap from chats and messages"
-        : "Parsing JSON on your device"
+      : platform.id === "instagram"
+        ? progress?.phase === "computing"
+          ? "Building your wrap from Instagram chats"
+          : "Reading your Instagram ZIP (messages only)"
+        : progress?.phase === "computing"
+          ? "Building your wrap from chats and messages"
+          : "Parsing JSON on your device"
 
   return (
     <div

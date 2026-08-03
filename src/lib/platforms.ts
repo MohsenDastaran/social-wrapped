@@ -6,7 +6,7 @@ export const PLATFORM_ENABLED = {
   whatsapp: true,
   x: false,
   google: false,
-  instagram: false,
+  instagram: true,
   tiktok: false,
   spotify: false,
   youtube: false,
@@ -152,14 +152,16 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
       "DMs, posts, stories metadata, comments, likes, saved posts, and search history.",
     steps: [
       "Request a download from Meta Accounts Center.",
-      "Choose JSON when available, then download the archive.",
-      "Import into Social Wrapped when Instagram support ships.",
+      "Choose JSON when available, then download the archive ZIP.",
+      "In Social Wrapped, import that ZIP from Home → Instagram (media binaries are skipped).",
     ],
+    importHint:
+      "Use the JSON Meta download ZIP. We analyze Direct messages only in v1.",
     importTitle: "Import Instagram data",
     importDescription:
-      "Upload your Instagram information download (JSON preferred, or ZIP).",
-    acceptedFiles: [".json", ".zip", ".html"],
-    accept: ".json,.zip,.html,application/json,application/zip,text/html",
+      "Upload your Instagram information download ZIP (JSON). Chats are processed on your device — media files are ignored.",
+    acceptedFiles: [".zip"],
+    accept: ".zip,application/zip",
   },
   {
     id: "tiktok",

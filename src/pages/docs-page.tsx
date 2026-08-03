@@ -62,7 +62,8 @@ export function DocsPage() {
         </h1>
         <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
           Official exports from each platform, analyzed locally. Tap a card for
-          download & import steps — Telegram and WhatsApp import are ready today.
+          download & import steps — Telegram, WhatsApp, and Instagram are ready
+          today.
         </p>
       </header>
 

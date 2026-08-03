@@ -42,10 +42,10 @@ export function WhatsAppIdentityPicker({
         // Reset selection when remounted via key from parent.
       >
         <DialogHeader>
-          <DialogTitle className="text-base">Who are you in this chat?</DialogTitle>
+          <DialogTitle className="text-base">Who are you?</DialogTitle>
           <DialogDescription>
             {chatName
-              ? `Select your name in “${chatName}” so sent vs received stats are accurate.`
+              ? `Select your name so sent vs received stats are accurate (${chatName}).`
               : "Select your name so sent vs received stats are accurate."}
           </DialogDescription>
         </DialogHeader>

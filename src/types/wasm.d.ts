@@ -13,21 +13,24 @@ declare module "@/wasm-pkg/social_wrapped_wasm" {
     data: Uint8Array,
     onProgress: WasmProgressCallback
   ): string
-  /** Full analytics pass — returns WrapAnalytics JSON. */
   export function analyze_telegram_bytes_with_progress(
     data: Uint8Array,
     onProgress: WasmProgressCallback
   ): string
-  /** WhatsApp preview — returns WhatsAppPreview JSON. */
   export function preview_whatsapp_bytes(
     data: Uint8Array,
     fileName?: string | null
   ): string
-  /** Full WhatsApp analytics — returns WrapAnalytics JSON. */
   export function analyze_whatsapp_bytes_with_progress(
     data: Uint8Array,
     meName: string,
     fileName: string | null | undefined,
+    onProgress: WasmProgressCallback
+  ): string
+  export function preview_instagram_bytes(data: Uint8Array): string
+  export function analyze_instagram_bytes_with_progress(
+    data: Uint8Array,
+    meName: string | null | undefined,
     onProgress: WasmProgressCallback
   ): string
 }
@@ -41,7 +44,6 @@ declare module "@/wasm-pkg/social_wrapped_wasm.js" {
     data: Uint8Array,
     onProgress: WasmProgressCallback
   ): string
-  /** Full analytics pass — returns WrapAnalytics JSON. */
   export function analyze_telegram_bytes_with_progress(
     data: Uint8Array,
     onProgress: WasmProgressCallback
@@ -54,6 +56,12 @@ declare module "@/wasm-pkg/social_wrapped_wasm.js" {
     data: Uint8Array,
     meName: string,
     fileName: string | null | undefined,
+    onProgress: WasmProgressCallback
+  ): string
+  export function preview_instagram_bytes(data: Uint8Array): string
+  export function analyze_instagram_bytes_with_progress(
+    data: Uint8Array,
+    meName: string | null | undefined,
     onProgress: WasmProgressCallback
   ): string
 }
@@ -67,7 +75,6 @@ declare module "../wasm-pkg/social_wrapped_wasm.js" {
     data: Uint8Array,
     onProgress: WasmProgressCallback
   ): string
-  /** Full analytics pass — returns WrapAnalytics JSON. */
   export function analyze_telegram_bytes_with_progress(
     data: Uint8Array,
     onProgress: WasmProgressCallback
@@ -80,6 +87,12 @@ declare module "../wasm-pkg/social_wrapped_wasm.js" {
     data: Uint8Array,
     meName: string,
     fileName: string | null | undefined,
+    onProgress: WasmProgressCallback
+  ): string
+  export function preview_instagram_bytes(data: Uint8Array): string
+  export function analyze_instagram_bytes_with_progress(
+    data: Uint8Array,
+    meName: string | null | undefined,
     onProgress: WasmProgressCallback
   ): string
 }

@@ -150,3 +150,44 @@ pub fn analyze_whatsapp_bytes_with_progress(
     })
     .map_err(|e| JsValue::from_str(&e.to_string()))
 }
+
+/// Scan an Instagram Meta ZIP and return preview JSON
+/// (`displayName`, `username`, `suggestedMe`, `senders`, …).
+#[wasm_bindgen]
+pub fn preview_instagram_bytes(data: &[u8]) -> Result<String, JsValue> {
+    app_core::parsers::instagram::preview_export_bytes(data)
+        .and_then(|preview| preview.to_json())
+        .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// Full Instagram analytics pass.
+///
+/// `me_name` may be omitted when the profile Name already matches senders.
+/// Invokes `on_progress(phase, current, total)` with `"reading"` | `"computing"`.
+#[wasm_bindgen]
+pub fn analyze_instagram_bytes_with_progress(
+    data: &[u8],
+    me_name: Option<String>,
+    on_progress: &js_sys::Function,
+) -> Result<String, JsValue> {
+    let me = me_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    app_core::parsers::instagram::analyze_export_bytes_with_progress(
+        data,
+        me,
+        |phase, current, total| {
+            let _ = on_progress.call3(
+                &JsValue::NULL,
+                &JsValue::from_str(phase.as_str()),
+                &JsValue::from_f64(current as f64),
+                &JsValue::from_f64(total as f64),
+            );
+        },
+    )
+    .and_then(|analytics| {
+        serde_json::to_string(&analytics).map_err(app_core::CoreError::from)
+    })
+    .map_err(|e| JsValue::from_str(&e.to_string()))
+}

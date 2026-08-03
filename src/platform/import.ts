@@ -78,6 +78,10 @@ export type WhatsAppImportWorkerRequest =
   | { type: "file"; file: File }
   | { type: "identity"; meName: string }
 
+export type InstagramImportWorkerRequest =
+  | { type: "file"; file: File }
+  | { type: "identity"; meName: string }
+
 export type ImportWorkerResponse =
   | {
       type: "progress"
@@ -124,8 +128,17 @@ function validateFile(platform: PlatformConfig, file: File): void {
     return
   }
 
+  if (platform.id === "instagram") {
+    if (!lower.endsWith(".zip")) {
+      throw new Error(
+        "Please choose your Instagram Meta download as a ZIP (JSON format)."
+      )
+    }
+    return
+  }
+
   throw new Error(
-    `${platform.name} import isn't wired yet. Only Telegram and WhatsApp exports can be analyzed right now.`
+    `${platform.name} import isn't wired yet. Telegram, WhatsApp, and Instagram exports can be analyzed right now.`
   )
 }
 
@@ -280,6 +293,97 @@ function importWhatsAppFile(
   })
 }
 
+function importInstagramFile(
+  file: File,
+  onProgress?: (progress: ImportProgress) => void,
+  onNeedIdentity?: NeedIdentityHandler
+): Promise<WrapAnalytics> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL("../workers/instagram-import.worker.ts", import.meta.url),
+      { type: "module", name: "instagram-import" }
+    )
+
+    let settled = false
+
+    const fail = (error: Error) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      reject(error)
+    }
+
+    const succeed = (analytics: WrapAnalytics) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      resolve(normalizeAnalytics(analytics))
+    }
+
+    worker.onmessage = (event: MessageEvent<ImportWorkerResponse>) => {
+      const message = event.data
+      if (message.type === "progress") {
+        const phase = normalizeProgressPhase(message.phase)
+        const { current, total } = message
+        const percent =
+          total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0
+        onProgress?.({
+          phase,
+          percent,
+          overallPercent: importOverallPercent(phase, percent),
+          current,
+          total,
+        })
+        return
+      }
+
+      if (message.type === "need_identity") {
+        if (!onNeedIdentity) {
+          fail(
+            new Error(
+              "Could not determine which Instagram sender is you. Re-import and pick your name."
+            )
+          )
+          return
+        }
+        void onNeedIdentity(message.senders, message.chatName)
+          .then((meName) => {
+            if (settled) return
+            worker.postMessage({
+              type: "identity",
+              meName,
+            } satisfies InstagramImportWorkerRequest)
+          })
+          .catch((error: unknown) => {
+            fail(
+              error instanceof Error
+                ? error
+                : new Error("Identity selection was cancelled.")
+            )
+          })
+        return
+      }
+
+      if (message.type === "done") {
+        const analytics = JSON.parse(message.analyticsJson) as WrapAnalytics
+        succeed(analytics)
+        return
+      }
+
+      fail(new Error(message.message || "Instagram import failed."))
+    }
+
+    worker.onerror = (event) => {
+      fail(new Error(event.message || "Import worker failed to start."))
+    }
+
+    worker.postMessage({
+      type: "file",
+      file,
+    } satisfies InstagramImportWorkerRequest)
+  })
+}
+
 /**
  * Central entry point for importing a platform export.
  *
@@ -290,8 +394,8 @@ function importWhatsAppFile(
  *
  * Returns the full {@link WrapAnalytics} object.
  *
- * For WhatsApp, `onNeedIdentity` must resolve with the user's display name
- * from the export (shown in a “Who are you?” picker).
+ * For WhatsApp (and Instagram when profile Name is ambiguous),
+ * `onNeedIdentity` resolves with the user's display name from the export.
  */
 export function importPlatformFile(
   platform: PlatformConfig,
@@ -303,6 +407,10 @@ export function importPlatformFile(
 
   if (platform.id === "whatsapp") {
     return importWhatsAppFile(file, onProgress, onNeedIdentity)
+  }
+
+  if (platform.id === "instagram") {
+    return importInstagramFile(file, onProgress, onNeedIdentity)
   }
 
   return importTelegramFile(file, onProgress)
