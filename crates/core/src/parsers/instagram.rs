@@ -5,8 +5,11 @@
 //! - `personal_information/.../personal_information.json` (Name / Username)
 //! - `**/messages/{inbox,message_requests}/**/message_*.json`
 //! - `connections/followers_and_following/` (followers, following, unfollowed)
-//! - `your_instagram_activity/likes/liked_posts.json`
+//! - `your_instagram_activity/likes/liked_posts.json` (+ timestamps for heatmap)
+//! - `your_instagram_activity/likes/liked_comments.json`
+//! - `your_instagram_activity/comments/post_comments_*.json`, `reels_comments.json`
 //! - `your_instagram_activity/story_interactions/story_likes.json`
+//! - `your_instagram_activity/saved/saved_posts.json`, `saved_collections.json`
 //!
 //! Media binaries under `media/` are ignored. Strings may need classic
 //! Instagram latin1→UTF-8 mojibake repair.
@@ -23,7 +26,7 @@ use zip::ZipArchive;
 
 use crate::analytics::collectors::{
     extract_emojis, is_pure_emoji_text, text_has_url, tokenize_words, AnalysisEngine,
-    ContentKind, MessageEvent, MessageKind, ReactionEvent, WrapAnalytics,
+    ContentKind, HeatmapDay, MessageEvent, MessageKind, ReactionEvent, WrapAnalytics,
 };
 use crate::error::CoreError;
 use crate::parsers::telegram::AnalyzeProgressPhase;
@@ -62,6 +65,31 @@ pub struct InstagramSocialInsights {
     pub fans_you_dont_follow: Vec<IgHandle>,
     pub top_liked_accounts: Vec<IgCountedHandle>,
     pub top_story_liked_accounts: Vec<IgCountedHandle>,
+
+    // Engagement (likes + comments you authored / liked)
+    pub liked_posts_count: u64,
+    pub liked_comments_count: u64,
+    pub comments_written_count: u64,
+    pub like_heatmap: Vec<HeatmapDay>,
+    /// 24 UTC hour buckets for liked posts.
+    pub like_hourly: Vec<u64>,
+    pub top_commented_accounts: Vec<IgCountedHandle>,
+    pub top_reel_commented_accounts: Vec<IgCountedHandle>,
+    pub top_liked_comment_accounts: Vec<IgCountedHandle>,
+
+    // Saved
+    pub saved_posts_count: u64,
+    pub top_saved_accounts: Vec<IgCountedHandle>,
+    pub saved_collections: Vec<IgSavedCollection>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IgSavedCollection {
+    pub name: String,
+    pub item_count: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub privacy: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -510,7 +538,18 @@ struct SocialAcc {
     following: HashMap<String, (String, Option<String>)>,
     unfollowed_recently: u64,
     liked_posts: HashMap<String, u64>,
+    liked_posts_count: u64,
+    like_day_counts: HashMap<String, u64>,
+    like_hourly: [u64; 24],
     story_likes: HashMap<String, u64>,
+    liked_comment_accounts: HashMap<String, u64>,
+    liked_comments_count: u64,
+    post_comment_accounts: HashMap<String, u64>,
+    reel_comment_accounts: HashMap<String, u64>,
+    comments_written_count: u64,
+    saved_accounts: HashMap<String, u64>,
+    saved_posts_count: u64,
+    saved_collections: Vec<IgSavedCollection>,
 }
 
 impl SocialAcc {
@@ -541,19 +580,26 @@ impl SocialAcc {
         fans_you_dont_follow
             .sort_by(|a, b| a.username.to_lowercase().cmp(&b.username.to_lowercase()));
 
-        let mut top_liked: Vec<IgCountedHandle> = self
-            .liked_posts
-            .into_iter()
-            .map(|(username, count)| IgCountedHandle { username, count })
-            .collect();
-        top_liked.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.username.cmp(&b.username)));
+        let top_liked = ranked_counts(self.liked_posts);
+        let top_story = ranked_counts(self.story_likes);
+        let top_commented = ranked_counts(self.post_comment_accounts);
+        let top_reel_commented = ranked_counts(self.reel_comment_accounts);
+        let top_liked_comments = ranked_counts(self.liked_comment_accounts);
+        let top_saved = ranked_counts(self.saved_accounts);
 
-        let mut top_story: Vec<IgCountedHandle> = self
-            .story_likes
+        let mut like_heatmap: Vec<HeatmapDay> = self
+            .like_day_counts
             .into_iter()
-            .map(|(username, count)| IgCountedHandle { username, count })
+            .map(|(date, count)| HeatmapDay { date, count })
             .collect();
-        top_story.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.username.cmp(&b.username)));
+        like_heatmap.sort_by(|a, b| a.date.cmp(&b.date));
+
+        let mut saved_collections = self.saved_collections;
+        saved_collections.sort_by(|a, b| {
+            b.item_count
+                .cmp(&a.item_count)
+                .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+        });
 
         InstagramSocialInsights {
             follower_count: self.followers.len() as u64,
@@ -563,8 +609,28 @@ impl SocialAcc {
             fans_you_dont_follow,
             top_liked_accounts: top_liked,
             top_story_liked_accounts: top_story,
+            liked_posts_count: self.liked_posts_count,
+            liked_comments_count: self.liked_comments_count,
+            comments_written_count: self.comments_written_count,
+            like_heatmap,
+            like_hourly: self.like_hourly.to_vec(),
+            top_commented_accounts: top_commented,
+            top_reel_commented_accounts: top_reel_commented,
+            top_liked_comment_accounts: top_liked_comments,
+            saved_posts_count: self.saved_posts_count,
+            top_saved_accounts: top_saved,
+            saved_collections,
         }
     }
+}
+
+fn ranked_counts(map: HashMap<String, u64>) -> Vec<IgCountedHandle> {
+    let mut out: Vec<IgCountedHandle> = map
+        .into_iter()
+        .map(|(username, count)| IgCountedHandle { username, count })
+        .collect();
+    out.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.username.cmp(&b.username)));
+    out
 }
 
 #[derive(Clone, Copy)]
@@ -573,7 +639,12 @@ enum SocialFileKind {
     Following,
     Unfollowed,
     LikedPosts,
+    LikedComments,
+    PostComments,
+    ReelsComments,
     StoryLikes,
+    SavedPosts,
+    SavedCollections,
 }
 
 fn social_file_kind(lower: &str) -> Option<SocialFileKind> {
@@ -591,8 +662,26 @@ fn social_file_kind(lower: &str) -> Option<SocialFileKind> {
     if lower.contains("/likes/") && base == "liked_posts.json" {
         return Some(SocialFileKind::LikedPosts);
     }
+    if lower.contains("/likes/") && base == "liked_comments.json" {
+        return Some(SocialFileKind::LikedComments);
+    }
+    if lower.contains("/comments/")
+        && base.starts_with("post_comments")
+        && base.ends_with(".json")
+    {
+        return Some(SocialFileKind::PostComments);
+    }
+    if lower.contains("/comments/") && base == "reels_comments.json" {
+        return Some(SocialFileKind::ReelsComments);
+    }
     if lower.contains("story_interactions/") && base == "story_likes.json" {
         return Some(SocialFileKind::StoryLikes);
+    }
+    if lower.contains("/saved/") && base == "saved_posts.json" {
+        return Some(SocialFileKind::SavedPosts);
+    }
+    if lower.contains("/saved/") && base == "saved_collections.json" {
+        return Some(SocialFileKind::SavedCollections);
     }
     None
 }
@@ -610,7 +699,12 @@ fn ingest_social_json(acc: &mut SocialAcc, kind: SocialFileKind, text: &str) {
             }
         }
         SocialFileKind::LikedPosts => ingest_liked_posts(acc, &value),
+        SocialFileKind::LikedComments => ingest_liked_comments(acc, &value),
+        SocialFileKind::PostComments => ingest_post_comments(acc, &value),
+        SocialFileKind::ReelsComments => ingest_reels_comments(acc, &value),
         SocialFileKind::StoryLikes => ingest_story_likes(acc, &value),
+        SocialFileKind::SavedPosts => ingest_saved_posts(acc, &value),
+        SocialFileKind::SavedCollections => ingest_saved_collections(acc, &value),
     }
 }
 
@@ -670,6 +764,15 @@ fn ingest_following(acc: &mut SocialAcc, value: &Value) {
 fn ingest_liked_posts(acc: &mut SocialAcc, value: &Value) {
     let Some(arr) = value.as_array() else { return };
     for item in arr {
+        acc.liked_posts_count = acc.liked_posts_count.saturating_add(1);
+        if let Some(ts) = item.get("timestamp").and_then(Value::as_i64) {
+            let (hour, date) = utc_hour_and_date(ts);
+            if (hour as usize) < 24 {
+                acc.like_hourly[hour as usize] =
+                    acc.like_hourly[hour as usize].saturating_add(1);
+            }
+            *acc.like_day_counts.entry(date).or_insert(0) += 1;
+        }
         for username in extract_owner_usernames(item) {
             let u = fix_mojibake(&username).trim().to_string();
             if u.is_empty() {
@@ -677,6 +780,116 @@ fn ingest_liked_posts(acc: &mut SocialAcc, value: &Value) {
             }
             *acc.liked_posts.entry(u).or_insert(0) += 1;
         }
+    }
+}
+
+fn ingest_liked_comments(acc: &mut SocialAcc, value: &Value) {
+    let arr = value
+        .get("likes_comment_likes")
+        .and_then(Value::as_array)
+        .or_else(|| value.as_array());
+    let Some(arr) = arr else { return };
+    for item in arr {
+        acc.liked_comments_count = acc.liked_comments_count.saturating_add(1);
+        let raw = item.get("title").and_then(Value::as_str).unwrap_or("");
+        let u = fix_mojibake(raw).trim().to_string();
+        if !u.is_empty() {
+            *acc.liked_comment_accounts.entry(u).or_insert(0) += 1;
+        }
+    }
+}
+
+fn ingest_post_comments(acc: &mut SocialAcc, value: &Value) {
+    let Some(arr) = value.as_array() else { return };
+    for item in arr {
+        acc.comments_written_count = acc.comments_written_count.saturating_add(1);
+        if let Some(owner) = media_owner_from_comment(item) {
+            *acc.post_comment_accounts.entry(owner).or_insert(0) += 1;
+        }
+    }
+}
+
+fn ingest_reels_comments(acc: &mut SocialAcc, value: &Value) {
+    let arr = value
+        .get("comments_reels_comments")
+        .and_then(Value::as_array)
+        .or_else(|| value.as_array());
+    let Some(arr) = arr else { return };
+    for item in arr {
+        acc.comments_written_count = acc.comments_written_count.saturating_add(1);
+        if let Some(owner) = media_owner_from_comment(item) {
+            *acc.reel_comment_accounts.entry(owner).or_insert(0) += 1;
+        }
+    }
+}
+
+fn media_owner_from_comment(item: &Value) -> Option<String> {
+    let raw = item
+        .get("string_map_data")
+        .and_then(|m| m.get("Media Owner"))
+        .and_then(|e| e.get("value"))
+        .and_then(Value::as_str)?;
+    let u = fix_mojibake(raw).trim().to_string();
+    if u.is_empty() { None } else { Some(u) }
+}
+
+fn ingest_saved_posts(acc: &mut SocialAcc, value: &Value) {
+    let Some(arr) = value.as_array() else { return };
+    for item in arr {
+        acc.saved_posts_count = acc.saved_posts_count.saturating_add(1);
+        for username in extract_owner_usernames(item) {
+            let u = fix_mojibake(&username).trim().to_string();
+            if !u.is_empty() {
+                *acc.saved_accounts.entry(u).or_insert(0) += 1;
+            }
+        }
+    }
+}
+
+fn ingest_saved_collections(acc: &mut SocialAcc, value: &Value) {
+    let Some(arr) = value.as_array() else { return };
+    for item in arr {
+        let mut name = String::new();
+        let mut privacy: Option<String> = None;
+        let mut item_count: u64 = 0;
+        for lv in item
+            .get("label_values")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            match lv.get("label").and_then(Value::as_str) {
+                Some("Name") => {
+                    name = fix_mojibake(lv.get("value").and_then(Value::as_str).unwrap_or(""))
+                        .trim()
+                        .to_string();
+                }
+                Some("Privacy") => {
+                    let p = fix_mojibake(lv.get("value").and_then(Value::as_str).unwrap_or(""))
+                        .trim()
+                        .to_string();
+                    if !p.is_empty() {
+                        privacy = Some(p);
+                    }
+                }
+                _ => {}
+            }
+            if lv.get("title").and_then(Value::as_str) == Some("Media") {
+                item_count = lv
+                    .get("dict")
+                    .and_then(Value::as_array)
+                    .map(|a| a.len() as u64)
+                    .unwrap_or(0);
+            }
+        }
+        if name.is_empty() {
+            name = "Untitled collection".into();
+        }
+        acc.saved_collections.push(IgSavedCollection {
+            name,
+            item_count,
+            privacy,
+        });
     }
 }
 
@@ -870,6 +1083,11 @@ fn classify_ig_message(msg: &RawMessage, body: &str) -> MessageKind {
     if msg.call_duration.is_some() {
         return MessageKind::Other;
     }
+    // Instagram stubs system lines as `content` ("You sent an attachment.",
+    // "Reacted ❤️ to your message"). Never index them for Keyword Battle.
+    if is_ig_system_message(body) {
+        return MessageKind::Other;
+    }
     if msg.photos.as_ref().is_some_and(|v| !v.is_empty()) {
         return MessageKind::Photo;
     }
@@ -896,6 +1114,30 @@ fn classify_ig_message(msg: &RawMessage, body: &str) -> MessageKind {
         return MessageKind::Other;
     }
     MessageKind::Text
+}
+
+/// Meta DM stubs: attachment notices, reaction receipts, missed calls, etc.
+fn is_ig_system_message(body: &str) -> bool {
+    let lower: String = body
+        .trim()
+        .chars()
+        .flat_map(|c| c.to_lowercase())
+        .collect();
+    if lower.is_empty() {
+        return false;
+    }
+    lower.contains("sent an attachment")
+        || lower.contains("shared a story")
+        || lower.contains("shared a post")
+        || lower.contains("shared a reel")
+        || lower.contains("to your message")
+        || lower == "liked a message"
+        || lower.contains("missed a video chat")
+        || lower.contains("missed an audio call")
+        || lower.contains("started a video chat")
+        || lower.contains("started an audio call")
+        || lower.contains("turned off translations")
+        || lower.contains("turned on translations")
 }
 
 fn utc_hour_and_date(timestamp_secs: i64) -> (u8, String) {
@@ -1060,8 +1302,10 @@ mod tests {
       {"label_values":[{"label":"Username","value":"old_friend"}]}
     ]"#;
 
+    // 2021-01-01 00:00 UTC, 2021-01-01 20:00 UTC, 2021-01-02 20:00 UTC
     const LIKED_POSTS: &str = r#"[
       {
+        "timestamp": 1609459200,
         "label_values": [
           {"title":"Owner","dict":[{"dict":[
             {"label":"Name","value":"Alice"},
@@ -1070,6 +1314,7 @@ mod tests {
         ]
       },
       {
+        "timestamp": 1609531200,
         "label_values": [
           {"title":"Owner","dict":[{"dict":[
             {"label":"Username","value":"alice"}
@@ -1077,10 +1322,62 @@ mod tests {
         ]
       },
       {
+        "timestamp": 1609617600,
         "label_values": [
           {"title":"Owner","dict":[{"dict":[
             {"label":"Username","value":"bob"}
           ]}]}
+        ]
+      }
+    ]"#;
+
+    const LIKED_COMMENTS: &str = r#"{
+      "likes_comment_likes": [
+        {"title":"alice","string_list_data":[{"value":"👍","timestamp":1}]},
+        {"title":"alice","string_list_data":[{"value":"❤️","timestamp":2}]},
+        {"title":"bob","string_list_data":[{"value":"👍","timestamp":3}]}
+      ]
+    }"#;
+
+    const POST_COMMENTS: &str = r#"[
+      {"string_map_data":{"Comment":{"value":"nice"},"Media Owner":{"value":"alice"},"Time":{"timestamp":1}}},
+      {"string_map_data":{"Comment":{"value":"wow"},"Media Owner":{"value":"alice"},"Time":{"timestamp":2}}},
+      {"string_map_data":{"Comment":{"value":"ok"},"Media Owner":{"value":"carol"},"Time":{"timestamp":3}}}
+    ]"#;
+
+    const REELS_COMMENTS: &str = r#"{
+      "comments_reels_comments": [
+        {"string_map_data":{"Comment":{"value":"reel"},"Media Owner":{"value":"dave"},"Time":{"timestamp":1}}}
+      ]
+    }"#;
+
+    const SAVED_POSTS: &str = r#"[
+      {
+        "timestamp": 1,
+        "label_values": [
+          {"title":"Owner","dict":[{"dict":[{"label":"Username","value":"alice"}]}]}
+        ]
+      },
+      {
+        "timestamp": 2,
+        "label_values": [
+          {"title":"Owner","dict":[{"dict":[{"label":"Username","value":"alice"}]}]}
+        ]
+      },
+      {
+        "timestamp": 3,
+        "label_values": [
+          {"title":"Owner","dict":[{"dict":[{"label":"Username","value":"erin"}]}]}
+        ]
+      }
+    ]"#;
+
+    const SAVED_COLLECTIONS: &str = r#"[
+      {
+        "label_values": [
+          {"label":"Name","value":"Playlist"},
+          {"label":"Privacy","value":"Private"},
+          {"title":"Media","dict":[{"dict":[]},{"dict":[]}]}
         ]
       }
     ]"#;
@@ -1209,6 +1506,77 @@ mod tests {
         assert_eq!(social.top_story_liked_accounts[0].count, 2);
         assert_eq!(social.top_story_liked_accounts[1].username, "carol");
         assert_eq!(social.top_story_liked_accounts[1].count, 1);
+
+        assert_eq!(social.liked_posts_count, 3);
+        assert_eq!(social.like_heatmap.len(), 2);
+        assert_eq!(social.like_heatmap[0].date, "2021-01-01");
+        assert_eq!(social.like_heatmap[0].count, 2);
+        assert_eq!(social.like_hourly.len(), 24);
+        assert_eq!(social.like_hourly[0], 1);
+        assert_eq!(social.like_hourly[20], 2);
+    }
+
+    #[test]
+    fn engagement_and_saved_from_zip() {
+        let bytes = zip_with(&[
+            (
+                "personal_information/personal_information/personal_information.json",
+                PROFILE,
+            ),
+            (
+                "your_instagram_activity/messages/inbox/alice_1/message_1.json",
+                THREAD,
+            ),
+            (
+                "your_instagram_activity/likes/liked_posts.json",
+                LIKED_POSTS,
+            ),
+            (
+                "your_instagram_activity/likes/liked_comments.json",
+                LIKED_COMMENTS,
+            ),
+            (
+                "your_instagram_activity/comments/post_comments_1.json",
+                POST_COMMENTS,
+            ),
+            (
+                "your_instagram_activity/comments/reels_comments.json",
+                REELS_COMMENTS,
+            ),
+            (
+                "your_instagram_activity/saved/saved_posts.json",
+                SAVED_POSTS,
+            ),
+            (
+                "your_instagram_activity/saved/saved_collections.json",
+                SAVED_COLLECTIONS,
+            ),
+        ]);
+
+        let social = analyze_export_bytes(&bytes, None)
+            .unwrap()
+            .instagram_social;
+
+        assert_eq!(social.liked_comments_count, 3);
+        assert_eq!(social.top_liked_comment_accounts[0].username, "alice");
+        assert_eq!(social.top_liked_comment_accounts[0].count, 2);
+
+        assert_eq!(social.comments_written_count, 4);
+        assert_eq!(social.top_commented_accounts[0].username, "alice");
+        assert_eq!(social.top_commented_accounts[0].count, 2);
+        assert_eq!(social.top_reel_commented_accounts[0].username, "dave");
+        assert_eq!(social.top_reel_commented_accounts[0].count, 1);
+
+        assert_eq!(social.saved_posts_count, 3);
+        assert_eq!(social.top_saved_accounts[0].username, "alice");
+        assert_eq!(social.top_saved_accounts[0].count, 2);
+        assert_eq!(social.saved_collections.len(), 1);
+        assert_eq!(social.saved_collections[0].name, "Playlist");
+        assert_eq!(social.saved_collections[0].item_count, 2);
+        assert_eq!(
+            social.saved_collections[0].privacy.as_deref(),
+            Some("Private")
+        );
     }
 
     #[test]
@@ -1218,6 +1586,36 @@ mod tests {
             Some("saeed".into())
         );
         assert_eq!(story_username_from_url("https://instagram.com/p/abc"), None);
+    }
+
+    #[test]
+    fn ig_system_messages_are_not_text() {
+        assert!(is_ig_system_message("You sent an attachment."));
+        assert!(is_ig_system_message("Reyhane sent an attachment."));
+        assert!(is_ig_system_message("You shared a story."));
+        assert!(is_ig_system_message("sepideh shared a story."));
+        assert!(is_ig_system_message("Reacted ❤️ to your message "));
+        assert!(is_ig_system_message("Liked a message"));
+        assert!(is_ig_system_message("You missed a video chat"));
+        assert!(!is_ig_system_message("Hello there"));
+        assert!(!is_ig_system_message("I liked your photo yesterday"));
+        assert!(!is_ig_system_message("2 saat story tarahi krdm"));
+
+        let sys = RawMessage {
+            sender_name: Some("You".into()),
+            timestamp_ms: Some(1),
+            content: Some("You sent an attachment.".into()),
+            share: None,
+            photos: None,
+            videos: None,
+            audio_files: None,
+            gifs: None,
+            sticker: None,
+            reactions: vec![],
+            call_duration: None,
+            is_unsent: None,
+        };
+        assert!(!classify_ig_message(&sys, "You sent an attachment.").is_text());
     }
 
     #[test]

@@ -240,6 +240,12 @@ export type IgCountedHandle = {
   count: number
 }
 
+export type IgSavedCollection = {
+  name: string
+  itemCount: number
+  privacy?: string
+}
+
 export type InstagramSocialInsights = {
   followerCount: number
   followingCount: number
@@ -248,4 +254,19 @@ export type InstagramSocialInsights = {
   fansYouDontFollow: IgHandle[]
   topLikedAccounts: IgCountedHandle[]
   topStoryLikedAccounts: IgCountedHandle[]
+
+  // Engagement
+  likedPostsCount: number
+  likedCommentsCount: number
+  commentsWrittenCount: number
+  likeHeatmap: HeatmapDay[]
+  likeHourly: number[]
+  topCommentedAccounts: IgCountedHandle[]
+  topReelCommentedAccounts: IgCountedHandle[]
+  topLikedCommentAccounts: IgCountedHandle[]
+
+  // Saved
+  savedPostsCount: number
+  topSavedAccounts: IgCountedHandle[]
+  savedCollections: IgSavedCollection[]
 }
