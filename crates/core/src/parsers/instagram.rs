@@ -528,7 +528,6 @@ impl SocialAcc {
             })
             .collect();
         not_following_back.sort_by(|a, b| a.username.to_lowercase().cmp(&b.username.to_lowercase()));
-        not_following_back.truncate(50);
 
         let mut fans_you_dont_follow: Vec<IgHandle> = follower_keys
             .difference(&following_keys)
@@ -541,7 +540,6 @@ impl SocialAcc {
             .collect();
         fans_you_dont_follow
             .sort_by(|a, b| a.username.to_lowercase().cmp(&b.username.to_lowercase()));
-        fans_you_dont_follow.truncate(50);
 
         let mut top_liked: Vec<IgCountedHandle> = self
             .liked_posts
@@ -549,7 +547,6 @@ impl SocialAcc {
             .map(|(username, count)| IgCountedHandle { username, count })
             .collect();
         top_liked.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.username.cmp(&b.username)));
-        top_liked.truncate(20);
 
         let mut top_story: Vec<IgCountedHandle> = self
             .story_likes
@@ -557,7 +554,6 @@ impl SocialAcc {
             .map(|(username, count)| IgCountedHandle { username, count })
             .collect();
         top_story.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.username.cmp(&b.username)));
-        top_story.truncate(20);
 
         InstagramSocialInsights {
             follower_count: self.followers.len() as u64,

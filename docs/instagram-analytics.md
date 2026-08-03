@@ -68,10 +68,10 @@ Shown at the **top** of the Instagram wrap page (above messaging).
 | Card | Source | Meaning |
 |------|--------|---------|
 | Followers / Following / Unfollowed recently | `followers_*.json`, `following.json`, `recently_unfollowed_profiles.json` | Network KPI strip |
-| Didn’t follow back | `following` − `followers` | You follow them; they don’t follow you |
-| Fans you don’t follow | `followers` − `following` | They follow you; you don’t follow them |
-| Accounts you like most | `likes/liked_posts.json` → Owner Username | Outbound post/reel likes (top ~20) |
-| Stories you heart most | `story_likes.json` → `/stories/{user}/` URL | Outbound story likes (top ~20) |
+| Didn’t follow back | `following` − `followers` | You follow them; they don’t follow you (full list, scrollable) |
+| Fans you don’t follow | `followers` − `following` | They follow you; you don’t follow them (full list, scrollable) |
+| Accounts you like most | `likes/liked_posts.json` → Owner Username | Outbound post/reel likes (ranked, scrollable) |
+| Stories you heart most | `story_likes.json` → `/stories/{user}/` URL | Outbound story likes (ranked, scrollable) |
 
 Persisted on `WrapRecord.instagramSocial`. WASM analyze returns `{ analytics, instagramSocial }`.
 

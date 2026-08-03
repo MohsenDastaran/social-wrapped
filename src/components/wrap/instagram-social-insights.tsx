@@ -7,10 +7,22 @@ import type {
 import { cn } from "@/lib/utils"
 import { ExternalLink, Heart, UserMinus, UserPlus, Users } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+import type { ReactNode } from "react"
 
 type InstagramSocialInsightsProps = {
   data: InstagramSocialInsightsData
 }
+
+const LIST_SCROLL_CLASS = cn(
+  "h-72 overflow-y-auto overscroll-contain",
+  "[&::-webkit-scrollbar]:w-1.5",
+  "[&::-webkit-scrollbar-track]:bg-transparent",
+  "[&::-webkit-scrollbar-thumb]:rounded-full",
+  "[&::-webkit-scrollbar-thumb]:bg-primary/50",
+  "hover:[&::-webkit-scrollbar-thumb]:bg-primary",
+  "[scrollbar-width:thin]",
+  "[scrollbar-color:var(--primary)_transparent]"
+)
 
 function profileHref(handle: IgHandle): string {
   if (handle.href?.trim()) return handle.href.trim()
@@ -18,7 +30,9 @@ function profileHref(handle: IgHandle): string {
 }
 
 /** Outbound Instagram graph + like favorites (never inbound “who liked you”). */
-export function InstagramSocialInsights({ data }: InstagramSocialInsightsProps) {
+export function InstagramSocialInsights({
+  data,
+}: InstagramSocialInsightsProps) {
   const hasNetwork =
     data.followerCount > 0 ||
     data.followingCount > 0 ||
@@ -36,8 +50,9 @@ export function InstagramSocialInsights({ data }: InstagramSocialInsightsProps) 
             Instagram social insights
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            This ZIP didn’t include followers, following, or like history. Re-download
-            from Accounts Center with connections and activity selected.
+            This ZIP didn’t include followers, following, or like history.
+            Re-download from Accounts Center with connections and activity
+            selected.
           </p>
         </header>
       </section>
@@ -50,18 +65,10 @@ export function InstagramSocialInsights({ data }: InstagramSocialInsightsProps) 
         <h2 className="font-heading text-xl font-semibold tracking-tight">
           Instagram social insights
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Outbound follows and likes from your download — Meta doesn’t export who
-          liked your posts or viewed your stories.
-        </p>
       </header>
 
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
-        <Kpi
-          label="Followers"
-          value={data.followerCount}
-          empty={!hasNetwork}
-        />
+        <Kpi label="Followers" value={data.followerCount} empty={!hasNetwork} />
         <Kpi
           label="Following"
           value={data.followingCount}
@@ -76,32 +83,32 @@ export function InstagramSocialInsights({ data }: InstagramSocialInsightsProps) 
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <HandleList
-          title="Didn’t follow back"
-          description="You follow them; they don’t follow you"
+          title="Not following you back"
+          description="People you follow who don’t follow you"
           icon={UserMinus}
           handles={data.notFollowingBack}
-          emptyLabel="No follow gaps, or following/followers weren’t in this ZIP."
+          emptyLabel="Everyone you follow follows you back — or following/followers weren’t in this ZIP."
         />
         <HandleList
-          title="Fans you don’t follow"
-          description="They follow you; you don’t follow them"
+          title="Followers you don’t follow"
+          description="People who follow you that you don’t follow"
           icon={UserPlus}
           handles={data.fansYouDontFollow}
-          emptyLabel="No one-way fans, or following/followers weren’t in this ZIP."
+          emptyLabel="You follow everyone who follows you — or following/followers weren’t in this ZIP."
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <CountedList
-          title="Accounts you like most"
-          description="Posts and reels you liked"
+          title="Who you like most"
+          description="Accounts behind posts and reels you’ve liked"
           icon={Heart}
           items={data.topLikedAccounts}
           emptyLabel="No liked posts in this ZIP."
         />
         <CountedList
-          title="Stories you heart most"
-          description="Stories you liked"
+          title="Stories you’ve liked most"
+          description="Accounts whose stories you’ve hearted"
           icon={Users}
           items={data.topStoryLikedAccounts}
           emptyLabel="No story likes in this ZIP."
@@ -137,10 +144,55 @@ function Kpi({
   )
 }
 
-function HandleList({
+function ListPanel({
   title,
   description,
   icon: Icon,
+  count,
+  children,
+  empty,
+  emptyLabel,
+}: {
+  title: string
+  description: string
+  icon: LucideIcon
+  count: number
+  children: ReactNode
+  empty: boolean
+  emptyLabel: string
+}) {
+  return (
+    <div className="flex min-h-0 flex-col overflow-hidden rounded-xl ring-1 ring-foreground/10">
+      <div className="flex shrink-0 items-start gap-2 border-b border-border/60 bg-muted/25 px-3 py-2.5">
+        <Icon
+          className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-sm font-semibold tracking-tight">{title}</p>
+            {!empty ? (
+              <span className="shrink-0 text-[0.65rem] font-medium text-muted-foreground tabular-nums">
+                {fmt(count)}
+              </span>
+            ) : null}
+          </div>
+          <p className="text-[0.65rem] text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      {empty ? (
+        <p className="px-3 py-6 text-xs text-muted-foreground">{emptyLabel}</p>
+      ) : (
+        <div className={LIST_SCROLL_CLASS}>{children}</div>
+      )}
+    </div>
+  )
+}
+
+function HandleList({
+  title,
+  description,
+  icon,
   handles,
   emptyLabel,
 }: {
@@ -151,52 +203,45 @@ function HandleList({
   emptyLabel: string
 }) {
   return (
-    <div className="flex flex-col">
-      <div className="mb-2 flex items-start gap-2">
-        <Icon
-          className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
-          aria-hidden
-        />
-        <div className="min-w-0">
-          <p className="text-sm font-semibold tracking-tight">{title}</p>
-          <p className="text-[0.65rem] text-muted-foreground">{description}</p>
-        </div>
-      </div>
-      {handles.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{emptyLabel}</p>
-      ) : (
-        <ul className="divide-y divide-border/50 border-y border-border/50">
-          {handles.map((handle, index) => (
-            <li key={`${handle.username}-${index}`}>
-              <a
-                href={profileHref(handle)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex w-full items-center gap-2 py-2 text-start transition-colors hover:bg-muted/40"
-              >
-                <span className="w-4 shrink-0 text-center text-[0.65rem] font-semibold text-muted-foreground tabular-nums">
-                  {index + 1}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                  @{handle.username}
-                </span>
-                <ExternalLink
-                  className="size-3 shrink-0 text-muted-foreground"
-                  aria-hidden
-                />
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <ListPanel
+      title={title}
+      description={description}
+      icon={icon}
+      count={handles.length}
+      empty={handles.length === 0}
+      emptyLabel={emptyLabel}
+    >
+      <ul className="divide-y divide-border/50">
+        {handles.map((handle, index) => (
+          <li key={`${handle.username}-${index}`}>
+            <a
+              href={profileHref(handle)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center gap-2 px-3 py-2 text-start transition-colors hover:bg-muted/50"
+            >
+              <span className="w-5 shrink-0 text-center text-[0.65rem] font-semibold text-muted-foreground tabular-nums">
+                {index + 1}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                @{handle.username}
+              </span>
+              <ExternalLink
+                className="size-3 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </ListPanel>
   )
 }
 
 function CountedList({
   title,
   description,
-  icon: Icon,
+  icon,
   items,
   emptyLabel,
 }: {
@@ -209,54 +254,47 @@ function CountedList({
   const max = Math.max(...items.map((i) => i.count), 1)
 
   return (
-    <div className="flex flex-col">
-      <div className="mb-2 flex items-start gap-2">
-        <Icon
-          className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
-          aria-hidden
-        />
-        <div className="min-w-0">
-          <p className="text-sm font-semibold tracking-tight">{title}</p>
-          <p className="text-[0.65rem] text-muted-foreground">{description}</p>
-        </div>
-      </div>
-      {items.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{emptyLabel}</p>
-      ) : (
-        <ul className="divide-y divide-border/50 border-y border-border/50">
-          {items.map((item, index) => {
-            const pct = (item.count / max) * 100
-            return (
-              <li key={`${item.username}-${index}`} className="py-2">
-                <div className="flex items-baseline justify-between gap-2">
-                  <div className="flex min-w-0 items-baseline gap-2">
-                    <span className="w-4 shrink-0 text-center text-[0.65rem] font-semibold text-muted-foreground tabular-nums">
-                      {index + 1}
-                    </span>
-                    <a
-                      href={`https://www.instagram.com/${encodeURIComponent(item.username)}/`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="truncate text-xs font-medium hover:underline"
-                    >
-                      @{item.username}
-                    </a>
-                  </div>
-                  <span className="shrink-0 text-[0.65rem] text-muted-foreground tabular-nums">
-                    {fmt(item.count)}
+    <ListPanel
+      title={title}
+      description={description}
+      icon={icon}
+      count={items.length}
+      empty={items.length === 0}
+      emptyLabel={emptyLabel}
+    >
+      <ul className="divide-y divide-border/50">
+        {items.map((item, index) => {
+          const pct = (item.count / max) * 100
+          return (
+            <li key={`${item.username}-${index}`} className="px-3 py-2">
+              <div className="flex items-baseline justify-between gap-2">
+                <div className="flex min-w-0 items-baseline gap-2">
+                  <span className="w-5 shrink-0 text-center text-[0.65rem] font-semibold text-muted-foreground tabular-nums">
+                    {index + 1}
                   </span>
+                  <a
+                    href={`https://www.instagram.com/${encodeURIComponent(item.username)}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="truncate text-xs font-medium hover:underline"
+                  >
+                    @{item.username}
+                  </a>
                 </div>
-                <div className="mt-1 ms-6 h-1 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-teal-600 dark:bg-teal-400"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </div>
+                <span className="shrink-0 text-[0.65rem] text-muted-foreground tabular-nums">
+                  {fmt(item.count)}
+                </span>
+              </div>
+              <div className="ms-7 mt-1 h-1 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-teal-600 dark:bg-teal-400"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </ListPanel>
   )
 }
