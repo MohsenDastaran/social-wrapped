@@ -3,14 +3,17 @@ import {
   CircadianPolarChart,
   peakHourLabel,
 } from "@/components/wrap/charts/circadian-polar-chart"
-import {
-  IgCountedList,
-  IgKpi,
-} from "@/components/wrap/instagram-list-panels"
+import { IgCountedList } from "@/components/wrap/instagram-list-panels"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
+import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { fmt } from "@/components/wrap/chart-theme"
 import type { InstagramSocialInsights } from "@/platform/analytics-types"
-import { Heart, MessageCircle, MessageSquareHeart } from "lucide-react"
+import {
+  Heart,
+  MessageCircle,
+  MessageSquareHeart,
+  MessageSquareText,
+} from "lucide-react"
 
 type InstagramEngagementProps = {
   data: InstagramSocialInsights
@@ -62,12 +65,23 @@ export function InstagramEngagement({ data }: InstagramEngagementProps) {
       </header>
 
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
-        <IgKpi label="Liked posts" value={likedPosts} empty={!hasMix} />
-        <IgKpi label="Liked comments" value={likedComments} empty={!hasMix} />
-        <IgKpi
+        <WrapKpi
+          label="Liked posts"
+          value={hasMix ? fmt(likedPosts) : "—"}
+          icon={Heart}
+          accent="teal"
+        />
+        <WrapKpi
+          label="Liked comments"
+          value={hasMix ? fmt(likedComments) : "—"}
+          icon={MessageSquareHeart}
+          accent="amber"
+        />
+        <WrapKpi
           label="Comments written"
-          value={commentsWritten}
-          empty={!hasMix}
+          value={hasMix ? fmt(commentsWritten) : "—"}
+          icon={MessageSquareText}
+          accent="emerald"
         />
       </div>
 

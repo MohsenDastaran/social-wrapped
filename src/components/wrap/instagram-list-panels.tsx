@@ -120,29 +120,3 @@ export function IgCountedList({
     </IgListPanel>
   )
 }
-
-export function IgKpi({
-  label,
-  value,
-  empty,
-}: {
-  label: string
-  value: number
-  empty?: boolean
-}) {
-  return (
-    <div className="text-start">
-      <p className="text-[0.65rem] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-        {label}
-      </p>
-      <p
-        className={cn(
-          "mt-1 font-heading text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl",
-          empty && "text-muted-foreground"
-        )}
-      >
-        {empty ? "—" : fmt(value)}
-      </p>
-    </div>
-  )
-}

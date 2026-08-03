@@ -1,11 +1,19 @@
 import { fmt } from "@/components/wrap/chart-theme"
+import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import type {
   IgCountedHandle,
   IgHandle,
   InstagramSocialInsights as InstagramSocialInsightsData,
 } from "@/platform/analytics-types"
 import { cn } from "@/lib/utils"
-import { ExternalLink, Heart, UserMinus, UserPlus, Users } from "lucide-react"
+import {
+  ExternalLink,
+  Heart,
+  UserMinus,
+  UserPlus,
+  UserRoundMinus,
+  Users,
+} from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
 
@@ -68,16 +76,23 @@ export function InstagramSocialInsights({
       </header>
 
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
-        <Kpi label="Followers" value={data.followerCount} empty={!hasNetwork} />
-        <Kpi
-          label="Following"
-          value={data.followingCount}
-          empty={!hasNetwork}
+        <WrapKpi
+          label="Followers"
+          value={hasNetwork ? fmt(data.followerCount) : "—"}
+          icon={Users}
+          accent="teal"
         />
-        <Kpi
+        <WrapKpi
+          label="Following"
+          value={hasNetwork ? fmt(data.followingCount) : "—"}
+          icon={UserPlus}
+          accent="sky"
+        />
+        <WrapKpi
           label="Unfollowed recently"
-          value={data.unfollowedRecentlyCount}
-          empty={!hasNetwork}
+          value={hasNetwork ? fmt(data.unfollowedRecentlyCount) : "—"}
+          icon={UserRoundMinus}
+          accent="amber"
         />
       </div>
 
@@ -115,32 +130,6 @@ export function InstagramSocialInsights({
         />
       </div>
     </section>
-  )
-}
-
-function Kpi({
-  label,
-  value,
-  empty,
-}: {
-  label: string
-  value: number
-  empty: boolean
-}) {
-  return (
-    <div className="text-start">
-      <p className="text-[0.65rem] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-        {label}
-      </p>
-      <p
-        className={cn(
-          "mt-1 font-heading text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl",
-          empty && "text-muted-foreground"
-        )}
-      >
-        {empty ? "—" : fmt(value)}
-      </p>
-    </div>
   )
 }
 

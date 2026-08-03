@@ -1,9 +1,9 @@
 import {
   IgCountedList,
-  IgKpi,
   IgListPanel,
 } from "@/components/wrap/instagram-list-panels"
 import { fmt } from "@/components/wrap/chart-theme"
+import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import type { InstagramSocialInsights } from "@/platform/analytics-types"
 import { Bookmark, FolderOpen } from "lucide-react"
 
@@ -47,8 +47,18 @@ export function InstagramSaved({ data }: InstagramSavedProps) {
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        <IgKpi label="Saved posts" value={savedCount} />
-        <IgKpi label="Collections" value={collections.length} />
+        <WrapKpi
+          label="Saved posts"
+          value={fmt(savedCount)}
+          icon={Bookmark}
+          accent="violet"
+        />
+        <WrapKpi
+          label="Collections"
+          value={fmt(collections.length)}
+          icon={FolderOpen}
+          accent="sky"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
