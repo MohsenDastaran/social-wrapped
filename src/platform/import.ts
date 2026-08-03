@@ -1,8 +1,17 @@
 import type { PlatformConfig } from "@/lib/platforms"
-import type { WrapAnalytics } from "@/platform/analytics-types"
+import type {
+  InstagramSocialInsights,
+  WrapAnalytics,
+} from "@/platform/analytics-types"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
 
-export type { WrapAnalytics } from "@/platform/analytics-types"
+export type { WrapAnalytics, InstagramSocialInsights } from "@/platform/analytics-types"
+
+/** Result of a platform import pass (Instagram may include social insights). */
+export type ImportResult = {
+  analytics: WrapAnalytics
+  instagramSocial?: InstagramSocialInsights
+}
 export type {
   AnalyticsResult,
   ChatResult,
@@ -160,7 +169,7 @@ function normalizeAnalytics(analytics: WrapAnalytics): WrapAnalytics {
 function importTelegramFile(
   file: File,
   onProgress?: (progress: ImportProgress) => void
-): Promise<WrapAnalytics> {
+): Promise<ImportResult> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(
       new URL("../workers/telegram-import.worker.ts", import.meta.url),
@@ -187,7 +196,7 @@ function importTelegramFile(
       worker.terminate()
       if (message.type === "done") {
         const analytics = JSON.parse(message.analyticsJson) as WrapAnalytics
-        resolve(normalizeAnalytics(analytics))
+        resolve({ analytics: normalizeAnalytics(analytics) })
       } else if (message.type === "error") {
         reject(new Error(message.message))
       } else {
@@ -208,7 +217,7 @@ function importWhatsAppFile(
   file: File,
   onProgress?: (progress: ImportProgress) => void,
   onNeedIdentity?: NeedIdentityHandler
-): Promise<WrapAnalytics> {
+): Promise<ImportResult> {
   if (!onNeedIdentity) {
     return Promise.reject(
       new Error("WhatsApp import requires choosing which sender is you.")
@@ -234,7 +243,7 @@ function importWhatsAppFile(
       if (settled) return
       settled = true
       worker.terminate()
-      resolve(normalizeAnalytics(analytics))
+      resolve({ analytics: normalizeAnalytics(analytics) })
     }
 
     worker.onmessage = (event: MessageEvent<ImportWorkerResponse>) => {
@@ -293,11 +302,30 @@ function importWhatsAppFile(
   })
 }
 
+function parseInstagramAnalyzeJson(analyticsJson: string): ImportResult {
+  const payload = JSON.parse(analyticsJson) as {
+    analytics?: WrapAnalytics
+    instagramSocial?: InstagramSocialInsights
+  } & Partial<WrapAnalytics>
+
+  // New shape: { analytics, instagramSocial }. Legacy: bare WrapAnalytics.
+  if (payload.analytics?.account != null) {
+    return {
+      analytics: normalizeAnalytics(payload.analytics),
+      instagramSocial: payload.instagramSocial,
+    }
+  }
+
+  return {
+    analytics: normalizeAnalytics(payload as WrapAnalytics),
+  }
+}
+
 function importInstagramFile(
   file: File,
   onProgress?: (progress: ImportProgress) => void,
   onNeedIdentity?: NeedIdentityHandler
-): Promise<WrapAnalytics> {
+): Promise<ImportResult> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(
       new URL("../workers/instagram-import.worker.ts", import.meta.url),
@@ -313,11 +341,11 @@ function importInstagramFile(
       reject(error)
     }
 
-    const succeed = (analytics: WrapAnalytics) => {
+    const succeed = (result: ImportResult) => {
       if (settled) return
       settled = true
       worker.terminate()
-      resolve(normalizeAnalytics(analytics))
+      resolve(result)
     }
 
     worker.onmessage = (event: MessageEvent<ImportWorkerResponse>) => {
@@ -365,8 +393,7 @@ function importInstagramFile(
       }
 
       if (message.type === "done") {
-        const analytics = JSON.parse(message.analyticsJson) as WrapAnalytics
-        succeed(analytics)
+        succeed(parseInstagramAnalyzeJson(message.analyticsJson))
         return
       }
 
@@ -392,7 +419,7 @@ function importInstagramFile(
  * browser and in Tauri webviews (Linux, Android, …) since both run the
  * same WASM parser off the main thread.
  *
- * Returns the full {@link WrapAnalytics} object.
+ * Returns {@link ImportResult} (`analytics` plus optional Instagram social).
  *
  * For WhatsApp (and Instagram when profile Name is ambiguous),
  * `onNeedIdentity` resolves with the user's display name from the export.
@@ -402,7 +429,7 @@ export function importPlatformFile(
   file: File,
   onProgress?: (progress: ImportProgress) => void,
   onNeedIdentity?: NeedIdentityHandler
-): Promise<WrapAnalytics> {
+): Promise<ImportResult> {
   validateFile(platform, file)
 
   if (platform.id === "whatsapp") {

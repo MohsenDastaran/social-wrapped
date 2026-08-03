@@ -3,6 +3,7 @@ import type {
   AnalyticsResult,
   ChatResult,
   ContentMixStats,
+  InstagramSocialInsights,
   WrapAnalytics,
 } from "@/platform/analytics-types"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
@@ -22,6 +23,8 @@ export type WrapRecord = {
   analytics: WrapAnalytics
   /** Derived flat stats for header display — kept for quick access. */
   stats: TelegramExportStats
+  /** Instagram outbound / graph insights (absent for TG/WA). */
+  instagramSocial?: InstagramSocialInsights
 }
 
 /**
@@ -56,6 +59,7 @@ type StoredWrap = {
   createdAt: string
   stats: TelegramExportStats
   analytics: CompactAnalytics
+  instagramSocial?: InstagramSocialInsights
 }
 
 type LegacyStoredWrap = Partial<WrapRecord> & {
@@ -65,6 +69,7 @@ type LegacyStoredWrap = Partial<WrapRecord> & {
   createdAt?: string
   stats?: TelegramExportStats
   analytics?: CompactAnalytics | WrapAnalytics
+  instagramSocial?: InstagramSocialInsights
 }
 
 const EMPTY_CONTENT_MIX: ContentMixStats = {
@@ -384,6 +389,7 @@ function normalizeWrap(raw: LegacyStoredWrap): WrapRecord | null {
     createdAt: raw.createdAt,
     analytics,
     stats,
+    ...(raw.instagramSocial ? { instagramSocial: raw.instagramSocial } : {}),
   }
 }
 
@@ -395,6 +401,7 @@ function toStored(wrap: WrapRecord): StoredWrap {
     createdAt: wrap.createdAt,
     stats: wrap.stats,
     analytics: compactAnalytics(wrap.analytics),
+    ...(wrap.instagramSocial ? { instagramSocial: wrap.instagramSocial } : {}),
   }
 }
 
@@ -517,6 +524,7 @@ export async function saveWrap(input: {
   platformId: PlatformId
   fileName: string
   analytics: WrapAnalytics
+  instagramSocial?: InstagramSocialInsights
 }): Promise<WrapRecord> {
   const wrap: WrapRecord = {
     id: crypto.randomUUID(),
@@ -537,6 +545,9 @@ export async function saveWrap(input: {
       topGhosters: (input.analytics.topGhosters ?? []).map(normalizeChat),
     }),
     stats: analyticsToStats(input.analytics),
+    ...(input.instagramSocial
+      ? { instagramSocial: input.instagramSocial }
+      : {}),
   }
 
   // Cache before the write so navigation can resolve instantly.

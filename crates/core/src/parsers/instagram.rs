@@ -1,9 +1,12 @@
-//! Instagram Meta JSON takeout parser (Direct messages).
+//! Instagram Meta JSON takeout parser (Direct messages + outbound social).
 //!
 //! Expects a ZIP (or in-memory ZIP bytes) from Accounts Center → Download your
-//! information (JSON). Only reads:
+//! information (JSON). Reads:
 //! - `personal_information/.../personal_information.json` (Name / Username)
 //! - `**/messages/{inbox,message_requests}/**/message_*.json`
+//! - `connections/followers_and_following/` (followers, following, unfollowed)
+//! - `your_instagram_activity/likes/liked_posts.json`
+//! - `your_instagram_activity/story_interactions/story_likes.json`
 //!
 //! Media binaries under `media/` are ignored. Strings may need classic
 //! Instagram latin1→UTF-8 mojibake repair.
@@ -43,6 +46,48 @@ pub struct InstagramPreview {
 }
 
 impl InstagramPreview {
+    pub fn to_json(&self) -> Result<String, CoreError> {
+        serde_json::to_string(self).map_err(CoreError::from)
+    }
+}
+
+/// Outbound / graph insights unique to Instagram Meta downloads.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstagramSocialInsights {
+    pub follower_count: u64,
+    pub following_count: u64,
+    pub unfollowed_recently_count: u64,
+    pub not_following_back: Vec<IgHandle>,
+    pub fans_you_dont_follow: Vec<IgHandle>,
+    pub top_liked_accounts: Vec<IgCountedHandle>,
+    pub top_story_liked_accounts: Vec<IgCountedHandle>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IgHandle {
+    pub username: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub href: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IgCountedHandle {
+    pub username: String,
+    pub count: u64,
+}
+
+/// Full Instagram analyze payload (messaging + social).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstagramAnalyzeResult {
+    pub analytics: WrapAnalytics,
+    pub instagram_social: InstagramSocialInsights,
+}
+
+impl InstagramAnalyzeResult {
     pub fn to_json(&self) -> Result<String, CoreError> {
         serde_json::to_string(self).map_err(CoreError::from)
     }
@@ -140,7 +185,7 @@ struct ParsedIgMessage {
 
 pub fn preview_export_bytes(bytes: &[u8]) -> Result<InstagramPreview, CoreError> {
     let file_size_bytes = bytes.len() as u64;
-    let (profile, threads) = load_export(bytes, |_, _| {})?;
+    let (profile, threads, _social) = load_export(bytes, |_, _| {})?;
     let message_count: u64 = threads.iter().map(|t| t.messages.len() as u64).sum();
     let senders = unique_senders(&threads);
     let suggested_me = suggest_me(&profile, &senders);
@@ -164,7 +209,7 @@ pub fn preview_export_bytes(bytes: &[u8]) -> Result<InstagramPreview, CoreError>
 pub fn analyze_export_bytes(
     bytes: &[u8],
     me_name: Option<&str>,
-) -> Result<WrapAnalytics, CoreError> {
+) -> Result<InstagramAnalyzeResult, CoreError> {
     analyze_export_bytes_with_progress(bytes, me_name, |_, _, _| {})
 }
 
@@ -172,14 +217,14 @@ pub fn analyze_export_bytes_with_progress<F>(
     bytes: &[u8],
     me_name: Option<&str>,
     mut on_progress: F,
-) -> Result<WrapAnalytics, CoreError>
+) -> Result<InstagramAnalyzeResult, CoreError>
 where
     F: FnMut(AnalyzeProgressPhase, u64, u64),
 {
     let total_bytes = bytes.len() as u64;
     on_progress(AnalyzeProgressPhase::Reading, 0, total_bytes.max(1));
 
-    let (profile, threads) = load_export(bytes, |read, total| {
+    let (profile, threads, social) = load_export(bytes, |read, total| {
         on_progress(AnalyzeProgressPhase::Reading, read, total.max(1));
     })?;
     on_progress(
@@ -303,7 +348,10 @@ where
     }
 
     on_progress(AnalyzeProgressPhase::Computing, compute_total, compute_total);
-    Ok(engine.finish())
+    Ok(InstagramAnalyzeResult {
+        analytics: engine.finish(),
+        instagram_social: social,
+    })
 }
 
 // ── Load ZIP ──────────────────────────────────────────────────────────────────
@@ -311,7 +359,7 @@ where
 fn load_export<F>(
     bytes: &[u8],
     mut on_read: F,
-) -> Result<(Profile, Vec<ParsedThread>), CoreError>
+) -> Result<(Profile, Vec<ParsedThread>, InstagramSocialInsights), CoreError>
 where
     F: FnMut(u64, u64),
 {
@@ -329,8 +377,8 @@ where
         name: None,
         username: None,
     };
-    // thread_dir -> (path hint, title, participants, messages)
     let mut thread_bufs: HashMap<String, ThreadAcc> = HashMap::new();
+    let mut social_acc = SocialAcc::default();
     let mut bytes_read: u64 = 0;
 
     let entry_count = archive.len();
@@ -345,8 +393,9 @@ where
         let is_profile = lower.ends_with("/personal_information/personal_information.json")
             || lower.ends_with("personal_information/personal_information.json");
         let is_message = is_message_json_path(&lower);
+        let social_kind = social_file_kind(&lower);
 
-        if !is_profile && !is_message {
+        if !is_profile && !is_message && social_kind.is_none() {
             continue;
         }
 
@@ -361,6 +410,11 @@ where
             if let Some(p) = parse_profile(&text) {
                 profile = p;
             }
+            continue;
+        }
+
+        if let Some(kind) = social_kind {
+            ingest_social_json(&mut social_acc, kind, &text);
             continue;
         }
 
@@ -438,17 +492,251 @@ where
         })
         .collect();
 
-    // Sort messages within each thread by time.
     for t in &mut threads {
         t.messages.sort_by_key(|m| m.timestamp_secs);
     }
     threads.sort_by(|a, b| a.thread_path.cmp(&b.thread_path));
 
-    // Apply mojibake fix to profile fields loaded earlier.
     profile.name = profile.name.map(|s| fix_mojibake(&s));
     profile.username = profile.username.map(|s| fix_mojibake(&s));
 
-    Ok((profile, threads))
+    Ok((profile, threads, social_acc.finish()))
+}
+
+#[derive(Default)]
+struct SocialAcc {
+    /// username (lower) -> (display username, href)
+    followers: HashMap<String, (String, Option<String>)>,
+    following: HashMap<String, (String, Option<String>)>,
+    unfollowed_recently: u64,
+    liked_posts: HashMap<String, u64>,
+    story_likes: HashMap<String, u64>,
+}
+
+impl SocialAcc {
+    fn finish(self) -> InstagramSocialInsights {
+        let follower_keys: BTreeSet<_> = self.followers.keys().cloned().collect();
+        let following_keys: BTreeSet<_> = self.following.keys().cloned().collect();
+
+        let mut not_following_back: Vec<IgHandle> = following_keys
+            .difference(&follower_keys)
+            .filter_map(|k| {
+                self.following.get(k).map(|(u, href)| IgHandle {
+                    username: u.clone(),
+                    href: href.clone(),
+                })
+            })
+            .collect();
+        not_following_back.sort_by(|a, b| a.username.to_lowercase().cmp(&b.username.to_lowercase()));
+        not_following_back.truncate(50);
+
+        let mut fans_you_dont_follow: Vec<IgHandle> = follower_keys
+            .difference(&following_keys)
+            .filter_map(|k| {
+                self.followers.get(k).map(|(u, href)| IgHandle {
+                    username: u.clone(),
+                    href: href.clone(),
+                })
+            })
+            .collect();
+        fans_you_dont_follow
+            .sort_by(|a, b| a.username.to_lowercase().cmp(&b.username.to_lowercase()));
+        fans_you_dont_follow.truncate(50);
+
+        let mut top_liked: Vec<IgCountedHandle> = self
+            .liked_posts
+            .into_iter()
+            .map(|(username, count)| IgCountedHandle { username, count })
+            .collect();
+        top_liked.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.username.cmp(&b.username)));
+        top_liked.truncate(20);
+
+        let mut top_story: Vec<IgCountedHandle> = self
+            .story_likes
+            .into_iter()
+            .map(|(username, count)| IgCountedHandle { username, count })
+            .collect();
+        top_story.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.username.cmp(&b.username)));
+        top_story.truncate(20);
+
+        InstagramSocialInsights {
+            follower_count: self.followers.len() as u64,
+            following_count: self.following.len() as u64,
+            unfollowed_recently_count: self.unfollowed_recently,
+            not_following_back,
+            fans_you_dont_follow,
+            top_liked_accounts: top_liked,
+            top_story_liked_accounts: top_story,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum SocialFileKind {
+    Followers,
+    Following,
+    Unfollowed,
+    LikedPosts,
+    StoryLikes,
+}
+
+fn social_file_kind(lower: &str) -> Option<SocialFileKind> {
+    let base = lower.rsplit('/').next().unwrap_or(lower);
+    let in_follow_graph = lower.contains("followers_and_following/");
+    if in_follow_graph && base.starts_with("followers") && base.ends_with(".json") {
+        return Some(SocialFileKind::Followers);
+    }
+    if in_follow_graph && base == "following.json" {
+        return Some(SocialFileKind::Following);
+    }
+    if in_follow_graph && base.contains("recently_unfollowed") && base.ends_with(".json") {
+        return Some(SocialFileKind::Unfollowed);
+    }
+    if lower.contains("/likes/") && base == "liked_posts.json" {
+        return Some(SocialFileKind::LikedPosts);
+    }
+    if lower.contains("story_interactions/") && base == "story_likes.json" {
+        return Some(SocialFileKind::StoryLikes);
+    }
+    None
+}
+
+fn ingest_social_json(acc: &mut SocialAcc, kind: SocialFileKind, text: &str) {
+    let Ok(value) = serde_json::from_str::<Value>(text) else {
+        return;
+    };
+    match kind {
+        SocialFileKind::Followers => ingest_followers(acc, &value),
+        SocialFileKind::Following => ingest_following(acc, &value),
+        SocialFileKind::Unfollowed => {
+            if let Some(arr) = value.as_array() {
+                acc.unfollowed_recently = acc.unfollowed_recently.saturating_add(arr.len() as u64);
+            }
+        }
+        SocialFileKind::LikedPosts => ingest_liked_posts(acc, &value),
+        SocialFileKind::StoryLikes => ingest_story_likes(acc, &value),
+    }
+}
+
+fn ingest_followers(acc: &mut SocialAcc, value: &Value) {
+    let Some(arr) = value.as_array() else { return };
+    for item in arr {
+        for s in item
+            .get("string_list_data")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            let raw = s.get("value").and_then(Value::as_str).unwrap_or("");
+            let username = fix_mojibake(raw).trim().to_string();
+            if username.is_empty() {
+                continue;
+            }
+            let href = s
+                .get("href")
+                .and_then(Value::as_str)
+                .map(|h| h.to_string())
+                .filter(|h| !h.is_empty());
+            let key = username.to_ascii_lowercase();
+            acc.followers.entry(key).or_insert((username, href));
+        }
+    }
+}
+
+fn ingest_following(acc: &mut SocialAcc, value: &Value) {
+    let arr = value
+        .get("relationships_following")
+        .and_then(Value::as_array)
+        .or_else(|| value.as_array());
+    let Some(arr) = arr else { return };
+    for item in arr {
+        let raw = item
+            .get("title")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        let username = fix_mojibake(raw).trim().to_string();
+        if username.is_empty() {
+            continue;
+        }
+        let href = item
+            .get("string_list_data")
+            .and_then(Value::as_array)
+            .and_then(|a| a.first())
+            .and_then(|s| s.get("href"))
+            .and_then(Value::as_str)
+            .map(|h| h.to_string())
+            .filter(|h| !h.is_empty());
+        let key = username.to_ascii_lowercase();
+        acc.following.entry(key).or_insert((username, href));
+    }
+}
+
+fn ingest_liked_posts(acc: &mut SocialAcc, value: &Value) {
+    let Some(arr) = value.as_array() else { return };
+    for item in arr {
+        for username in extract_owner_usernames(item) {
+            let u = fix_mojibake(&username).trim().to_string();
+            if u.is_empty() {
+                continue;
+            }
+            *acc.liked_posts.entry(u).or_insert(0) += 1;
+        }
+    }
+}
+
+fn extract_owner_usernames(item: &Value) -> Vec<String> {
+    let mut out = Vec::new();
+    let Some(labels) = item.get("label_values").and_then(Value::as_array) else {
+        return out;
+    };
+    for lv in labels {
+        if lv.get("title").and_then(Value::as_str) != Some("Owner") {
+            continue;
+        }
+        for d in lv.get("dict").and_then(Value::as_array).into_iter().flatten() {
+            for dd in d.get("dict").and_then(Value::as_array).into_iter().flatten() {
+                if dd.get("label").and_then(Value::as_str) == Some("Username") {
+                    if let Some(v) = dd.get("value").and_then(Value::as_str) {
+                        out.push(v.to_string());
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+fn ingest_story_likes(acc: &mut SocialAcc, value: &Value) {
+    let Some(arr) = value.as_array() else { return };
+    for item in arr {
+        let Some(labels) = item.get("label_values").and_then(Value::as_array) else {
+            continue;
+        };
+        for lv in labels {
+            if lv.get("label").and_then(Value::as_str) != Some("URL") {
+                continue;
+            }
+            let url = lv.get("value").and_then(Value::as_str).unwrap_or("");
+            if let Some(user) = story_username_from_url(url) {
+                let u = fix_mojibake(&user).trim().to_string();
+                if !u.is_empty() {
+                    *acc.story_likes.entry(u).or_insert(0) += 1;
+                }
+            }
+        }
+    }
+}
+
+fn story_username_from_url(url: &str) -> Option<String> {
+    let marker = "/stories/";
+    let idx = url.find(marker)?;
+    let rest = &url[idx + marker.len()..];
+    let user = rest.split('/').next()?.trim();
+    if user.is_empty() {
+        None
+    } else {
+        Some(user.to_string())
+    }
 }
 
 struct ThreadAcc {
@@ -758,6 +1046,67 @@ mod tests {
         assert_eq!(fix_mojibake(&broken), "سلام");
     }
 
+    const FOLLOWERS: &str = r#"[
+      {"string_list_data":[{"href":"https://www.instagram.com/alice","value":"alice","timestamp":1}]},
+      {"string_list_data":[{"href":"https://www.instagram.com/bob","value":"bob","timestamp":1}]},
+      {"string_list_data":[{"href":"https://www.instagram.com/carol","value":"carol","timestamp":1}]}
+    ]"#;
+
+    const FOLLOWING: &str = r#"{
+      "relationships_following": [
+        {"title":"alice","string_list_data":[{"href":"https://www.instagram.com/alice","timestamp":1}]},
+        {"title":"dave","string_list_data":[{"href":"https://www.instagram.com/dave","timestamp":1}]},
+        {"title":"erin","string_list_data":[{"href":"https://www.instagram.com/erin","timestamp":1}]}
+      ]
+    }"#;
+
+    const UNFOLLOWED: &str = r#"[
+      {"label_values":[{"label":"Username","value":"old_friend"}]}
+    ]"#;
+
+    const LIKED_POSTS: &str = r#"[
+      {
+        "label_values": [
+          {"title":"Owner","dict":[{"dict":[
+            {"label":"Name","value":"Alice"},
+            {"label":"Username","value":"alice"}
+          ]}]}
+        ]
+      },
+      {
+        "label_values": [
+          {"title":"Owner","dict":[{"dict":[
+            {"label":"Username","value":"alice"}
+          ]}]}
+        ]
+      },
+      {
+        "label_values": [
+          {"title":"Owner","dict":[{"dict":[
+            {"label":"Username","value":"bob"}
+          ]}]}
+        ]
+      }
+    ]"#;
+
+    const STORY_LIKES: &str = r#"[
+      {
+        "label_values": [
+          {"label":"URL","value":"https://www.instagram.com/stories/alice/111"}
+        ]
+      },
+      {
+        "label_values": [
+          {"label":"URL","value":"https://www.instagram.com/stories/alice/222"}
+        ]
+      },
+      {
+        "label_values": [
+          {"label":"URL","value":"https://www.instagram.com/stories/carol/333"}
+        ]
+      }
+    ]"#;
+
     #[test]
     fn preview_and_analyze_zip() {
         let bytes = zip_with(&[
@@ -776,7 +1125,8 @@ mod tests {
         assert_eq!(preview.thread_count, 1);
         assert!(preview.message_count >= 3);
 
-        let analytics = analyze_export_bytes(&bytes, None).unwrap();
+        let result = analyze_export_bytes(&bytes, None).unwrap();
+        let analytics = result.analytics;
         assert_eq!(analytics.display_name, "Mohsen");
         assert_eq!(analytics.username.as_deref(), Some("mohsen_dastaran"));
         assert_eq!(analytics.chat_count, 1);
@@ -792,6 +1142,86 @@ mod tests {
             .sum();
         assert!(reaction_total >= 1);
         assert!(analytics.account.total_messages >= 3);
+        assert_eq!(result.instagram_social.follower_count, 0);
+    }
+
+    #[test]
+    fn social_insights_from_zip() {
+        let bytes = zip_with(&[
+            (
+                "personal_information/personal_information/personal_information.json",
+                PROFILE,
+            ),
+            (
+                "your_instagram_activity/messages/inbox/alice_1/message_1.json",
+                THREAD,
+            ),
+            (
+                "connections/followers_and_following/followers_1.json",
+                FOLLOWERS,
+            ),
+            (
+                "connections/followers_and_following/following.json",
+                FOLLOWING,
+            ),
+            (
+                "connections/followers_and_following/recently_unfollowed_profiles.json",
+                UNFOLLOWED,
+            ),
+            (
+                "your_instagram_activity/likes/liked_posts.json",
+                LIKED_POSTS,
+            ),
+            (
+                "your_instagram_activity/story_interactions/story_likes.json",
+                STORY_LIKES,
+            ),
+        ]);
+
+        let social = analyze_export_bytes(&bytes, None)
+            .unwrap()
+            .instagram_social;
+
+        assert_eq!(social.follower_count, 3);
+        assert_eq!(social.following_count, 3);
+        assert_eq!(social.unfollowed_recently_count, 1);
+
+        let not_back: Vec<_> = social
+            .not_following_back
+            .iter()
+            .map(|h| h.username.as_str())
+            .collect();
+        assert!(not_back.contains(&"dave"));
+        assert!(not_back.contains(&"erin"));
+        assert!(!not_back.contains(&"alice"));
+
+        let fans: Vec<_> = social
+            .fans_you_dont_follow
+            .iter()
+            .map(|h| h.username.as_str())
+            .collect();
+        assert!(fans.contains(&"bob"));
+        assert!(fans.contains(&"carol"));
+        assert!(!fans.contains(&"alice"));
+
+        assert_eq!(social.top_liked_accounts[0].username, "alice");
+        assert_eq!(social.top_liked_accounts[0].count, 2);
+        assert_eq!(social.top_liked_accounts[1].username, "bob");
+        assert_eq!(social.top_liked_accounts[1].count, 1);
+
+        assert_eq!(social.top_story_liked_accounts[0].username, "alice");
+        assert_eq!(social.top_story_liked_accounts[0].count, 2);
+        assert_eq!(social.top_story_liked_accounts[1].username, "carol");
+        assert_eq!(social.top_story_liked_accounts[1].count, 1);
+    }
+
+    #[test]
+    fn story_username_from_url_parses() {
+        assert_eq!(
+            story_username_from_url("https://www.instagram.com/stories/saeed/123"),
+            Some("saeed".into())
+        );
+        assert_eq!(story_username_from_url("https://instagram.com/p/abc"), None);
     }
 
     #[test]

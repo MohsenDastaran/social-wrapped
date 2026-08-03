@@ -111,7 +111,7 @@ export function PlatformImportView({
       total: file.size,
     })
     try {
-      const analytics = await importPlatformFile(
+      const { analytics, instagramSocial } = await importPlatformFile(
         platform,
         file,
         setProgress,
@@ -123,6 +123,7 @@ export function PlatformImportView({
         platformId: platform.id,
         fileName: file.name,
         analytics,
+        instagramSocial,
       })
       navigate(wrapEntryPath(wrap), { replace: true })
     } catch (err) {
@@ -140,7 +141,7 @@ export function PlatformImportView({
       : platform.id === "instagram"
         ? progress?.phase === "computing"
           ? "Building your wrap from Instagram chats"
-          : "Reading your Instagram ZIP (messages only)"
+          : "Reading your Instagram ZIP (messages + social)"
         : progress?.phase === "computing"
           ? "Building your wrap from chats and messages"
           : "Parsing JSON on your device"

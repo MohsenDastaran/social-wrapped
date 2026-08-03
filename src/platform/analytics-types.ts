@@ -228,3 +228,24 @@ export type WrapAnalytics = {
   /** Top 5 personal contacts by ghosting (they left you hanging ≥ 24h). */
   topGhosters?: ChatResult[]
 }
+
+/** Outbound / graph insights from an Instagram Meta download (not inbound likes). */
+export type IgHandle = {
+  username: string
+  href?: string
+}
+
+export type IgCountedHandle = {
+  username: string
+  count: number
+}
+
+export type InstagramSocialInsights = {
+  followerCount: number
+  followingCount: number
+  unfollowedRecentlyCount: number
+  notFollowingBack: IgHandle[]
+  fansYouDontFollow: IgHandle[]
+  topLikedAccounts: IgCountedHandle[]
+  topStoryLikedAccounts: IgCountedHandle[]
+}

@@ -162,6 +162,7 @@ pub fn preview_instagram_bytes(data: &[u8]) -> Result<String, JsValue> {
 
 /// Full Instagram analytics pass.
 ///
+/// Returns JSON `{ analytics, instagramSocial }` (messaging + outbound social).
 /// `me_name` may be omitted when the profile Name already matches senders.
 /// Invokes `on_progress(phase, current, total)` with `"reading"` | `"computing"`.
 #[wasm_bindgen]
@@ -186,8 +187,6 @@ pub fn analyze_instagram_bytes_with_progress(
             );
         },
     )
-    .and_then(|analytics| {
-        serde_json::to_string(&analytics).map_err(app_core::CoreError::from)
-    })
+    .and_then(|result| result.to_json())
     .map_err(|e| JsValue::from_str(&e.to_string()))
 }

@@ -5,6 +5,7 @@ import { Link, Navigate, useNavigate, useParams } from "react-router"
 import { AppLoader } from "@/components/app-loader"
 import { Button } from "@/components/ui/button"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
+import { InstagramSocialInsights } from "@/components/wrap/instagram-social-insights"
 import { WrapMainAnalytics } from "@/components/wrap/wrap-main-analytics"
 import { WrapShareMedia } from "@/components/wrap/wrap-share-media"
 import { WrapTopContacts } from "@/components/wrap/wrap-top-contacts"
@@ -112,6 +113,33 @@ export function WrapPage() {
         analytics={wrap.analytics}
         platformName={platform?.name ?? "Export"}
       />
+
+      {wrap.platformId === "instagram" ? (
+        <InstagramSocialInsights
+          data={
+            wrap.instagramSocial ?? {
+              followerCount: 0,
+              followingCount: 0,
+              unfollowedRecentlyCount: 0,
+              notFollowingBack: [],
+              fansYouDontFollow: [],
+              topLikedAccounts: [],
+              topStoryLikedAccounts: [],
+            }
+          }
+        />
+      ) : null}
+
+      {wrap.platformId === "instagram" ? (
+        <header className="text-start">
+          <h2 className="font-heading text-xl font-semibold tracking-tight">
+            Instagram messaging analysis
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Direct messages and message requests from this download.
+          </p>
+        </header>
+      ) : null}
 
       <WrapMainAnalytics analytics={wrap.analytics} />
 
