@@ -2,7 +2,10 @@ import type { ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 
-import { ShareSaveActions } from "@/components/share-save-actions"
+import {
+  ShareSaveActions,
+  type ShareDownloadMenuItem,
+} from "@/components/share-save-actions"
 import { cn } from "@/lib/utils"
 
 export type MediaFullscreenChromeProps = {
@@ -20,6 +23,11 @@ export type MediaFullscreenChromeProps = {
   downloadStatus?: string
   /** Encode-then-save when the file isn't ready yet. */
   onRequestDownload?: () => Promise<void>
+  /** Quality / format menu for Save (e.g. video Normal vs High). */
+  downloadMenu?: {
+    label?: string
+    items: ShareDownloadMenuItem[]
+  }
 }
 
 /** Shared fullscreen shell: close + share/save overlay the media (ported to body). */
@@ -35,6 +43,7 @@ export function MediaFullscreenChrome({
   downloadProgress,
   downloadStatus,
   onRequestDownload,
+  downloadMenu,
 }: MediaFullscreenChromeProps) {
   if (typeof document === "undefined") return null
 
@@ -74,6 +83,7 @@ export function MediaFullscreenChrome({
           downloadProgress={downloadProgress}
           downloadStatus={downloadStatus}
           onRequestDownload={onRequestDownload}
+          downloadMenu={downloadMenu}
           className="pointer-events-auto shrink-0"
         />
       </div>

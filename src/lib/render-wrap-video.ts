@@ -22,14 +22,24 @@ type RenderAttempt = {
   label: string
 }
 
+export type WrapVideoQuality = "normal" | "high"
+
 /** Prefer full story resolution; fall back if WebCodecs can't handle it.
  * Scales keep even pixel sizes (H.264-friendly): 1080×1920, 720×1280, 540×960.
  */
-const RENDER_ATTEMPTS: RenderAttempt[] = [
-  { scale: 1, videoBitrate: "high", label: "1080p" },
-  { scale: 720 / 1080, videoBitrate: "high", label: "720p" },
-  { scale: 0.5, videoBitrate: "medium", label: "540p" },
-]
+const QUALITY_ATTEMPTS: Record<WrapVideoQuality, RenderAttempt[]> = {
+  /** Faster encode — good for Stories / quick shares. */
+  normal: [
+    { scale: 720 / 1080, videoBitrate: "medium", label: "720p" },
+    { scale: 0.5, videoBitrate: "medium", label: "540p" },
+  ],
+  /** Full 1080×1920 — sharper, but can take several minutes in-browser. */
+  high: [
+    { scale: 1, videoBitrate: "high", label: "1080p" },
+    { scale: 720 / 1080, videoBitrate: "high", label: "720p" },
+    { scale: 0.5, videoBitrate: "medium", label: "540p" },
+  ],
+}
 
 /**
  * Remotion `<Img>` calls `HTMLImageElement.decode()`, which often fails on
@@ -193,7 +203,9 @@ export async function renderWrapVideoBlob(
   options?: {
     signal?: AbortSignal
     onProgress?: (progress: number) => void
-    /** Force a single scale (skips fallback chain). */
+    /** Download quality — defaults to normal (720p-first). */
+    quality?: WrapVideoQuality
+    /** @deprecated Prefer `quality`. Force a single scale (skips fallback chain). */
     scale?: number
   }
 ): Promise<Blob> {
@@ -203,9 +215,10 @@ export async function renderWrapVideoBlob(
     throw new DOMException("Aborted", "AbortError")
   }
 
+  const quality = options?.quality ?? "normal"
   const attempts = options?.scale
-    ? RENDER_ATTEMPTS.filter((a) => a.scale === options.scale).length > 0
-      ? RENDER_ATTEMPTS.filter((a) => a.scale === options.scale)
+    ? QUALITY_ATTEMPTS.high.filter((a) => a.scale === options.scale).length > 0
+      ? QUALITY_ATTEMPTS.high.filter((a) => a.scale === options.scale)
       : ([
           {
             scale: options.scale,
@@ -213,7 +226,7 @@ export async function renderWrapVideoBlob(
             label: `${Math.round(options.scale * 100)}%`,
           },
         ] satisfies RenderAttempt[])
-    : RENDER_ATTEMPTS
+    : QUALITY_ATTEMPTS[quality]
 
   let lastError: unknown = null
 

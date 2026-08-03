@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ImageIcon, Images, Video } from "lucide-react"
 
+import { AppLoader } from "@/components/app-loader"
 import { MediaFullscreenChrome } from "@/components/media-fullscreen-chrome"
 import {
   StoryCarousel,
@@ -118,7 +119,6 @@ export function WrapShareMedia({
   const currentStory = stories[storyIndex] ?? stories[0]
   const cover = stories[0]
 
-  // Captions are baked into the composed PNG — keep carousel overlays empty.
   const carouselItems: StoryItem[] = stories.map((s) => ({
     id: s.id,
     image: s.image,
@@ -126,6 +126,7 @@ export function WrapShareMedia({
 
   const canOpenStories = storiesReady && stories.length > 0
   const progressPct = Math.round((captureProgress?.progress ?? 0) * 100)
+  const mediaReady = storiesReady || specs.length === 0
 
   const videoChartSlides = useMemo((): VideoChartSlide[] => {
     const byId = new Map(stories.map((s) => [s.id, s]))
@@ -145,110 +146,115 @@ export function WrapShareMedia({
 
   return (
     <>
-      <section className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Video className="size-3.5" aria-hidden />
-            <p className="text-[0.65rem] font-semibold tracking-[0.14em] uppercase">
-              Video
-            </p>
-          </div>
-          <WrapShareVideo
-            displayName={displayName}
-            totalMessages={analytics.account.totalMessages}
-            sentMessages={analytics.account.sentMessages}
-            receivedMessages={analytics.account.receivedMessages}
-            chatCount={analytics.chatCount}
-            platformName={platformName}
-            chartSlides={videoChartSlides}
-            ready={storiesReady || specs.length === 0}
-            captureProgress={captureProgress}
-            shareText={videoShareText}
-            shareFileName={`social-wrapped-${displayName}.mp4`}
+      {!mediaReady ? (
+        <section
+          className={cn(
+            "flex min-h-[min(72vw,22rem)] flex-col items-center justify-center gap-4 rounded-2xl px-6 py-12",
+            "bg-[#041512] text-white ring-1 ring-foreground/10"
+          )}
+          aria-busy
+          aria-live="polite"
+        >
+          <AppLoader
+            size="md"
+            fullscreen={false}
+            label="Crafting stories and video"
           />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <ImageIcon className="size-3.5" aria-hidden />
-            <p className="text-[0.65rem] font-semibold tracking-[0.14em] uppercase">
-              Stories
+          <div className="text-center">
+            <p className="text-[0.65rem] font-semibold tracking-[0.16em] text-emerald-200/90 uppercase">
+              Crafting stories & video
+            </p>
+            <p className="mt-1.5 max-w-xs truncate text-sm text-white/70">
+              {captureProgress?.label ?? "Preparing charts…"}
             </p>
           </div>
-          <button
-            type="button"
-            disabled={!canOpenStories}
-            onClick={() => {
-              if (!canOpenStories) return
-              setStoryIndex(0)
-              setStoriesOpen(true)
-            }}
-            className={cn(
-              "group relative aspect-9/16 overflow-hidden rounded-2xl text-start ring-1 ring-foreground/10",
-              "transition-transform active:scale-[0.98]",
-              !canOpenStories && "cursor-wait"
-            )}
-          >
-            {cover?.image ? (
-              <img
-                src={cover.image}
-                alt=""
-                className="absolute inset-0 size-full object-cover"
-              />
-            ) : (
-              <span className="absolute inset-0 bg-linear-to-br from-emerald-950 via-teal-900 to-stone-950" />
-            )}
-            <span className="absolute inset-0 bg-black/25" />
+          <div className="h-1 w-36 overflow-hidden rounded-full bg-white/15">
+            <div
+              className="h-full rounded-full bg-linear-to-r from-emerald-300 to-teal-400 transition-[width] duration-300"
+              style={{ width: `${Math.max(progressPct, 6)}%` }}
+            />
+          </div>
+          <p className="text-[0.65rem] text-white/45 tabular-nums">
+            {captureProgress
+              ? `${captureProgress.index + 1}/${captureProgress.total}`
+              : "…"}
+          </p>
+        </section>
+      ) : (
+        <section className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Video className="size-3.5" aria-hidden />
+              <p className="text-[0.65rem] font-semibold tracking-[0.14em] uppercase">
+                Video
+              </p>
+            </div>
+            <WrapShareVideo
+              displayName={displayName}
+              totalMessages={analytics.account.totalMessages}
+              sentMessages={analytics.account.sentMessages}
+              receivedMessages={analytics.account.receivedMessages}
+              chatCount={analytics.chatCount}
+              platformName={platformName}
+              chartSlides={videoChartSlides}
+              ready
+              shareText={videoShareText}
+              shareFileName={`social-wrapped-${displayName}.mp4`}
+            />
+          </div>
 
-            {!storiesReady ? (
-              <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4">
-                <span className="relative flex size-14 items-center justify-center">
-                  <span className="absolute inset-0 animate-spin rounded-full border-2 border-emerald-400/25 border-t-emerald-300" />
-                  <span className="size-2 rounded-full bg-emerald-300 shadow-[0_0_16px_rgba(52,211,153,0.8)]" />
-                </span>
-                <span className="text-center">
-                  <span className="block text-[0.65rem] font-semibold tracking-[0.16em] text-emerald-200/90 uppercase">
-                    Crafting stories
-                  </span>
-                  <span className="mt-1 block max-w-[12rem] truncate text-xs text-white/75">
-                    {captureProgress?.label ?? "Preparing charts…"}
-                  </span>
-                </span>
-                <span className="h-1 w-28 overflow-hidden rounded-full bg-white/15">
-                  <span
-                    className="block h-full rounded-full bg-linear-to-r from-emerald-300 to-teal-400 transition-[width] duration-300"
-                    style={{ width: `${Math.max(progressPct, 6)}%` }}
-                  />
-                </span>
-                <span className="text-[0.65rem] text-white/50 tabular-nums">
-                  {captureProgress
-                    ? `${captureProgress.index}/${captureProgress.total}`
-                    : "…"}
-                </span>
-              </span>
-            ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <ImageIcon className="size-3.5" aria-hidden />
+              <p className="text-[0.65rem] font-semibold tracking-[0.14em] uppercase">
+                Stories
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={!canOpenStories}
+              onClick={() => {
+                if (!canOpenStories) return
+                setStoryIndex(0)
+                setStoriesOpen(true)
+              }}
+              className={cn(
+                "group relative aspect-9/16 overflow-hidden rounded-2xl text-start ring-1 ring-foreground/10",
+                "transition-transform active:scale-[0.98]",
+                !canOpenStories && "cursor-wait"
+              )}
+            >
+              {cover?.image ? (
+                <img
+                  src={cover.image}
+                  alt=""
+                  className="absolute inset-0 size-full object-cover"
+                />
+              ) : (
+                <span className="absolute inset-0 bg-linear-to-br from-emerald-950 via-teal-900 to-stone-950" />
+              )}
+              <span className="absolute inset-0 bg-black/25" />
+
               <span className="absolute inset-0 flex items-center justify-center">
                 <span className="flex size-12 items-center justify-center rounded-full bg-white/25 text-white ring-1 ring-white/40 backdrop-blur-sm sm:size-14">
                   <Images className="size-5 sm:size-6" aria-hidden />
                 </span>
               </span>
-            )}
 
-            <span className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 to-transparent px-3 pt-10 pb-3 text-white">
-              <span className="font-heading text-base font-semibold tracking-tight">
-                Story highlights
-              </span>
-              <span className="mt-0.5 block text-xs text-white/80">
-                {!storiesReady
-                  ? "Building shareable slides…"
-                  : stories.length === 0
+              <span className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 to-transparent px-3 pt-10 pb-3 text-white">
+                <span className="font-heading text-base font-semibold tracking-tight">
+                  Story highlights
+                </span>
+                <span className="mt-0.5 block text-xs text-white/80">
+                  {stories.length === 0
                     ? "Charts not ready yet"
                     : `Tap to open · ${stories.length} slides`}
+                </span>
               </span>
-            </span>
-          </button>
-        </div>
-      </section>
+            </button>
+          </div>
+        </section>
+      )}
 
       {storiesOpen && carouselItems.length > 0 ? (
         <MediaFullscreenChrome

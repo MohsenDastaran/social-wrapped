@@ -7,12 +7,16 @@ import {
   useState,
   type CSSProperties,
 } from "react"
+import { createPortal } from "react-dom"
+import { Gauge, Sparkles, X } from "lucide-react"
 
+import { AppLoader } from "@/components/app-loader"
 import { MediaFullscreenChrome } from "@/components/media-fullscreen-chrome"
 import { downloadMediaUrl } from "@/lib/media-share"
 import {
   prepareChartSlidesForVideo,
   renderWrapVideoBlob,
+  type WrapVideoQuality,
 } from "@/lib/render-wrap-video"
 import {
   SocialWrappedVideo,
@@ -26,7 +30,6 @@ import {
   type SocialWrappedVideoProps,
   type VideoChartSlide,
 } from "@sw-remotion/Composition"
-import type { StoryCaptureProgress } from "@/lib/wrap-stories"
 import { cn } from "@/lib/utils"
 
 type WrapShareVideoProps = {
@@ -37,15 +40,14 @@ type WrapShareVideoProps = {
   chatCount: number
   platformName?: string
   chartSlides?: VideoChartSlide[]
-  /** Same gate as Stories — wait for chart captures before showing the reel. */
+  /** Charts already captured by the parent share strip. */
   ready: boolean
-  captureProgress?: StoryCaptureProgress | null
   shareText: string
   shareFileName: string
   className?: string
 }
 
-type EncodeStatus = "idle" | "encoding" | "ready" | "error"
+type EncodeStatus = "idle" | "encoding" | "error"
 
 /** Fill the viewport while keeping 9:16 — width-bound on phones, height-bound on desktop. */
 const fullscreenMediaStyle: CSSProperties = {
@@ -65,32 +67,36 @@ export function WrapShareVideo({
   platformName = "Telegram",
   chartSlides = [],
   ready,
-  captureProgress = null,
   shareText,
   shareFileName,
   className,
 }: WrapShareVideoProps) {
   const [open, setOpen] = useState(false)
-  const [mediaUrl, setMediaUrl] = useState("")
-  const [renderProgress, setRenderProgress] = useState(0)
   const [encodeStatus, setEncodeStatus] = useState<EncodeStatus>("idle")
+  const [renderProgress, setRenderProgress] = useState(0)
+  const [encodeError, setEncodeError] = useState<string | null>(null)
+  const [activeQuality, setActiveQuality] = useState<WrapVideoQuality | null>(
+    null
+  )
   const [videoSlides, setVideoSlides] = useState<VideoChartSlide[]>([])
   const [slidesReady, setSlidesReady] = useState(chartSlides.length === 0)
   const previewRef = useRef<PlayerRef>(null)
   const fullscreenRef = useRef<PlayerRef>(null)
-  const previewVideoRef = useRef<HTMLVideoElement>(null)
-  const fullscreenVideoRef = useRef<HTMLVideoElement>(null)
-  const mediaUrlRef = useRef("")
   const inputPropsRef = useRef<SocialWrappedVideoProps | null>(null)
-  const encodePromiseRef = useRef<Promise<string> | null>(null)
+  const encodeAbortRef = useRef<AbortController | null>(null)
 
   const chartSrcKey = chartSlides.map((s) => s.src).join("|")
 
-  // Compress heavy story PNGs → JPEG data URLs so Remotion Img.decode() succeeds.
   useEffect(() => {
     let cancelled = false
     if (chartSlides.length === 0) {
       setVideoSlides([])
+      setSlidesReady(true)
+      return
+    }
+
+    if (chartSlides.every((s) => s.src.startsWith("data:image/jpeg"))) {
+      setVideoSlides(chartSlides)
       setSlidesReady(true)
       return
     }
@@ -105,7 +111,7 @@ export function WrapShareVideo({
       .catch((error) => {
         console.error("[wrap-video] chart slide prep failed", error)
         if (!cancelled) {
-          setVideoSlides([])
+          setVideoSlides(chartSlides)
           setSlidesReady(true)
         }
       })
@@ -113,11 +119,10 @@ export function WrapShareVideo({
     return () => {
       cancelled = true
     }
-    // chartSrcKey tracks src identity; chartSlides array is rebuilt often.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartSrcKey])
 
-  const inputProps = useMemo<SocialWrappedVideoProps>(
+  const playerProps = useMemo<SocialWrappedVideoProps>(
     () => ({
       displayName,
       totalMessages,
@@ -137,15 +142,10 @@ export function WrapShareVideo({
       videoSlides,
     ]
   )
-  inputPropsRef.current = inputProps
+  inputPropsRef.current = playerProps
 
-  // Phase 1: charts captured + compressed. Phase 2: MP4 encoded.
-  // The live <Player> is never mounted during phase 2 — running the full
-  // composition at 60fps alongside the encoder is what makes both stutter.
-  const videoReady = ready && slidesReady
-  const playbackReady = encodeStatus === "ready" && Boolean(mediaUrl)
-  const useLivePlayer = videoReady && encodeStatus === "error"
-  const canPlay = playbackReady || useLivePlayer
+  const playerReady = ready && slidesReady
+  const encoding = encodeStatus === "encoding"
   const durationInFrames = videoDurationFrames(videoSlides.length, {
     includeHeatmapSticker: slidesIncludeHeatmap(videoSlides),
     includeClockSticker: slidesIncludeClock(videoSlides),
@@ -153,202 +153,224 @@ export function WrapShareVideo({
   })
   const playerKey = `${durationInFrames}-${chartSrcKey}-${videoSlides.map((s) => s.src.length).join("-")}`
 
-  const clearMediaUrl = useCallback(() => {
-    if (mediaUrlRef.current) {
-      URL.revokeObjectURL(mediaUrlRef.current)
-      mediaUrlRef.current = ""
+  useEffect(() => {
+    return () => {
+      encodeAbortRef.current?.abort()
     }
-    setMediaUrl("")
   }, [])
 
-  const encodeToObjectUrl = useCallback(
-    async (signal?: AbortSignal, force = false): Promise<string> => {
-      if (!force && mediaUrlRef.current) return mediaUrlRef.current
-      if (!force && encodePromiseRef.current) return encodePromiseRef.current
+  /** Muted play is required for autoplay; unmute only after play has started. */
+  const kickMutedPlay = useCallback((player: PlayerRef | null) => {
+    if (!player) return false
+    try {
+      player.mute()
+      player.play()
+      return player.isPlaying()
+    } catch {
+      return false
+    }
+  }, [])
 
+  // Preview tile: keep retrying muted play until the Remotion clock is running.
+  useEffect(() => {
+    if (!playerReady || encoding || open) return
+    let cancelled = false
+    let attempts = 0
+
+    const tick = () => {
+      if (cancelled) return
+      const player = previewRef.current
+      if (!player) {
+        attempts += 1
+        if (attempts < 40) window.setTimeout(tick, 100)
+        return
+      }
+      const playing = kickMutedPlay(player)
+      attempts += 1
+      if (!playing && attempts < 40) {
+        window.setTimeout(tick, attempts < 10 ? 80 : 200)
+      }
+    }
+
+    const timers = [
+      window.setTimeout(tick, 0),
+      window.setTimeout(tick, 120),
+      window.setTimeout(tick, 350),
+      window.setTimeout(tick, 800),
+      window.setTimeout(tick, 1600),
+    ]
+    return () => {
+      cancelled = true
+      timers.forEach(clearTimeout)
+    }
+  }, [playerReady, encoding, open, playerKey, kickMutedPlay])
+
+  // Fullscreen: start muted (autoplay-safe), then unmute after play — open is a user gesture.
+  useEffect(() => {
+    if (!open || !playerReady || encoding) return
+    let cancelled = false
+    let attempts = 0
+
+    const tick = () => {
+      if (cancelled) return
+      const player = fullscreenRef.current
+      if (!player) {
+        attempts += 1
+        if (attempts < 40) window.setTimeout(tick, 80)
+        return
+      }
+      try {
+        player.mute()
+        player.play()
+        if (player.isPlaying()) {
+          // Same open-gesture window: unmute once playback actually started.
+          window.setTimeout(() => {
+            if (!cancelled) {
+              try {
+                player.unmute()
+              } catch {
+                /* keep muted */
+              }
+            }
+          }, 60)
+          return
+        }
+      } catch {
+        /* retry */
+      }
+      attempts += 1
+      if (attempts < 40) window.setTimeout(tick, attempts < 10 ? 80 : 200)
+    }
+
+    const timers = [
+      window.setTimeout(tick, 0),
+      window.setTimeout(tick, 100),
+      window.setTimeout(tick, 300),
+      window.setTimeout(tick, 700),
+    ]
+    return () => {
+      cancelled = true
+      timers.forEach(clearTimeout)
+    }
+  }, [open, playerReady, encoding, playerKey])
+
+  // Pause preview while fullscreen/encode is active (avoid double clocks + audio).
+  useEffect(() => {
+    const player = previewRef.current
+    if (!player) return
+    if (open || encoding) {
+      try {
+        player.pause()
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [open, encoding])
+
+  const startEncode = useCallback(
+    async (quality: WrapVideoQuality) => {
       const props = inputPropsRef.current
-      if (!props) throw new Error("Missing video props")
+      if (!props) return
 
-      const run = (async () => {
-        setEncodeStatus("encoding")
-        setRenderProgress(0)
+      encodeAbortRef.current?.abort()
+      const controller = new AbortController()
+      encodeAbortRef.current = controller
+
+      setOpen(false)
+      setActiveQuality(quality)
+      setEncodeStatus("encoding")
+      setEncodeError(null)
+      setRenderProgress(0)
+
+      try {
         const blob = await renderWrapVideoBlob(props, {
-          signal,
+          quality,
+          signal: controller.signal,
           onProgress: (p) => {
-            if (!signal?.aborted) setRenderProgress(p)
+            if (!controller.signal.aborted) setRenderProgress(p)
           },
         })
-        if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
-        clearMediaUrl()
-        const url = URL.createObjectURL(blob)
-        mediaUrlRef.current = url
-        setMediaUrl(url)
-        setRenderProgress(1)
-        setEncodeStatus("ready")
-        return url
-      })()
+        if (controller.signal.aborted) return
 
-      encodePromiseRef.current = run
-      try {
-        return await run
+        const url = URL.createObjectURL(blob)
+        try {
+          await downloadMediaUrl(url, shareFileName)
+        } finally {
+          URL.revokeObjectURL(url)
+        }
+        setRenderProgress(1)
+        setEncodeStatus("idle")
+        setActiveQuality(null)
       } catch (error) {
-        encodePromiseRef.current = null
-        const aborted =
-          signal?.aborted ||
-          (error instanceof DOMException && error.name === "AbortError") ||
-          (error instanceof Error && /abort|cancel/i.test(error.message))
-        if (aborted) throw error
+        if (
+          controller.signal.aborted ||
+          (error instanceof DOMException && error.name === "AbortError")
+        ) {
+          setEncodeStatus("idle")
+          setActiveQuality(null)
+          setRenderProgress(0)
+          return
+        }
         console.error("[wrap-video] render failed", error)
         setEncodeStatus("error")
-        setRenderProgress(0)
-        throw error
-      } finally {
-        if (encodePromiseRef.current === run) {
-          encodePromiseRef.current = null
-        }
+        setEncodeError(
+          error instanceof Error ? error.message : "Video render failed"
+        )
       }
     },
-    [clearMediaUrl]
+    [shareFileName]
   )
 
-  // Background encode once charts are ready — keyed by playerKey so we don't
-  // abort/restart on every inputProps object identity change.
-  useEffect(() => {
-    if (!videoReady) {
-      setEncodeStatus("idle")
-      setRenderProgress(0)
-      clearMediaUrl()
-      encodePromiseRef.current = null
-      return
-    }
+  const cancelEncode = useCallback(() => {
+    encodeAbortRef.current?.abort()
+    encodeAbortRef.current = null
+    setEncodeStatus("idle")
+    setActiveQuality(null)
+    setRenderProgress(0)
+    setEncodeError(null)
+  }, [])
 
-    const controller = new AbortController()
-    // Debounce past React Strict Mode remounts so we don't abort the real run.
-    const timer = window.setTimeout(() => {
-      void encodeToObjectUrl(controller.signal).catch(() => {
-        // Error / abort already reflected in encodeStatus.
-      })
-    }, 400)
+  const progressPct = Math.round(Math.max(renderProgress, 0) * 100)
+  const qualityLabel =
+    activeQuality === "high" ? "High quality (1080p)" : "Normal (720p)"
 
-    return () => {
-      window.clearTimeout(timer)
-      controller.abort()
-      encodePromiseRef.current = null
-    }
-  }, [videoReady, playerKey, encodeToObjectUrl, clearMediaUrl])
-
-  useEffect(() => {
-    return () => {
-      clearMediaUrl()
-    }
-  }, [clearMediaUrl])
-
-  // Live-player fallback only: kick silent autoplay, since audio tags /
-  // unmuted context can stall the clock.
-  useEffect(() => {
-    if (!useLivePlayer) return
-    let cancelled = false
-    const kick = (ref: typeof previewRef) => {
-      const player = ref.current
-      if (!player || cancelled) return
-      player.mute()
-      if (!player.isPlaying()) player.play()
-    }
-    const timers = [
-      window.setTimeout(() => kick(previewRef), 0),
-      window.setTimeout(() => kick(previewRef), 100),
-      window.setTimeout(() => kick(previewRef), 400),
-    ]
-    return () => {
-      cancelled = true
-      timers.forEach(clearTimeout)
-    }
-  }, [useLivePlayer, playerKey])
-
-  useEffect(() => {
-    if (!open || !useLivePlayer) return
-    let cancelled = false
-    const kick = () => {
-      const player = fullscreenRef.current
-      if (!player || cancelled) return
-      // User gesture opened fullscreen — safe to play the soundtrack.
-      player.unmute()
-      if (!player.isPlaying()) player.play()
-    }
-    const timers = [
-      window.setTimeout(kick, 0),
-      window.setTimeout(kick, 100),
-      window.setTimeout(kick, 400),
-    ]
-    return () => {
-      cancelled = true
-      timers.forEach(clearTimeout)
-    }
-  }, [open, useLivePlayer, playerKey])
-
-  // Fullscreen opens from a tap, so the soundtrack may start unmuted.
-  useEffect(() => {
-    if (!open || !playbackReady) return
-    const el = fullscreenVideoRef.current
-    if (!el) return
-    el.muted = false
-    void el.play().catch(() => {
-      el.muted = true
-      void el.play().catch(() => {})
-    })
-  }, [open, playbackReady, mediaUrl])
-
-  // Don't burn decode cycles (or double the audio) behind the fullscreen view.
-  useEffect(() => {
-    const el = previewVideoRef.current
-    if (!el) return
-    if (open) el.pause()
-    else void el.play().catch(() => {})
-  }, [open, playbackReady])
-
-  const handleRequestDownload = useCallback(async () => {
-    const url = await encodeToObjectUrl(
-      undefined,
-      encodeStatus === "error" || !mediaUrlRef.current
-    )
-    await downloadMediaUrl(url, shareFileName)
-  }, [encodeStatus, encodeToObjectUrl, shareFileName])
-
-  const progressPct = Math.round(
-    videoReady
-      ? Math.max(renderProgress, 0) * 100
-      : (captureProgress?.progress ?? 0) * 100
+  const downloadMenu = useMemo(
+    () => ({
+      label: "Download quality",
+      items: [
+        {
+          id: "normal",
+          title: "Normal",
+          description:
+            "720p — good for Stories and quick shares. Usually finishes faster.",
+          icon: <Gauge />,
+          onSelect: () => void startEncode("normal"),
+        },
+        {
+          id: "high",
+          title: "High quality",
+          description:
+            "1080p — sharpest export. Renders more frames; expect a longer wait.",
+          icon: <Sparkles />,
+          onSelect: () => void startEncode("high"),
+        },
+      ],
+    }),
+    [startEncode]
   )
-  const loadingLabel = !ready
-    ? (captureProgress?.label ?? "Preparing charts…")
-    : !slidesReady
-      ? "Preparing video frames…"
-      : encodeStatus === "error"
-        ? "Render failed — open to retry"
-        : `Rendering video… ${progressPct}%`
-  const loadingStep = videoReady ? "Step 2 of 2 · Rendering" : "Step 1 of 2 · Charts"
-  const showLoading = !canPlay
-
-  const renderReady = playbackReady
-  const downloadStatus =
-    encodeStatus === "error"
-      ? "Retry"
-      : encodeStatus === "encoding"
-        ? "Encoding"
-        : "Preparing…"
 
   const playerCommon = {
     component: SocialWrappedVideo,
-    inputProps,
+    inputProps: playerProps,
     durationInFrames,
     compositionWidth: VIDEO_WIDTH,
     compositionHeight: VIDEO_HEIGHT,
     fps: VIDEO_FPS,
     loop: true as const,
     autoPlay: true as const,
-    // Tile stays muted for browser autoplay; fullscreen unmutes for the bed.
     initiallyMuted: true as const,
-    numberOfSharedAudioTags: 2,
+    // Shared audio tags can stall the first muted autoplay boot.
+    numberOfSharedAudioTags: 0,
     clickToPlay: false as const,
     doubleClickToFullscreen: false as const,
     spaceKeyToPlayOrPause: false as const,
@@ -359,12 +381,12 @@ export function WrapShareVideo({
     <>
       <div
         role="button"
-        tabIndex={canPlay ? 0 : -1}
+        tabIndex={playerReady && !encoding ? 0 : -1}
         onClick={() => {
-          if (canPlay) setOpen(true)
+          if (playerReady && !encoding) setOpen(true)
         }}
         onKeyDown={(event) => {
-          if (!canPlay) return
+          if (!playerReady || encoding) return
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault()
             setOpen(true)
@@ -375,24 +397,15 @@ export function WrapShareVideo({
           "bg-[#041512] ring-1 ring-foreground/10",
           "transition-transform active:scale-[0.98]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
-          canPlay ? "cursor-pointer" : "cursor-wait",
+          playerReady && !encoding ? "cursor-pointer" : "cursor-wait",
           className
         )}
-        aria-label={canPlay ? "Open wrap video fullscreen" : "Crafting wrap video"}
-        aria-busy={!canPlay}
+        aria-label={
+          playerReady ? "Open wrap video fullscreen" : "Preparing wrap video"
+        }
+        aria-busy={!playerReady || encoding}
       >
-        {playbackReady ? (
-          <video
-            ref={previewVideoRef}
-            src={mediaUrl}
-            className="pointer-events-none absolute inset-0 size-full object-cover"
-            muted
-            loop
-            autoPlay
-            playsInline
-            preload="auto"
-          />
-        ) : useLivePlayer ? (
+        {playerReady && !encoding ? (
           <div className="pointer-events-none absolute inset-0">
             <Player
               ref={previewRef}
@@ -403,92 +416,131 @@ export function WrapShareVideo({
             />
           </div>
         ) : (
-          <span className="absolute inset-0 bg-linear-to-br from-emerald-950 via-teal-900 to-stone-950" />
+          <span className="absolute inset-0 flex items-center justify-center bg-[#041512]">
+            <AppLoader
+              size="md"
+              fullscreen={false}
+              label="Preparing video preview"
+            />
+          </span>
         )}
 
         <span className="absolute inset-0 bg-black/25" />
-
-        {showLoading ? (
-          <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4">
-            <span className="relative flex size-14 items-center justify-center">
-              <span className="absolute inset-0 animate-spin rounded-full border-2 border-emerald-400/25 border-t-emerald-300" />
-              <span className="size-2 rounded-full bg-emerald-300 shadow-[0_0_16px_rgba(52,211,153,0.8)]" />
-            </span>
-            <span className="text-center">
-              <span className="block text-[0.65rem] font-semibold tracking-[0.16em] text-emerald-200/90 uppercase">
-                {loadingStep}
-              </span>
-              <span className="mt-1 block max-w-48 truncate text-xs text-white/75">
-                {loadingLabel}
-              </span>
-            </span>
-            <span className="h-1 w-28 overflow-hidden rounded-full bg-white/15">
-              <span
-                className="block h-full rounded-full bg-linear-to-r from-emerald-300 to-teal-400 transition-[width] duration-300"
-                style={{ width: `${Math.max(progressPct, 6)}%` }}
-              />
-            </span>
-            <span className="text-[0.65rem] text-white/50 tabular-nums">
-              {captureProgress
-                ? `${captureProgress.index}/${captureProgress.total}`
-                : "…"}
-            </span>
-          </span>
-        ) : null}
 
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent px-3 pt-10 pb-3 text-white">
           <p className="font-heading text-base font-semibold tracking-tight">
             Your wrap
           </p>
           <p className="mt-0.5 text-xs text-white/80">
-            {playbackReady
-              ? "Tap to play fullscreen"
-              : useLivePlayer
-                ? "Preview only · render failed"
-                : !videoReady
-                  ? "Building shareable reel…"
-                  : `Rendering ${progressPct}% · playable when done`}
+            {playerReady
+              ? "Tap to play · download when ready"
+              : "Preparing preview…"}
           </p>
         </div>
       </div>
 
-      {open && canPlay ? (
+      {open && playerReady && !encoding ? (
         <MediaFullscreenChrome
           title="Wrap video"
           shareText={shareText}
-          mediaUrl={mediaUrl}
+          mediaUrl=""
           fileName={shareFileName}
-          downloadReady={renderReady}
-          downloadProgress={renderProgress}
-          downloadStatus={downloadStatus}
-          onRequestDownload={handleRequestDownload}
+          downloadMenu={downloadMenu}
           onClose={() => setOpen(false)}
         >
           <div className="flex size-full max-h-dvh max-w-full items-center justify-center">
-            {playbackReady ? (
-              <video
-                ref={fullscreenVideoRef}
-                src={mediaUrl}
-                style={fullscreenMediaStyle}
-                className="object-contain"
-                controls
-                autoPlay
-                loop
-                playsInline
-              />
-            ) : (
-              <Player
-                ref={fullscreenRef}
-                key={`fullscreen-${playerKey}`}
-                {...playerCommon}
-                style={fullscreenMediaStyle}
-                controls
-                spaceKeyToPlayOrPause
-              />
-            )}
+            <Player
+              ref={fullscreenRef}
+              key={`fullscreen-${playerKey}`}
+              {...playerCommon}
+              style={fullscreenMediaStyle}
+              controls
+              spaceKeyToPlayOrPause
+              numberOfSharedAudioTags={2}
+            />
           </div>
         </MediaFullscreenChrome>
       ) : null}
+
+      {encoding || encodeStatus === "error"
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[300] flex h-dvh w-screen flex-col items-center justify-center bg-[#041512] px-6"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Rendering video"
+              aria-busy={encoding}
+            >
+              <button
+                type="button"
+                onClick={cancelEncode}
+                className="absolute top-[max(0.75rem,env(safe-area-inset-top))] end-3 flex size-11 items-center justify-center rounded-full bg-white text-black shadow-lg ring-2 ring-white/80"
+                aria-label="Cancel render"
+              >
+                <X className="size-5" strokeWidth={2.5} />
+              </button>
+
+              <div className="flex w-full max-w-sm flex-col items-center gap-5 text-center text-white">
+                {encodeStatus === "error" ? (
+                  <>
+                    <p className="font-heading text-xl font-semibold tracking-tight">
+                      Render failed
+                    </p>
+                    <p className="text-sm text-white/70">
+                      {encodeError ?? "Something went wrong while encoding."}
+                    </p>
+                    <div className="flex w-full flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEncodeStatus("idle")
+                          setOpen(true)
+                        }}
+                        className="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-emerald-950"
+                      >
+                        Try again
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEncode}
+                        className="rounded-xl bg-white/10 px-4 py-3 text-sm font-medium text-white ring-1 ring-white/15"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <AppLoader
+                      size="md"
+                      fullscreen={false}
+                      label="Rendering video"
+                    />
+                    <div>
+                      <p className="font-heading text-xl font-semibold tracking-tight">
+                        Rendering your video
+                      </p>
+                      <p className="mt-1.5 text-sm text-white/70">
+                        {qualityLabel}. Keep this tab open — encoding runs in
+                        your browser.
+                      </p>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/15">
+                      <div
+                        className="h-full rounded-full bg-linear-to-r from-emerald-300 to-teal-400 transition-[width] duration-300"
+                        style={{ width: `${Math.max(progressPct, 4)}%` }}
+                      />
+                    </div>
+                    <p className="text-sm tabular-nums text-white/55">
+                      {progressPct}%
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </>
   )
 }

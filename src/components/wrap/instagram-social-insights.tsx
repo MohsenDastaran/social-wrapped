@@ -23,7 +23,7 @@ type InstagramSocialInsightsProps = {
 }
 
 const LIST_SCROLL_CLASS = cn(
-  "h-72 overflow-y-auto overscroll-contain",
+  "max-h-72 overflow-y-auto overscroll-contain",
   "[&::-webkit-scrollbar]:w-1.5",
   "[&::-webkit-scrollbar-track]:bg-transparent",
   "[&::-webkit-scrollbar-thumb]:rounded-full",
@@ -121,7 +121,7 @@ export function InstagramSocialInsights({
           <StoryExportHost exportName="ig-top-liked">
             <CountedList
               title="Who you like most"
-              description="Accounts behind posts and reels you’ve liked"
+              description="Top 10 accounts behind posts and reels you’ve liked"
               icon={Heart}
               items={data.topLikedAccounts}
               emptyLabel="No liked posts in this ZIP."
@@ -130,7 +130,7 @@ export function InstagramSocialInsights({
         ) : (
           <CountedList
             title="Who you like most"
-            description="Accounts behind posts and reels you’ve liked"
+            description="Top 10 accounts behind posts and reels you’ve liked"
             icon={Heart}
             items={data.topLikedAccounts}
             emptyLabel="No liked posts in this ZIP."
@@ -140,7 +140,7 @@ export function InstagramSocialInsights({
           <StoryExportHost exportName="ig-story-hearts">
             <CountedList
               title="Stories you’ve liked most"
-              description="Accounts whose stories you’ve hearted"
+              description="Top 10 accounts whose stories you’ve hearted"
               icon={Users}
               items={data.topStoryLikedAccounts}
               emptyLabel="No story likes in this ZIP."
@@ -149,7 +149,7 @@ export function InstagramSocialInsights({
         ) : (
           <CountedList
             title="Stories you’ve liked most"
-            description="Accounts whose stories you’ve hearted"
+            description="Top 10 accounts whose stories you’ve hearted"
             icon={Users}
             items={data.topStoryLikedAccounts}
             emptyLabel="No story likes in this ZIP."
@@ -260,26 +260,30 @@ function CountedList({
   icon,
   items,
   emptyLabel,
+  /** Cap for UI + story capture — long lists freeze DOM export. */
+  limit = 10,
 }: {
   title: string
   description: string
   icon: LucideIcon
   items: IgCountedHandle[]
   emptyLabel: string
+  limit?: number
 }) {
-  const max = Math.max(...items.map((i) => i.count), 1)
+  const visible = items.slice(0, limit)
+  const max = Math.max(...visible.map((i) => i.count), 1)
 
   return (
     <ListPanel
       title={title}
       description={description}
       icon={icon}
-      count={items.length}
+      count={visible.length}
       empty={items.length === 0}
       emptyLabel={emptyLabel}
     >
       <ul className="divide-y divide-border/50">
-        {items.map((item, index) => {
+        {visible.map((item, index) => {
           const pct = (item.count / max) * 100
           return (
             <li key={`${item.username}-${index}`} className="px-3 py-2">

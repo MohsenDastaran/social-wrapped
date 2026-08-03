@@ -3,11 +3,27 @@ import { Check, Download, Loader2, Share2 } from "lucide-react"
 
 import { DotmSquare12 } from "@/components/ui/dotm-square-12"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   copyShareText,
   downloadMediaUrl,
   filenameFromUrl,
 } from "@/lib/media-share"
 import { cn } from "@/lib/utils"
+
+export type ShareDownloadMenuItem = {
+  id: string
+  title: string
+  description: string
+  icon: ReactNode
+  onSelect: () => void
+}
 
 export type ShareSaveActionsProps = {
   /** Media URL to download (video or current story image). */
@@ -37,6 +53,11 @@ export type ShareSaveActionsProps = {
    * encoding then download. If omitted, Save stays disabled until ready.
    */
   onRequestDownload?: () => Promise<void>
+  /** When set, Save opens a quality / format menu instead of downloading immediately. */
+  downloadMenu?: {
+    label?: string
+    items: ShareDownloadMenuItem[]
+  }
 }
 
 type ActionTone = "neutral" | "primary" | "success"
@@ -166,13 +187,23 @@ export function ShareSaveActions({
   downloadProgress,
   downloadStatus,
   onRequestDownload,
+  downloadMenu,
 }: ShareSaveActionsProps) {
   const [busy, setBusy] = useState<"share" | "download" | null>(null)
   const [copied, setCopied] = useState(false)
 
   const overlay = appearance === "overlay"
-  const canDownload = Boolean(mediaUrl) && (downloadReady ?? Boolean(mediaUrl))
-  const preparingDownload = !canDownload
+  const hasDownloadMenu = Boolean(downloadMenu?.items.length)
+  const canDownload =
+    !hasDownloadMenu &&
+    Boolean(mediaUrl) &&
+    (downloadReady ?? Boolean(mediaUrl))
+  const preparingDownload = !canDownload && !hasDownloadMenu
+  /** Encode-on-demand: Save opens a chooser / starts encode via callback. */
+  const encodeOnDemand =
+    !hasDownloadMenu && Boolean(onRequestDownload) && preparingDownload
+  const activelyEncoding =
+    downloadProgress != null && downloadProgress < 1 && !hasDownloadMenu
   const progressPct =
     downloadProgress != null
       ? Math.round(Math.min(1, Math.max(0, downloadProgress)) * 100)
@@ -193,6 +224,7 @@ export function ShareSaveActions({
   }
 
   async function handleDownload() {
+    if (hasDownloadMenu) return
     setBusy("download")
     try {
       if (canDownload) {
@@ -219,15 +251,17 @@ export function ShareSaveActions({
   const downloadCaption =
     busy === "download" && canDownload
       ? "Saving…"
-      : busy === "download" && preparingDownload
+      : activelyEncoding
         ? progressPct != null
           ? `${progressPct}%`
           : (downloadStatus ?? "Encoding…")
-        : preparingDownload
-          ? progressPct != null
-            ? `${progressPct}%`
-            : (downloadStatus ?? "Encoding…")
-          : downloadLabel
+        : encodeOnDemand || hasDownloadMenu
+          ? (downloadStatus ?? downloadLabel)
+          : preparingDownload
+            ? progressPct != null
+              ? `${progressPct}%`
+              : (downloadStatus ?? "Encoding…")
+            : downloadLabel
 
   const shareIcon =
     busy === "share" ? (
@@ -241,7 +275,20 @@ export function ShareSaveActions({
   const downloadIcon =
     busy === "download" && canDownload ? (
       <Loader2 className="size-4 animate-spin" aria-hidden />
-    ) : preparingDownload || (busy === "download" && preparingDownload) ? (
+    ) : activelyEncoding ? (
+      <DotmSquare12
+        size={18}
+        dotSize={2.6}
+        speed={1.35}
+        pattern="full"
+        color={overlay ? "#ffffff" : "#42b2ae"}
+        animated
+        opacityBase={0.12}
+        opacityMid={0.42}
+        opacityPeak={0.98}
+        ariaLabel="Preparing download"
+      />
+    ) : preparingDownload && !encodeOnDemand ? (
       <DotmSquare12
         size={18}
         dotSize={2.6}
@@ -271,7 +318,41 @@ export function ShareSaveActions({
     className
   )
 
-  const downloadBlocked = preparingDownload && !onRequestDownload
+  const downloadBlocked =
+    preparingDownload && !onRequestDownload && !hasDownloadMenu
+
+  const downloadButtonClass = cn(
+    "inline-flex items-center justify-center font-medium transition-all",
+    "disabled:pointer-events-none",
+    "active:scale-[0.97]",
+    iconOnly && !activelyEncoding && "size-10 rounded-full",
+    iconOnly &&
+      activelyEncoding &&
+      "h-10 gap-1.5 rounded-full px-2.5 text-[0.7rem] font-semibold tracking-tight tabular-nums",
+    !iconOnly && "min-h-11 flex-1 gap-2 rounded-xl px-4 py-2.5 text-sm",
+    overlay &&
+      iconOnly && [
+        "bg-primary text-primary-foreground shadow-sm",
+        "hover:bg-primary/90",
+        "focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none",
+      ],
+    overlay &&
+      !iconOnly && [
+        "flex-col gap-1.5 border border-primary/40 bg-primary text-primary-foreground backdrop-blur-md",
+        "hover:bg-primary/90",
+        "focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none",
+      ],
+    !overlay &&
+      iconOnly && [
+        "bg-primary text-primary-foreground shadow-sm",
+        "hover:bg-primary/90",
+      ],
+    !overlay &&
+      !iconOnly && [
+        "border border-primary/30 bg-primary text-primary-foreground",
+        "hover:bg-primary/90",
+      ]
+  )
 
   return (
     <div className={shellClass} role="group" aria-label="Share and save">
@@ -285,17 +366,69 @@ export function ShareSaveActions({
         onClick={() => void handleShare()}
       />
 
-      <ActionButton
-        label={downloadCaption}
-        icon={downloadIcon}
-        tone="primary"
-        overlay={overlay}
-        compact={iconOnly}
-        wide={iconOnly && preparingDownload}
-        disabled={busy !== null}
-        softDisabled={downloadBlocked}
-        onClick={() => void handleDownload()}
-      />
+      {hasDownloadMenu ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            disabled={busy !== null}
+            render={
+              <button
+                type="button"
+                aria-label={downloadCaption}
+                title={downloadCaption}
+                className={downloadButtonClass}
+              />
+            }
+          >
+            {downloadIcon}
+            {!iconOnly ? <span>{downloadCaption}</span> : null}
+            <span className="sr-only">{downloadCaption}</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            side="bottom"
+            sideOffset={8}
+            className="w-72"
+            positionerClassName="z-[260]"
+          >
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>
+                {downloadMenu?.label ?? "Download quality"}
+              </DropdownMenuLabel>
+              {downloadMenu!.items.map((item) => (
+                <DropdownMenuItem
+                  key={item.id}
+                  className="items-start gap-3 py-2"
+                  onClick={() => item.onSelect()}
+                >
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-background p-2 text-foreground [&_svg]:size-4">
+                    {item.icon}
+                  </span>
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-sm text-popover-foreground">
+                      {item.title}
+                    </span>
+                    <span className="text-xs leading-snug text-muted-foreground">
+                      {item.description}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <ActionButton
+          label={downloadCaption}
+          icon={downloadIcon}
+          tone="primary"
+          overlay={overlay}
+          compact={iconOnly}
+          wide={iconOnly && activelyEncoding}
+          disabled={busy !== null}
+          softDisabled={downloadBlocked}
+          onClick={() => void handleDownload()}
+        />
+      )}
     </div>
   )
 }
