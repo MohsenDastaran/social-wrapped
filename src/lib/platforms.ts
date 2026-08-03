@@ -91,7 +91,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     importTitle: "Import WhatsApp data",
     importDescription:
       "Upload a WhatsApp chat export (.txt) or a ZIP that includes media. Everything is processed on your device.",
-    acceptedFiles: [".txt", ".zip"],
+    acceptedFiles: [".zip"],
     accept: ".txt,.zip,text/plain,application/zip",
   },
   {
