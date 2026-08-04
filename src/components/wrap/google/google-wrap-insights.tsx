@@ -4,6 +4,7 @@ import {
   type GoogleProductId,
 } from "@/components/wrap/google/google-products"
 import { GoogleProductDetail } from "@/components/wrap/google/google-product-detail"
+import { GoogleProductLogo } from "@/components/wrap/google/google-product-logo"
 import { YouTubeSection } from "@/components/wrap/google/youtube-section"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { fmt } from "@/components/wrap/chart-theme"
@@ -95,39 +96,46 @@ export function GoogleWrapInsights({
         </header>
 
         <ul className="flex flex-col gap-2">
-          {products.map((product) => {
-            const Icon = product.icon
-            return (
-              <li key={product.id}>
-                <button
-                  type="button"
-                  onClick={() => onSelectProduct(product.id)}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-start transition-colors",
-                    "bg-card ring-1 ring-foreground/10 hover:bg-muted/50"
-                  )}
-                >
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted/80 ring-1 ring-foreground/10">
-                    <Icon className="size-5 text-primary" aria-hidden />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-medium leading-tight">
-                      {product.label}
-                    </span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {productHighlight(insights, product.id)}
-                      {" · "}
-                      {product.description}
-                    </span>
-                  </span>
-                  <ChevronRight
-                    className="size-4 shrink-0 text-muted-foreground"
-                    aria-hidden
+          {products.map((product) => (
+            <li key={product.id}>
+              <button
+                type="button"
+                onClick={() => onSelectProduct(product.id)}
+                className={cn(
+                  "group/product flex w-full items-center gap-3 rounded-xl px-4 py-3 text-start transition-colors",
+                  "bg-card ring-1 ring-foreground/10 hover:bg-muted/50 hover:ring-foreground/15"
+                )}
+              >
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-background ring-1 ring-foreground/10">
+                  <GoogleProductLogo
+                    id={product.id}
+                    title={product.label}
+                    className="size-6"
                   />
-                </button>
-              </li>
-            )
-          })}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium leading-tight">
+                    {product.label}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    {productHighlight(insights, product.id)}
+                    {" · "}
+                    {product.description}
+                  </span>
+                </span>
+                <span
+                  className={cn(
+                    "flex size-9 shrink-0 items-center justify-center rounded-full",
+                    "bg-muted text-muted-foreground ring-1 ring-foreground/10",
+                    "transition-colors group-hover/product:bg-primary group-hover/product:text-primary-foreground group-hover/product:ring-primary/30"
+                  )}
+                  aria-hidden
+                >
+                  <ChevronRight className="size-4 transition-transform group-hover/product:translate-x-0.5 rtl:rotate-180 rtl:group-hover/product:-translate-x-0.5" />
+                </span>
+              </button>
+            </li>
+          ))}
         </ul>
 
         {products.length === 0 ? (

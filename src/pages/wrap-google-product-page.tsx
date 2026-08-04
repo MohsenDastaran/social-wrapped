@@ -6,6 +6,7 @@ import { AppLoader } from "@/components/app-loader"
 import { Button } from "@/components/ui/button"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import { GoogleProductDetail } from "@/components/wrap/google/google-product-detail"
+import { GoogleProductLogo } from "@/components/wrap/google/google-product-logo"
 import {
   getGoogleProductMeta,
   isGoogleProductId,
@@ -81,7 +82,16 @@ export function WrapGoogleProductPage() {
           <ArrowLeft data-icon="inline-start" />
           Back to {platform?.name ?? "Google"} overview
         </Button>
-        <h1 className="font-heading text-xl font-semibold tracking-tight sm:text-2xl">
+        <h1 className="flex items-center gap-3 font-heading text-xl font-semibold tracking-tight sm:text-2xl">
+          {meta ? (
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-background ring-1 ring-foreground/10">
+              <GoogleProductLogo
+                id={productIdParam}
+                title={meta.label}
+                className="size-6"
+              />
+            </span>
+          ) : null}
           <MarkerHighlight
             highlight={meta?.label ?? productIdParam}
             after="analytics"
