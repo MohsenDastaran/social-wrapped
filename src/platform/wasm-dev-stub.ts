@@ -69,3 +69,19 @@ export function analyze_instagram_bytes_with_progress(
 ): string {
   throw new Error("WASM module not built. Run: bun run build:wasm:dev")
 }
+
+export function preview_linkedin_bytes(_data: Uint8Array): string {
+  throw new Error("WASM module not built. Run: bun run build:wasm:dev")
+}
+
+export function analyze_linkedin_bytes_with_progress(
+  _data: Uint8Array,
+  _meName: string | null | undefined,
+  _onProgress: (
+    phase: "reading" | "computing",
+    current: number,
+    total: number
+  ) => void
+): string {
+  throw new Error("WASM module not built. Run: bun run build:wasm:dev")
+}

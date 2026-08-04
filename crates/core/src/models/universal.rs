@@ -14,6 +14,7 @@ pub enum Platform {
     TikTok,
     Spotify,
     YouTube,
+    LinkedIn,
     Unknown,
 }
 
@@ -29,6 +30,7 @@ impl Platform {
             Self::TikTok => "tiktok",
             Self::Spotify => "spotify",
             Self::YouTube => "youtube",
+            Self::LinkedIn => "linkedin",
             Self::Unknown => "unknown",
         }
     }

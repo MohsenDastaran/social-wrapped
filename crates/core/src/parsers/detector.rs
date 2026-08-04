@@ -50,6 +50,7 @@ pub fn default_parsers() -> Vec<BoxedParser> {
         Box::new(TikTokParser),
         Box::new(SpotifyParser),
         Box::new(YouTubeParser),
+        Box::new(LinkedInParser),
     ]
 }
 
@@ -259,6 +260,22 @@ stub_parser!(YouTubeParser, Platform::YouTube, |path: &Path| {
             "search-history.json",
             "watch-history.html",
             "YouTube and YouTube Music",
+        ],
+    )
+});
+
+stub_parser!(LinkedInParser, Platform::LinkedIn, |path: &Path| {
+    if file_name_matches(path, &["Profile.csv", "Connections.csv", "messages.csv"]) {
+        return true;
+    }
+
+    zip_or_dir_contains(
+        path,
+        &[
+            "Profile.csv",
+            "Connections.csv",
+            "messages.csv",
+            "Reactions_",
         ],
     )
 });

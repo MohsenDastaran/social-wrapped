@@ -10,6 +10,7 @@ export type PlatformLogoId =
   | "tiktok"
   | "spotify"
   | "youtube"
+  | "linkedin"
 
 /** Logos that ship as black fills — invert in dark mode. */
 const MONOCHROME_LOGOS = new Set<PlatformLogoId>(["x", "tiktok"])

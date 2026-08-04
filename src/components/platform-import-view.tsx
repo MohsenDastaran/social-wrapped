@@ -134,12 +134,14 @@ export function PlatformImportView({
       total: totalSize,
     })
     try {
-      const { analytics, instagramSocial, googleInsights } =
+      const { analytics, instagramSocial, googleInsights, linkedinInsights } =
         await importPlatformFiles(
           platform,
           files,
           setProgress,
-          platform.id === "whatsapp" || platform.id === "instagram"
+          platform.id === "whatsapp" ||
+            platform.id === "instagram" ||
+            platform.id === "linkedin"
             ? promptIdentity
             : undefined
         )
@@ -152,6 +154,7 @@ export function PlatformImportView({
         analytics,
         instagramSocial,
         googleInsights,
+        linkedinInsights,
       })
       navigate(wrapEntryPath(wrap), { replace: true })
     } catch (err) {
@@ -170,13 +173,17 @@ export function PlatformImportView({
         ? progress?.phase === "computing"
           ? "Building your wrap from Instagram chats"
           : "Reading your Instagram ZIP (messages + social)"
-        : platform.id === "google" || platform.id === "youtube"
+        : platform.id === "linkedin"
           ? progress?.phase === "computing"
-            ? "Building your Google wrap"
-            : `Reading Takeout ZIP${files.length > 1 ? "s" : ""} on your device`
-          : progress?.phase === "computing"
-            ? "Building your wrap from chats and messages"
-            : "Parsing JSON on your device"
+            ? "Building your LinkedIn wrap"
+            : "Reading your LinkedIn ZIP (messages + network)"
+          : platform.id === "google" || platform.id === "youtube"
+            ? progress?.phase === "computing"
+              ? "Building your Google wrap"
+              : `Reading Takeout ZIP${files.length > 1 ? "s" : ""} on your device`
+            : progress?.phase === "computing"
+              ? "Building your wrap from chats and messages"
+              : "Parsing JSON on your device"
 
   const totalSelected = files.reduce((s, f) => s + f.size, 0)
 

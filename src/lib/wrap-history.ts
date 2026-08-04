@@ -7,6 +7,7 @@ import type {
   WrapAnalytics,
 } from "@/platform/analytics-types"
 import type { GoogleInsights } from "@/platform/google-types"
+import type { LinkedInInsights } from "@/platform/linkedin-types"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
 import { analyticsToStats, type TelegramExportStats } from "@/platform/import"
 
@@ -28,6 +29,8 @@ export type WrapRecord = {
   instagramSocial?: InstagramSocialInsights
   /** Google Takeout / YouTube product insights. */
   googleInsights?: GoogleInsights
+  /** LinkedIn network / career / engagement insights. */
+  linkedinInsights?: LinkedInInsights
 }
 
 /**
@@ -64,6 +67,7 @@ type StoredWrap = {
   analytics: CompactAnalytics
   instagramSocial?: InstagramSocialInsights
   googleInsights?: GoogleInsights
+  linkedinInsights?: LinkedInInsights
 }
 
 type LegacyStoredWrap = Partial<WrapRecord> & {
@@ -75,6 +79,7 @@ type LegacyStoredWrap = Partial<WrapRecord> & {
   analytics?: CompactAnalytics | WrapAnalytics
   instagramSocial?: InstagramSocialInsights
   googleInsights?: GoogleInsights
+  linkedinInsights?: LinkedInInsights
 }
 
 const EMPTY_CONTENT_MIX: ContentMixStats = {
@@ -396,6 +401,7 @@ function normalizeWrap(raw: LegacyStoredWrap): WrapRecord | null {
     stats,
     ...(raw.instagramSocial ? { instagramSocial: raw.instagramSocial } : {}),
     ...(raw.googleInsights ? { googleInsights: raw.googleInsights } : {}),
+    ...(raw.linkedinInsights ? { linkedinInsights: raw.linkedinInsights } : {}),
   }
 }
 
@@ -409,6 +415,9 @@ function toStored(wrap: WrapRecord): StoredWrap {
     analytics: compactAnalytics(wrap.analytics),
     ...(wrap.instagramSocial ? { instagramSocial: wrap.instagramSocial } : {}),
     ...(wrap.googleInsights ? { googleInsights: wrap.googleInsights } : {}),
+    ...(wrap.linkedinInsights
+      ? { linkedinInsights: wrap.linkedinInsights }
+      : {}),
   }
 }
 
@@ -541,6 +550,7 @@ export async function saveWrap(input: {
   analytics: WrapAnalytics
   instagramSocial?: InstagramSocialInsights
   googleInsights?: GoogleInsights
+  linkedinInsights?: LinkedInInsights
 }): Promise<WrapRecord> {
   const wrap: WrapRecord = {
     id: crypto.randomUUID(),
@@ -565,6 +575,9 @@ export async function saveWrap(input: {
       ? { instagramSocial: input.instagramSocial }
       : {}),
     ...(input.googleInsights ? { googleInsights: input.googleInsights } : {}),
+    ...(input.linkedinInsights
+      ? { linkedinInsights: input.linkedinInsights }
+      : {}),
   }
 
   // Cache before the write so navigation can resolve instantly.

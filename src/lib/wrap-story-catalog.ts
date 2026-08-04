@@ -8,6 +8,7 @@ import type {
   InstagramSocialInsights,
   WrapAnalytics,
 } from "@/platform/analytics-types"
+import type { LinkedInInsights } from "@/platform/linkedin-types"
 
 export type PlatformStoryCatalog = {
   storySpecs: WrapStorySpec[]
@@ -20,6 +21,7 @@ export type StoryCatalogInput = {
   displayName: string
   analytics: WrapAnalytics
   instagramSocial?: InstagramSocialInsights | null
+  linkedinInsights?: LinkedInInsights | null
 }
 
 const MESSAGING_VIDEO_IDS = [
@@ -35,6 +37,14 @@ const INSTAGRAM_VIDEO_IDS = [
   "heatmap",
   "ig-top-liked",
   "ig-story-hearts",
+  "activity",
+  "sent-received",
+] as const
+
+const LINKEDIN_VIDEO_IDS = [
+  "li-network",
+  "li-career",
+  "heatmap",
   "activity",
   "sent-received",
 ] as const
@@ -89,6 +99,49 @@ export function buildInstagramStorySpecs(
   return specs
 }
 
+/** LinkedIn network / career slides (gated on data). */
+export function buildLinkedInStorySpecs(
+  insights: LinkedInInsights
+): WrapStorySpec[] {
+  const specs: WrapStorySpec[] = []
+
+  if (insights.connectionCount > 0) {
+    specs.push({
+      id: "li-network",
+      exportName: "li-network-kpis",
+      heading: "Your network",
+      subtext: `${fmt(insights.connectionCount)} connections`,
+      kpis: [
+        { label: "Connections", value: fmt(insights.connectionCount) },
+        { label: "Invites out", value: fmt(insights.invitationOutgoing) },
+        { label: "Reactions", value: fmt(insights.reactionsCount) },
+      ],
+    })
+  }
+
+  if (insights.jobApplicationCount > 0 || insights.positions.length > 0) {
+    specs.push({
+      id: "li-career",
+      exportName: "li-career-kpis",
+      heading: "Career chapter",
+      subtext:
+        insights.jobApplicationCount > 0
+          ? `${fmt(insights.jobApplicationCount)} job applications`
+          : `${fmt(insights.positions.length)} positions on your profile`,
+      kpis: [
+        { label: "Job apps", value: fmt(insights.jobApplicationCount) },
+        {
+          label: "Endorsements",
+          value: fmt(insights.endorsementReceivedCount),
+        },
+        { label: "Skills", value: fmt(insights.skills.length) },
+      ],
+    })
+  }
+
+  return specs
+}
+
 function pickVideoIds(
   preferred: readonly string[],
   available: WrapStorySpec[]
@@ -112,6 +165,15 @@ export function buildPlatformStoryCatalog(
     return {
       storySpecs,
       videoSlideIds: pickVideoIds(INSTAGRAM_VIDEO_IDS, storySpecs),
+    }
+  }
+
+  if (input.platformId === "linkedin" && input.linkedinInsights) {
+    const li = buildLinkedInStorySpecs(input.linkedinInsights)
+    const storySpecs = [...li, ...messaging]
+    return {
+      storySpecs,
+      videoSlideIds: pickVideoIds(LINKEDIN_VIDEO_IDS, storySpecs),
     }
   }
 

@@ -9,12 +9,16 @@ import { GoogleWrapInsights } from "@/components/wrap/google/google-wrap-insight
 import { InstagramEngagement } from "@/components/wrap/instagram-engagement"
 import { InstagramSaved } from "@/components/wrap/instagram-saved"
 import { InstagramSocialInsights } from "@/components/wrap/instagram-social-insights"
+import { LinkedInCareerInsights } from "@/components/wrap/linkedin-career"
+import { LinkedInEngagement } from "@/components/wrap/linkedin-engagement"
+import { LinkedInNetworkInsights } from "@/components/wrap/linkedin-network"
 import { WrapMainAnalytics } from "@/components/wrap/wrap-main-analytics"
 import { WrapShareMedia } from "@/components/wrap/wrap-share-media"
 import { WrapTopContacts } from "@/components/wrap/wrap-top-contacts"
 import { normalizeInstagramSocial } from "@/lib/instagram-social"
 import { getPlatform } from "@/lib/platforms"
 import { normalizeGoogleInsights } from "@/platform/google-types"
+import { normalizeLinkedInInsights } from "@/platform/linkedin-types"
 import { getWrap, wrapChatPath, wrapEntryPath, wrapGoogleProductPath, type WrapRecord } from "@/lib/wrap-history"
 
 function formatDate(iso: string): string {
@@ -81,6 +85,10 @@ export function WrapPage() {
     wrap.platformId === "instagram"
       ? normalizeInstagramSocial(wrap.instagramSocial)
       : null
+  const liInsights =
+    wrap.platformId === "linkedin"
+      ? normalizeLinkedInInsights(wrap.linkedinInsights)
+      : null
 
   return (
     <div className="-mt-4 flex w-full max-w-4xl flex-col items-stretch gap-6 text-start sm:-mt-6 sm:gap-8 md:max-w-4xl lg:max-w-5xl">
@@ -131,6 +139,7 @@ export function WrapPage() {
           platformId={wrap.platformId}
           platformName={platform?.name ?? "Export"}
           instagramSocial={igSocial}
+          linkedinInsights={liInsights}
         />
       ) : null}
 
@@ -156,6 +165,21 @@ export function WrapPage() {
           </header>
           <WrapMainAnalytics analytics={wrap.analytics} />
           <InstagramEngagement data={igSocial} />
+        </>
+      ) : liInsights ? (
+        <>
+          <LinkedInNetworkInsights data={liInsights} />
+          <LinkedInCareerInsights data={liInsights} />
+          <header className="text-start">
+            <h2 className="font-heading text-xl font-semibold tracking-tight">
+              LinkedIn messaging analysis
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Direct messages from this LinkedIn data export.
+            </p>
+          </header>
+          <WrapMainAnalytics analytics={wrap.analytics} />
+          <LinkedInEngagement data={liInsights} />
         </>
       ) : (
         <WrapMainAnalytics analytics={wrap.analytics} />

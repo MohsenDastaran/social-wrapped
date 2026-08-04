@@ -4,16 +4,19 @@ import type {
   WrapAnalytics,
 } from "@/platform/analytics-types"
 import type { GoogleInsights } from "@/platform/google-types"
+import type { LinkedInInsights } from "@/platform/linkedin-types"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
 
 export type { WrapAnalytics, InstagramSocialInsights } from "@/platform/analytics-types"
 export type { GoogleInsights } from "@/platform/google-types"
+export type { LinkedInInsights } from "@/platform/linkedin-types"
 
-/** Result of a platform import pass (Instagram / Google may include side insights). */
+/** Result of a platform import pass (Instagram / Google / LinkedIn may include side insights). */
 export type ImportResult = {
   analytics: WrapAnalytics
   instagramSocial?: InstagramSocialInsights
   googleInsights?: GoogleInsights
+  linkedinInsights?: LinkedInInsights
 }
 export type {
   AnalyticsResult,
@@ -94,6 +97,10 @@ export type InstagramImportWorkerRequest =
   | { type: "file"; file: File }
   | { type: "identity"; meName: string }
 
+export type LinkedInImportWorkerRequest =
+  | { type: "file"; file: File }
+  | { type: "identity"; meName: string }
+
 export type ImportWorkerResponse =
   | {
       type: "progress"
@@ -149,6 +156,15 @@ function validateFile(platform: PlatformConfig, file: File): void {
     return
   }
 
+  if (platform.id === "linkedin") {
+    if (!lower.endsWith(".zip")) {
+      throw new Error(
+        "Please choose your LinkedIn complete data export as a ZIP."
+      )
+    }
+    return
+  }
+
   if (platform.id === "google" || platform.id === "youtube") {
     if (!lower.endsWith(".zip")) {
       throw new Error(
@@ -159,7 +175,7 @@ function validateFile(platform: PlatformConfig, file: File): void {
   }
 
   throw new Error(
-    `${platform.name} import isn't wired yet. Telegram, WhatsApp, Instagram, Google, and YouTube exports can be analyzed right now.`
+    `${platform.name} import isn't wired yet. Telegram, WhatsApp, Instagram, LinkedIn, Google, and YouTube exports can be analyzed right now.`
   )
 }
 
@@ -333,6 +349,22 @@ function parseInstagramAnalyzeJson(analyticsJson: string): ImportResult {
   }
 }
 
+function parseLinkedInAnalyzeJson(analyticsJson: string): ImportResult {
+  const payload = JSON.parse(analyticsJson) as {
+    analytics?: WrapAnalytics
+    linkedinInsights?: LinkedInInsights
+  }
+
+  if (!payload.analytics?.account) {
+    throw new Error("LinkedIn import returned incomplete analytics.")
+  }
+
+  return {
+    analytics: normalizeAnalytics(payload.analytics),
+    linkedinInsights: payload.linkedinInsights,
+  }
+}
+
 function importInstagramFile(
   file: File,
   onProgress?: (progress: ImportProgress) => void,
@@ -420,6 +452,102 @@ function importInstagramFile(
       type: "file",
       file,
     } satisfies InstagramImportWorkerRequest)
+  })
+}
+
+function importLinkedInFile(
+  file: File,
+  onProgress?: (progress: ImportProgress) => void,
+  onNeedIdentity?: NeedIdentityHandler
+): Promise<ImportResult> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL("../workers/linkedin-import.worker.ts", import.meta.url),
+      { type: "module", name: "linkedin-import" }
+    )
+
+    let settled = false
+
+    const fail = (error: Error) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      reject(error)
+    }
+
+    const succeed = (result: ImportResult) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      resolve(result)
+    }
+
+    worker.onmessage = (event: MessageEvent<ImportWorkerResponse>) => {
+      const message = event.data
+      if (message.type === "progress") {
+        const phase = normalizeProgressPhase(message.phase)
+        const { current, total } = message
+        const percent =
+          total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0
+        onProgress?.({
+          phase,
+          percent,
+          overallPercent: importOverallPercent(phase, percent),
+          current,
+          total,
+        })
+        return
+      }
+
+      if (message.type === "need_identity") {
+        if (!onNeedIdentity) {
+          fail(
+            new Error(
+              "Could not determine which LinkedIn sender is you. Re-import and pick your name."
+            )
+          )
+          return
+        }
+        void onNeedIdentity(message.senders, message.chatName)
+          .then((meName) => {
+            if (settled) return
+            worker.postMessage({
+              type: "identity",
+              meName,
+            } satisfies LinkedInImportWorkerRequest)
+          })
+          .catch((error: unknown) => {
+            fail(
+              error instanceof Error
+                ? error
+                : new Error("Identity selection was cancelled.")
+            )
+          })
+        return
+      }
+
+      if (message.type === "done") {
+        try {
+          succeed(parseLinkedInAnalyzeJson(message.analyticsJson))
+        } catch (error) {
+          fail(
+            error instanceof Error ? error : new Error(String(error))
+          )
+        }
+        return
+      }
+
+      fail(new Error(message.message || "LinkedIn import failed."))
+    }
+
+    worker.onerror = (event) => {
+      fail(new Error(event.message || "Import worker failed to start."))
+    }
+
+    worker.postMessage({
+      type: "file",
+      file,
+    } satisfies LinkedInImportWorkerRequest)
   })
 }
 
@@ -560,6 +688,10 @@ export function importPlatformFiles(
 
   if (platform.id === "instagram") {
     return importInstagramFile(file, onProgress, onNeedIdentity)
+  }
+
+  if (platform.id === "linkedin") {
+    return importLinkedInFile(file, onProgress, onNeedIdentity)
   }
 
   return importTelegramFile(file, onProgress)

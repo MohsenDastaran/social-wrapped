@@ -10,6 +10,7 @@ export const PLATFORM_ENABLED = {
   tiktok: false,
   spotify: false,
   youtube: true,
+  linkedin: true,
 } as const satisfies Record<PlatformLogoId, boolean>
 
 export type PlatformId = keyof typeof PLATFORM_ENABLED
@@ -230,6 +231,32 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     importTitle: "Import YouTube data",
     importDescription:
       "Upload YouTube data from Google Takeout — one or more ZIP parts. Processed on your device.",
+    acceptedFiles: [".zip"],
+    accept: ".zip,application/zip",
+  },
+  {
+    id: "linkedin",
+    name: "LinkedIn",
+    accentClass: "border-sky-600/50",
+    gradientClass:
+      "from-sky-600/25 via-blue-500/10 to-transparent dark:from-sky-500/20 dark:via-blue-600/5",
+    summary:
+      "Request a full archive ZIP from Settings → Data privacy.",
+    exportPath: "Settings → Data privacy → Get a copy of your data",
+    formats: "CSV (ZIP)",
+    extractable:
+      "Connections, messages, reactions, comments, shares, invitations, endorsements, and job applications.",
+    steps: [
+      "Open LinkedIn → Settings & Privacy → Data privacy → Get a copy of your data.",
+      "Request the larger archive (not the fast download) and wait for the email.",
+      "Download the ZIP when ready — do not unzip.",
+      "In Social Wrapped, import that ZIP from Home → LinkedIn.",
+    ],
+    importHint:
+      "Use the Complete LinkedIn Data Export ZIP. Media URLs are skipped; emails in Connections are never shown.",
+    importTitle: "Import LinkedIn data",
+    importDescription:
+      "Upload your LinkedIn data export ZIP. Connections, messages, and engagement are processed on your device.",
     acceptedFiles: [".zip"],
     accept: ".zip,application/zip",
   },
