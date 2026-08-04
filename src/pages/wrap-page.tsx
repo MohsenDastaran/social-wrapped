@@ -219,6 +219,11 @@ export function WrapPage() {
       {!isGoogleFamily && wrap.analytics.chats.length > 0 ? (
         <WrapTopContacts
           analytics={wrap.analytics}
+          description={
+            wrap.platformId === "x"
+              ? "X’s archive only includes account IDs for most DMs. Handles show when you’ve mentioned that person in a tweet; groups use their archive name when set."
+              : undefined
+          }
           onSelect={(chatId) => {
             navigate(wrapChatPath(wrap.id, chatId))
           }}

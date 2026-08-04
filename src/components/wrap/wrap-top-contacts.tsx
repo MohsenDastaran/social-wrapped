@@ -30,6 +30,8 @@ const LIST_EXPORT = {
 type WrapTopContactsProps = {
   analytics: WrapAnalytics
   onSelect: (chatId: number) => void
+  /** Extra context under the section title (e.g. X archive ID limits). */
+  description?: string
 }
 
 function namesMatch(a: string, b: string): boolean {
@@ -50,7 +52,11 @@ export function contactGhostScore(
 }
 
 /** Contact insight cards — top DMs, recent, faded, ghosters, and groups. */
-export function WrapTopContacts({ analytics, onSelect }: WrapTopContactsProps) {
+export function WrapTopContacts({
+  analytics,
+  onSelect,
+  description = "People and groups you message most. Tap one to open their stats.",
+}: WrapTopContactsProps) {
   const selfName = analytics.displayName
   const topContacts = analytics.topContacts?.length
     ? analytics.topContacts
@@ -84,9 +90,7 @@ export function WrapTopContacts({ analytics, onSelect }: WrapTopContactsProps) {
         <h2 className="font-heading text-xl font-semibold tracking-tight">
           Top contacts
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          People and groups you message most. Tap one to open their stats.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

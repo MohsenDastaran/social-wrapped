@@ -131,6 +131,100 @@ struct ParsedDmThread {
     messages: Vec<ParsedDmMessage>,
 }
 
+#[derive(Clone, Default)]
+struct UserRef {
+    screen_name: String,
+    display_name: String,
+}
+
+fn remember_user(dir: &mut HashMap<String, UserRef>, account_id: &str, screen_name: &str, display_name: &str) {
+    let id = account_id.trim();
+    if id.is_empty() {
+        return;
+    }
+    let sn = screen_name.trim().trim_start_matches('@');
+    let name = display_name.trim();
+    let entry = dir.entry(id.to_string()).or_default();
+    if !sn.is_empty() && (entry.screen_name.is_empty() || entry.screen_name.len() < sn.len()) {
+        entry.screen_name = sn.to_string();
+    }
+    if !name.is_empty() && (entry.display_name.is_empty() || entry.display_name.len() < name.len()) {
+        entry.display_name = name.to_string();
+    }
+}
+
+fn format_user_label(account_id: &str, dir: &HashMap<String, UserRef>) -> String {
+    if let Some(u) = dir.get(account_id) {
+        let name = u.display_name.trim();
+        if !name.is_empty() {
+            return name.to_string();
+        }
+        let sn = u.screen_name.trim().trim_start_matches('@');
+        if !sn.is_empty() {
+            return format!("@{sn}");
+        }
+    }
+    short_user_label(account_id)
+}
+
+fn short_user_label(account_id: &str) -> String {
+    let id = account_id.trim();
+    if id.is_empty() {
+        return "Unknown".into();
+    }
+    if id.len() <= 8 {
+        format!("User {id}")
+    } else {
+        format!("User …{}", &id[id.len().saturating_sub(6)..])
+    }
+}
+
+fn harvest_users_from_tweet(tweet: &Value, dir: &mut HashMap<String, UserRef>) {
+    let reply_id = tweet
+        .get("in_reply_to_user_id_str")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .or_else(|| {
+            tweet
+                .get("in_reply_to_user_id")
+                .and_then(|v| match v {
+                    Value::String(s) => Some(s.clone()),
+                    Value::Number(n) => Some(n.to_string()),
+                    _ => None,
+                })
+        })
+        .unwrap_or_default();
+    let reply_sn = tweet
+        .get("in_reply_to_screen_name")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    if !reply_id.is_empty() {
+        remember_user(dir, &reply_id, reply_sn, "");
+    }
+
+    if let Some(mentions) = tweet
+        .pointer("/entities/user_mentions")
+        .and_then(Value::as_array)
+    {
+        for m in mentions {
+            let id = m
+                .get("id_str")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .or_else(|| m.get("id").and_then(Value::as_i64).map(|n| n.to_string()))
+                .or_else(|| {
+                    m.get("id")
+                        .and_then(Value::as_u64)
+                        .map(|n| n.to_string())
+                })
+                .unwrap_or_default();
+            let sn = m.get("screen_name").and_then(Value::as_str).unwrap_or("");
+            let name = m.get("name").and_then(Value::as_str).unwrap_or("");
+            remember_user(dir, &id, sn, name);
+        }
+    }
+}
+
 #[derive(Default)]
 struct InsightsAcc {
     account: AccountInfo,
@@ -213,7 +307,7 @@ impl InsightsAcc {
 
 pub fn preview_export_bytes(bytes: &[u8]) -> Result<XPreview, CoreError> {
     let file_size_bytes = bytes.len() as u64;
-    let (account, insights, threads) = load_export(bytes, |_, _| {})?;
+    let (account, insights, threads, _user_dir) = load_export(bytes, |_, _| {})?;
     let dm_message_count: u64 = threads.iter().map(|t| t.messages.len() as u64).sum();
 
     Ok(XPreview {
@@ -264,7 +358,7 @@ where
     let total_bytes = bytes.len() as u64;
     on_progress(AnalyzeProgressPhase::Reading, 0, total_bytes.max(1));
 
-    let (account, mut insights_acc, mut threads) = load_export(bytes, |read, total| {
+    let (account, mut insights_acc, mut threads, user_dir) = load_export(bytes, |read, total| {
         on_progress(AnalyzeProgressPhase::Reading, read, total.max(1));
     })?;
     on_progress(
@@ -332,9 +426,13 @@ where
             let content_kind = ContentKind::classify(&kind, has_link, is_pure_emoji);
 
             let sender_name = if is_mine {
-                account.display_name.clone().if_empty(msg.sender_id.clone())
+                account
+                    .display_name
+                    .clone()
+                    .if_empty(account.username.clone())
+                    .if_empty(msg.sender_id.clone())
             } else {
-                msg.sender_id.clone()
+                format_user_label(&msg.sender_id, &user_dir)
             };
 
             let ev = MessageEvent {
@@ -385,7 +483,7 @@ where
 fn load_export<F>(
     bytes: &[u8],
     mut on_read: F,
-) -> Result<(AccountInfo, InsightsAcc, Vec<ParsedDmThread>), CoreError>
+) -> Result<(AccountInfo, InsightsAcc, Vec<ParsedDmThread>, HashMap<String, UserRef>), CoreError>
 where
     F: FnMut(u64, u64),
 {
@@ -400,6 +498,7 @@ where
     let mut archive = ZipArchive::new(cursor)?;
     let mut acc = InsightsAcc::default();
     let mut threads: Vec<ParsedDmThread> = Vec::new();
+    let mut user_dir: HashMap<String, UserRef> = HashMap::new();
     let mut bytes_read: u64 = 0;
 
     // Collect YTD payloads by logical name (merge multi-part).
@@ -501,10 +600,12 @@ where
         .map(|v| v.len() as u64)
         .unwrap_or(0);
 
-    // Tweets
+    // Tweets (+ community tweets) — activity stats and user directory for DM labels
     if let Some(rows) = ytd_parts.get("tweets").or_else(|| ytd_parts.get("tweet")) {
         for row in rows {
             let Some(tw) = row.get("tweet") else { continue };
+            harvest_users_from_tweet(tw, &mut user_dir);
+
             acc.tweet_count += 1;
             let full_text = tw.get("full_text").and_then(Value::as_str).unwrap_or("");
             let is_rt = full_text.starts_with("RT @");
@@ -546,8 +647,26 @@ where
             }
         }
     }
+    if let Some(rows) = ytd_parts
+        .get("community_tweet")
+        .or_else(|| ytd_parts.get("community-tweet"))
+    {
+        for row in rows {
+            if let Some(tw) = row.get("tweet") {
+                harvest_users_from_tweet(tw, &mut user_dir);
+            }
+        }
+    }
 
     let me_id = acc.account.account_id.clone();
+    if !me_id.is_empty() {
+        remember_user(
+            &mut user_dir,
+            &me_id,
+            &acc.account.username,
+            &acc.account.display_name,
+        );
+    }
 
     // Direct messages
     if let Some(rows) = ytd_parts
@@ -555,7 +674,7 @@ where
         .or_else(|| ytd_parts.get("direct-messages"))
     {
         for row in rows {
-            if let Some(thread) = parse_dm_conversation(row, &me_id, false) {
+            if let Some(thread) = parse_dm_conversation(row, &me_id, false, &user_dir) {
                 acc.dm_thread_count += 1;
                 acc.dm_message_count += thread.messages.len() as u64;
                 threads.push(thread);
@@ -567,7 +686,7 @@ where
         .or_else(|| ytd_parts.get("direct-messages-group"))
     {
         for row in rows {
-            if let Some(thread) = parse_dm_conversation(row, &me_id, true) {
+            if let Some(thread) = parse_dm_conversation(row, &me_id, true, &user_dir) {
                 acc.group_dm_thread_count += 1;
                 acc.dm_message_count += thread.messages.len() as u64;
                 threads.push(thread);
@@ -592,10 +711,15 @@ where
         created_at: acc.account.created_at.clone(),
     };
 
-    Ok((account, acc, threads))
+    Ok((account, acc, threads, user_dir))
 }
 
-fn parse_dm_conversation(row: &Value, me_id: &str, is_group: bool) -> Option<ParsedDmThread> {
+fn parse_dm_conversation(
+    row: &Value,
+    me_id: &str,
+    is_group: bool,
+    user_dir: &HashMap<String, UserRef>,
+) -> Option<ParsedDmThread> {
     let conv = row.get("dmConversation")?;
     let conversation_id = conv
         .get("conversationId")
@@ -603,19 +727,55 @@ fn parse_dm_conversation(row: &Value, me_id: &str, is_group: bool) -> Option<Par
         .to_string();
     let messages_val = conv.get("messages")?.as_array()?;
 
+    let mut group_name: Option<String> = None;
+    let mut participant_ids: Vec<String> = Vec::new();
+    for msg_wrap in messages_val {
+        if let Some(update) = msg_wrap.get("conversationNameUpdate") {
+            if let Some(name) = update.get("name").and_then(Value::as_str) {
+                let trimmed = name.trim();
+                if !trimmed.is_empty() {
+                    group_name = Some(trimmed.to_string());
+                }
+            }
+        }
+        if let Some(join) = msg_wrap.get("joinConversation") {
+            if let Some(snap) = join.get("participantsSnapshot").and_then(Value::as_array) {
+                for id in snap {
+                    if let Some(s) = id.as_str() {
+                        if !s.is_empty() && !participant_ids.iter().any(|x| x == s) {
+                            participant_ids.push(s.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let peer_label = if is_group {
-        format!("Group DM {}", short_id(&conversation_id))
+        if let Some(name) = group_name {
+            name
+        } else {
+            let others = participant_ids
+                .iter()
+                .filter(|id| id.as_str() != me_id)
+                .count();
+            let n = if others > 0 {
+                others
+            } else {
+                participant_ids.len().max(2)
+            };
+            format!("Group · {n} people")
+        }
     } else {
-        peer_from_conversation_id(&conversation_id, me_id)
+        let peer_id = peer_id_from_conversation_id(&conversation_id, me_id);
+        format_user_label(&peer_id, user_dir)
     };
 
     let mut messages = Vec::new();
     for msg_wrap in messages_val {
-        let create = msg_wrap
-            .get("messageCreate")
-            .or_else(|| msg_wrap.get("messageCreate"));
-        // Also joinConversation etc. — only count messageCreate
-        let Some(create) = create else { continue };
+        let Some(create) = msg_wrap.get("messageCreate") else {
+            continue;
+        };
         let sender_id = create
             .get("senderId")
             .and_then(Value::as_str)
@@ -653,24 +813,18 @@ fn parse_dm_conversation(row: &Value, me_id: &str, is_group: bool) -> Option<Par
     })
 }
 
-fn peer_from_conversation_id(conversation_id: &str, me_id: &str) -> String {
+fn peer_id_from_conversation_id(conversation_id: &str, me_id: &str) -> String {
     let parts: Vec<&str> = conversation_id.split('-').collect();
     if parts.len() == 2 {
-        let peer = if parts[0] == me_id {
-            parts[1]
-        } else if parts[1] == me_id {
-            parts[0]
-        } else {
-            parts[0]
-        };
-        return format!("DM {peer}");
+        if parts[0] == me_id {
+            return parts[1].to_string();
+        }
+        if parts[1] == me_id {
+            return parts[0].to_string();
+        }
+        return parts[0].to_string();
     }
-    format!("DM {}", short_id(conversation_id))
-}
-
-fn short_id(id: &str) -> String {
-    let s: String = id.chars().take(10).collect();
-    if s.is_empty() { "chat".into() } else { s }
+    conversation_id.to_string()
 }
 
 /// Parse `window.YTD.foo.part0 = [...]` → (`foo`, array values).
@@ -836,8 +990,8 @@ mod tests {
   { "account": { "username": "ada", "accountId": "1", "accountDisplayName": "Ada", "createdAt": "2012-01-01T00:00:00.000Z" } }
 ]"#;
         let tweets = r#"window.YTD.tweets.part0 = [
-  { "tweet": { "full_text": "Hello @bob", "created_at": "Sun Aug 02 15:17:46 +0000 2026", "entities": { "user_mentions": [ { "screen_name": "bob" } ] } } },
-  { "tweet": { "full_text": "RT @bob: hi", "created_at": "Mon Aug 03 10:00:00 +0000 2026", "entities": { "user_mentions": [ { "screen_name": "bob" } ] } } }
+  { "tweet": { "full_text": "Hello @bob", "created_at": "Sun Aug 02 15:17:46 +0000 2026", "entities": { "user_mentions": [ { "id_str": "2", "screen_name": "bob", "name": "Bob Builder" } ] } } },
+  { "tweet": { "full_text": "RT @bob: hi", "created_at": "Mon Aug 03 10:00:00 +0000 2026", "entities": { "user_mentions": [ { "id_str": "2", "screen_name": "bob", "name": "Bob Builder" } ] } } }
 ]"#;
         let likes = r#"window.YTD.like.part0 = [
   { "like": { "tweetId": "1", "fullText": "x" } },
@@ -885,6 +1039,56 @@ mod tests {
         assert!(result.analytics.account.total_messages >= 2);
         assert!(result.x_insights.has_official_html);
         assert_eq!(result.x_insights.top_mentions[0].name, "bob");
+        let chat = result
+            .analytics
+            .chats
+            .iter()
+            .find(|c| !c.is_group)
+            .expect("dm chat");
+        assert_eq!(chat.chat_name, "Bob Builder");
+    }
+
+    #[test]
+    fn dm_labels_fall_back_without_mention_map() {
+        let account = r#"window.YTD.account.part0 = [
+  { "account": { "username": "ada", "accountId": "1", "accountDisplayName": "Ada" } }
+]"#;
+        let dms = r#"window.YTD.direct_messages.part0 = [
+  {
+    "dmConversation": {
+      "conversationId": "977325694656110592-1",
+      "messages": [
+        { "messageCreate": { "senderId": "1", "text": "hi", "createdAt": "2023-02-09T12:48:50.264Z" } }
+      ]
+    }
+  }
+]"#;
+        let groups = r#"window.YTD.direct_messages_group.part0 = [
+  {
+    "dmConversation": {
+      "conversationId": "99",
+      "messages": [
+        { "conversationNameUpdate": { "initiatingUserId": "1", "name": "Soft Girl Crew", "createdAt": "2023-02-09T12:00:00.000Z" } },
+        { "messageCreate": { "senderId": "1", "text": "yo", "createdAt": "2023-02-09T12:48:50.264Z" } }
+      ]
+    }
+  }
+]"#;
+        let bytes = zip_with(&[
+            ("data/account.js", account),
+            ("data/direct-messages.js", dms),
+            ("data/direct-messages-group.js", groups),
+        ]);
+        let result = analyze_export_bytes(&bytes).unwrap();
+        let personal = result
+            .analytics
+            .chats
+            .iter()
+            .find(|c| !c.is_group)
+            .unwrap();
+        assert_eq!(personal.chat_name, "User …110592");
+        let group = result.analytics.chats.iter().find(|c| c.is_group).unwrap();
+        assert_eq!(group.chat_name, "Soft Girl Crew");
     }
 
     #[test]
