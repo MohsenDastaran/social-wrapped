@@ -1,5 +1,5 @@
 import { fmt } from "@/components/wrap/chart-theme"
-import { IG_LIST_SCROLL_CLASS } from "@/components/wrap/instagram-list-panels"
+import { listScrollClass } from "@/lib/scroll"
 import type { CountedItem } from "@/platform/google-types"
 import { cn } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
@@ -40,7 +40,7 @@ export function CountedRankList({
           {emptyLabel}
         </p>
       ) : (
-        <ul className={cn(IG_LIST_SCROLL_CLASS, "divide-y divide-border/50")}>
+        <ul className={cn(listScrollClass, "divide-y divide-border/50")}>
           {items.map((item, index) => (
             <li
               key={`${item.name}-${index}`}

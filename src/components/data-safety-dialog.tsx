@@ -12,6 +12,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { scrollYClass } from "@/lib/scroll"
+import { cn } from "@/lib/utils"
 
 interface DataSafetyDialogProps {
   /**
@@ -60,7 +62,12 @@ export function DataSafetyDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 text-start sm:px-5">
+        <div
+          className={cn(
+            "min-h-0 flex-1 px-4 py-4 text-start sm:px-5",
+            scrollYClass
+          )}
+        >
           <section className="mb-6">
             <SectionHeading>Processing stays on your device</SectionHeading>
             <p className="mb-3 text-sm leading-relaxed text-muted-foreground">

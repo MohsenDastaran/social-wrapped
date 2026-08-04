@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { scrollYClass } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
 
 export type WhatsAppIdentityPickerProps = {
@@ -50,7 +51,7 @@ export function WhatsAppIdentityPicker({
           </DialogDescription>
         </DialogHeader>
 
-        <ul className="flex max-h-64 flex-col gap-1.5 overflow-y-auto py-1">
+        <ul className={cn("flex max-h-64 flex-col gap-1.5 py-1", scrollYClass)}>
           {senders.map((sender) => {
             const active = selected === sender
             return (

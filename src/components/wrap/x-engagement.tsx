@@ -7,6 +7,7 @@ import { fmt } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import type { XInsights } from "@/platform/x-types"
+import { listScrollMaxClass } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
 import { AtSign, Heart, MessagesSquare } from "lucide-react"
 
@@ -102,7 +103,7 @@ export function XEngagement({ data }: XEngagementProps) {
                 const max = Math.max(...years.map((x) => x.count), 1)
                 return (
                   <li key={y.year} className="flex items-center gap-3 text-sm">
-                    <span className="w-12 shrink-0 tabular-nums text-muted-foreground">
+                    <span className="w-12 shrink-0 text-muted-foreground tabular-nums">
                       {y.year}
                     </span>
                     <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
@@ -130,17 +131,15 @@ export function XEngagement({ data }: XEngagementProps) {
               <h3 className="text-sm font-medium">Top mentions</h3>
             </div>
             <ul
-              className={cn(
-                "mt-3 flex max-h-72 flex-col gap-1.5 overflow-y-auto overscroll-contain"
-              )}
+              className={cn("mt-3 flex flex-col gap-1.5", listScrollMaxClass)}
             >
               {mentions.slice(0, 20).map((m) => (
                 <li
                   key={m.name}
-                  className="flex items-baseline justify-between gap-3 text-sm"
+                  className="flex items-baseline justify-between gap-3 pe-2 text-sm"
                 >
                   <span className="min-w-0 truncate">@{m.name}</span>
-                  <span className="shrink-0 tabular-nums text-muted-foreground">
+                  <span className="shrink-0 text-muted-foreground tabular-nums">
                     {fmt(m.count)}
                   </span>
                 </li>

@@ -1,19 +1,11 @@
 import { fmt } from "@/components/wrap/chart-theme"
 import type { IgCountedHandle } from "@/platform/analytics-types"
-import { cn } from "@/lib/utils"
+import { listScrollClass } from "@/lib/scroll"
 import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
 
-export const IG_LIST_SCROLL_CLASS = cn(
-  "h-72 overflow-y-auto overscroll-contain",
-  "[&::-webkit-scrollbar]:w-1.5",
-  "[&::-webkit-scrollbar-track]:bg-transparent",
-  "[&::-webkit-scrollbar-thumb]:rounded-full",
-  "[&::-webkit-scrollbar-thumb]:bg-primary/50",
-  "hover:[&::-webkit-scrollbar-thumb]:bg-primary",
-  "[scrollbar-width:thin]",
-  "[scrollbar-color:var(--primary)_transparent]"
-)
+/** Alias of `listScrollClass` for older Instagram/Google imports. */
+export const IG_LIST_SCROLL_CLASS = listScrollClass
 
 export function IgListPanel({
   title,
@@ -54,7 +46,7 @@ export function IgListPanel({
       {empty ? (
         <p className="px-3 py-6 text-xs text-muted-foreground">{emptyLabel}</p>
       ) : (
-        <div className={IG_LIST_SCROLL_CLASS}>{children}</div>
+        <div className={listScrollClass}>{children}</div>
       )}
     </div>
   )

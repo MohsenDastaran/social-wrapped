@@ -277,14 +277,7 @@ function HeatmapScroller({ children }: { children: ReactNode }) {
         ref={ref}
         data-export-expand
         onScroll={updateEdges}
-        className={cn(
-          "overflow-x-auto overscroll-x-contain px-3 pb-1 [-webkit-overflow-scrolling:touch]",
-          "[&::-webkit-scrollbar]:h-1.5",
-          "[&::-webkit-scrollbar-track]:bg-transparent",
-          "[&::-webkit-scrollbar-thumb]:rounded-full",
-          "[&::-webkit-scrollbar-thumb]:bg-foreground/20",
-          "hover:[&::-webkit-scrollbar-thumb]:bg-foreground/35"
-        )}
+        className="overflow-x-auto overscroll-x-contain px-3 pb-1 [-webkit-overflow-scrolling:touch]"
       >
         {children}
       </div>

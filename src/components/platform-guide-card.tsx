@@ -25,6 +25,7 @@ import {
   platformImportPath,
   type PlatformConfig,
 } from "@/lib/platforms"
+import { scrollYClass } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
 
 function SectionHeading({ children }: { children: ReactNode }) {
@@ -79,7 +80,7 @@ function PlatformGuideDialogBody({ platform }: { platform: PlatformConfig }) {
         </span>
       </DialogHeader>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 text-start sm:px-7">
+      <div className={cn("min-h-0 flex-1 px-5 py-5 text-start sm:px-7", scrollYClass)}>
         {!enabled ? (
           <p className="mb-5 rounded-xl bg-muted/70 px-3.5 py-3 text-sm leading-relaxed text-muted-foreground ring-1 ring-border/50">
             Import isn’t enabled yet — you can still prepare an export with the

@@ -2,6 +2,7 @@ import { fmt } from "@/components/wrap/chart-theme"
 import { StoryExportHost } from "@/components/wrap/story-export-host"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
+import { listScrollMaxClass } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
 import {
   Award,
@@ -14,17 +15,6 @@ import {
 type LinkedInCareerInsightsProps = {
   data: LinkedInInsights
 }
-
-const LIST_SCROLL_CLASS = cn(
-  "max-h-72 overflow-y-auto overscroll-contain",
-  "[&::-webkit-scrollbar]:w-1.5",
-  "[&::-webkit-scrollbar-track]:bg-transparent",
-  "[&::-webkit-scrollbar-thumb]:rounded-full",
-  "[&::-webkit-scrollbar-thumb]:bg-primary/50",
-  "hover:[&::-webkit-scrollbar-thumb]:bg-primary",
-  "[scrollbar-width:thin]",
-  "[scrollbar-color:var(--primary)_transparent]"
-)
 
 /** Positions, skills, endorsements, recommendations, job apps, searches. */
 export function LinkedInCareerInsights({ data }: LinkedInCareerInsightsProps) {
@@ -88,7 +78,7 @@ export function LinkedInCareerInsights({ data }: LinkedInCareerInsightsProps) {
       {data.positions.length > 0 ? (
         <div className="rounded-xl bg-muted/40 p-4 ring-1 ring-border/60">
           <h3 className="text-sm font-medium">Positions</h3>
-          <ul className={cn("mt-3 flex flex-col gap-3", LIST_SCROLL_CLASS)}>
+          <ul className={cn("mt-3 flex flex-col gap-3", listScrollMaxClass)}>
             {data.positions.map((p, i) => (
               <li key={`${p.company}-${p.title}-${i}`} className="text-sm">
                 <p className="font-medium">
@@ -136,7 +126,7 @@ export function LinkedInCareerInsights({ data }: LinkedInCareerInsightsProps) {
         {data.recentJobApplications.length > 0 ? (
           <div className="rounded-xl bg-muted/40 p-4 ring-1 ring-border/60">
             <h3 className="text-sm font-medium">Recent job applications</h3>
-            <ul className={cn("mt-3 flex flex-col gap-2", LIST_SCROLL_CLASS)}>
+            <ul className={cn("mt-3 flex flex-col gap-2", listScrollMaxClass)}>
               {data.recentJobApplications.map((job, i) => (
                 <li
                   key={`${job.company}-${job.title}-${i}`}
@@ -168,7 +158,7 @@ export function LinkedInCareerInsights({ data }: LinkedInCareerInsightsProps) {
               <Search className="size-4 text-muted-foreground" />
               <h3 className="text-sm font-medium">Top searches</h3>
             </div>
-            <ul className={cn("mt-3 flex flex-col gap-1.5", LIST_SCROLL_CLASS)}>
+            <ul className={cn("mt-3 flex flex-col gap-1.5", listScrollMaxClass)}>
               {data.topSearchQueries.slice(0, 15).map((q) => (
                 <li
                   key={q.name}

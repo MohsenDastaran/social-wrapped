@@ -6,6 +6,7 @@ import type {
   IgHandle,
   InstagramSocialInsights as InstagramSocialInsightsData,
 } from "@/platform/analytics-types"
+import { listScrollMaxClass } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
 import {
   ExternalLink,
@@ -21,17 +22,6 @@ import type { ReactNode } from "react"
 type InstagramSocialInsightsProps = {
   data: InstagramSocialInsightsData
 }
-
-const LIST_SCROLL_CLASS = cn(
-  "max-h-72 overflow-y-auto overscroll-contain",
-  "[&::-webkit-scrollbar]:w-1.5",
-  "[&::-webkit-scrollbar-track]:bg-transparent",
-  "[&::-webkit-scrollbar-thumb]:rounded-full",
-  "[&::-webkit-scrollbar-thumb]:bg-primary/50",
-  "hover:[&::-webkit-scrollbar-thumb]:bg-primary",
-  "[scrollbar-width:thin]",
-  "[scrollbar-color:var(--primary)_transparent]"
-)
 
 function profileHref(handle: IgHandle): string {
   if (handle.href?.trim()) return handle.href.trim()
@@ -211,7 +201,7 @@ function ListPanel({
       {empty ? (
         <p className="px-3 py-6 text-xs text-muted-foreground">{emptyLabel}</p>
       ) : (
-        <div className={LIST_SCROLL_CLASS}>{children}</div>
+        <div className={listScrollMaxClass}>{children}</div>
       )}
     </div>
   )

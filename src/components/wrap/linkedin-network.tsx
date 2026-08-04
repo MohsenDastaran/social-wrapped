@@ -5,6 +5,7 @@ import type {
   LinkedInCounted,
   LinkedInInsights,
 } from "@/platform/linkedin-types"
+import { listScrollMaxClass } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
 import {
   Building2,
@@ -18,17 +19,6 @@ import type { LucideIcon } from "lucide-react"
 type LinkedInNetworkInsightsProps = {
   data: LinkedInInsights
 }
-
-const LIST_SCROLL_CLASS = cn(
-  "max-h-72 overflow-y-auto overscroll-contain",
-  "[&::-webkit-scrollbar]:w-1.5",
-  "[&::-webkit-scrollbar-track]:bg-transparent",
-  "[&::-webkit-scrollbar-thumb]:rounded-full",
-  "[&::-webkit-scrollbar-thumb]:bg-primary/50",
-  "hover:[&::-webkit-scrollbar-thumb]:bg-primary",
-  "[scrollbar-width:thin]",
-  "[scrollbar-color:var(--primary)_transparent]"
-)
 
 /** Network KPIs: connections, invites, follows, top companies. */
 export function LinkedInNetworkInsights({
@@ -143,7 +133,7 @@ function YearGrowth({
     <div className="flex flex-col gap-2 rounded-xl bg-muted/40 p-4 ring-1 ring-border/60">
       <h3 className="text-sm font-medium">Connections by year</h3>
       <p className="text-xs text-muted-foreground">When you grew your network</p>
-      <ul className={cn("mt-2 flex flex-col gap-2", LIST_SCROLL_CLASS)}>
+      <ul className={cn("mt-2 flex flex-col gap-2", listScrollMaxClass)}>
         {years.map((y) => (
           <li key={y.year} className="flex items-center gap-3 text-sm">
             <span className="w-12 shrink-0 tabular-nums text-muted-foreground">
@@ -183,7 +173,7 @@ function CountedList({
         <h3 className="text-sm font-medium">{title}</h3>
       </div>
       <p className="text-xs text-muted-foreground">{description}</p>
-      <ul className={cn("mt-1 flex flex-col gap-1.5", LIST_SCROLL_CLASS)}>
+      <ul className={cn("mt-1 flex flex-col gap-1.5", listScrollMaxClass)}>
         {items.slice(0, 20).map((item) => (
           <li
             key={item.name}
