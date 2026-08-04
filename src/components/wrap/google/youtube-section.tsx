@@ -123,10 +123,13 @@ export function YouTubeSection({ data, standalone = false }: YouTubeSectionProps
             peak ? `Peak ${peak} · ${fmt(data.watchCount)} watches (UTC)` : undefined
           }
           exportName="yt-watch-hours"
+          exportSize="compact"
+          chartClassName="h-80 sm:h-[22rem]"
         >
           <CircadianPolarChart
             series={[{ name: "Watches", hourly: watchHourly }]}
             showLegend={false}
+            className="h-full w-full p-2"
           />
         </WrapChartCard>
       ) : null}
@@ -162,10 +165,13 @@ export function YouTubeSection({ data, standalone = false }: YouTubeSectionProps
             <WrapChartCard
               title="When you search"
               exportName="yt-search-hours"
+              exportSize="compact"
+              chartClassName="h-80 sm:h-[22rem]"
             >
               <CircadianPolarChart
                 series={[{ name: "Searches", hourly: searchHourly }]}
                 showLegend={false}
+                className="h-full w-full p-2"
               />
             </WrapChartCard>
           ) : null}

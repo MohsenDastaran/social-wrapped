@@ -103,6 +103,7 @@ export function ActivityOverTimeChart({
 
   const totalSent = data.reduce((s, d) => s + d.sent, 0)
   const totalReceived = data.reduce((s, d) => s + d.received, 0)
+  const showReceived = totalReceived > 0
 
   if (series.yearly.length === 0 && series.monthly.length === 0) {
     return null
@@ -112,20 +113,34 @@ export function ActivityOverTimeChart({
   const typeHint =
     chartType === "line"
       ? "drag the brush to zoom"
-      : "stacked bars for sent vs received"
+      : showReceived
+        ? "stacked bars for sent vs received"
+        : "bars by period"
 
   return (
     <WrapChartCard
       title={title}
-      description={`${sentLabel} vs ${receivedLabel} by ${periodLabel} — ${typeHint}`}
+      description={
+        showReceived
+          ? `${sentLabel} vs ${receivedLabel} by ${periodLabel} — ${typeHint}`
+          : `${sentLabel} by ${periodLabel} — ${typeHint}`
+      }
       exportName={exportName}
       exportSize="wide"
-      exportLines={[
-        `Mode ${effectiveTimeMode}`,
-        `Chart ${chartType}`,
-        `${sentLabel} ${fmt(totalSent)}`,
-        `${receivedLabel} ${fmt(totalReceived)}`,
-      ]}
+      exportLines={
+        showReceived
+          ? [
+              `Mode ${effectiveTimeMode}`,
+              `Chart ${chartType}`,
+              `${sentLabel} ${fmt(totalSent)}`,
+              `${receivedLabel} ${fmt(totalReceived)}`,
+            ]
+          : [
+              `Mode ${effectiveTimeMode}`,
+              `Chart ${chartType}`,
+              `${sentLabel} ${fmt(totalSent)}`,
+            ]
+      }
       chartClassName="h-80 sm:h-96"
     >
       <div className="flex h-full w-full flex-col">
@@ -183,19 +198,25 @@ export function ActivityOverTimeChart({
               </span>
               <span className="text-muted-foreground/80">{sentLabel}</span>
             </span>
-            <span className="text-border" aria-hidden>
-              /
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-              <span
-                className="size-1.5 shrink-0 rounded-full bg-[#be123c] dark:bg-[#f43f5e]"
-                aria-hidden
-              />
-              <span className="font-medium text-foreground">
-                {fmt(totalReceived)}
-              </span>
-              <span className="text-muted-foreground/80">{receivedLabel}</span>
-            </span>
+            {showReceived ? (
+              <>
+                <span className="text-border" aria-hidden>
+                  /
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-[#be123c] dark:bg-[#f43f5e]"
+                    aria-hidden
+                  />
+                  <span className="font-medium text-foreground">
+                    {fmt(totalReceived)}
+                  </span>
+                  <span className="text-muted-foreground/80">
+                    {receivedLabel}
+                  </span>
+                </span>
+              </>
+            ) : null}
           </div>
         </div>
 
@@ -229,11 +250,13 @@ export function ActivityOverTimeChart({
                   variant="gradient"
                   isClickable
                 />
-                <EChartsAreaChart.Area
-                  dataKey="received"
-                  variant="gradient"
-                  isClickable
-                />
+                {showReceived ? (
+                  <EChartsAreaChart.Area
+                    dataKey="received"
+                    variant="gradient"
+                    isClickable
+                  />
+                ) : null}
               </EChartsAreaChart>
             ) : (
               <EChartsBarChart
@@ -241,7 +264,7 @@ export function ActivityOverTimeChart({
                 config={config}
                 className="h-full w-full p-3"
                 xDataKey="date"
-                stackType="stacked"
+                stackType={showReceived ? "stacked" : undefined}
                 enableMaxValueGlow
                 barRadius={6}
               >
@@ -256,7 +279,9 @@ export function ActivityOverTimeChart({
                 />
                 <EChartsBarChart.Legend isClickable />
                 <EChartsBarChart.Tooltip />
-                <EChartsBarChart.Bar dataKey="received" radius={6} />
+                {showReceived ? (
+                  <EChartsBarChart.Bar dataKey="received" radius={6} />
+                ) : null}
                 <EChartsBarChart.Bar dataKey="sent" radius={6} />
               </EChartsBarChart>
             )}

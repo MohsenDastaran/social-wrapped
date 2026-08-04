@@ -3,12 +3,19 @@ import {
   productHighlight,
   type GoogleProductId,
 } from "@/components/wrap/google/google-products"
+import { GoogleProductDetail } from "@/components/wrap/google/google-product-detail"
 import { YouTubeSection } from "@/components/wrap/google/youtube-section"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { fmt } from "@/components/wrap/chart-theme"
 import type { GoogleInsights } from "@/platform/google-types"
 import { cn } from "@/lib/utils"
 import { ChevronRight, Layers, SkipForward } from "lucide-react"
+
+/** Shown inline on the overview — not linked as drill-down cards. */
+const OVERVIEW_INLINE: ReadonlySet<GoogleProductId> = new Set([
+  "my-activity",
+  "access-log",
+])
 
 type GoogleWrapInsightsProps = {
   insights: GoogleInsights
@@ -27,9 +34,10 @@ export function GoogleWrapInsights({
     return <YouTubeSection data={insights.youtube} standalone />
   }
 
-  const products = availableGoogleProducts(insights)
+  const allProducts = availableGoogleProducts(insights)
+  const products = allProducts.filter((p) => !OVERVIEW_INLINE.has(p.id))
   const skipped = insights.skipped ?? []
-  const productCount = products.length
+  const productCount = allProducts.length
 
   return (
     <div className="flex flex-col gap-8">
@@ -43,7 +51,8 @@ export function GoogleWrapInsights({
               ? `${insights.displayName} · `
               : ""}
             {fmt(productCount)} product{productCount === 1 ? "" : "s"} analyzed.
-            Open one for charts and rankings.
+            Open a product for deep analytics, or scroll for My Activity and
+            Access log.
           </p>
         </header>
 
@@ -78,7 +87,7 @@ export function GoogleWrapInsights({
       <section className="flex flex-col gap-3 text-start">
         <header>
           <h3 className="font-heading text-lg font-semibold tracking-tight">
-            Products
+            More products
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">
             Tap a product to open its full analytics.
@@ -123,10 +132,18 @@ export function GoogleWrapInsights({
 
         {products.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No analyzable products in this export.
+            No other products in this export.
           </p>
         ) : null}
       </section>
+
+      {insights.myActivity ? (
+        <GoogleProductDetail insights={insights} productId="my-activity" />
+      ) : null}
+
+      {insights.accessLog ? (
+        <GoogleProductDetail insights={insights} productId="access-log" />
+      ) : null}
     </div>
   )
 }

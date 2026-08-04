@@ -73,6 +73,7 @@ function ChromeSection({
 }) {
   const hourly = padHourly(data.hourly)
   const peak = peakHourLabel(hourly)
+  const hourTotal = hourly.reduce((a, b) => a + b, 0)
   return (
     <section className="flex flex-col gap-5 text-start">
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
@@ -114,12 +115,15 @@ function ChromeSection({
       {hourly.some((n) => n > 0) ? (
         <WrapChartCard
           title="When you browse"
-          description={`Peak ${peak}`}
+          description={`Peak ${peak} · ${fmt(hourTotal)} visits (UTC)`}
           exportName="chrome-hours"
+          exportSize="compact"
+          chartClassName="h-80 sm:h-[22rem]"
         >
           <CircadianPolarChart
             series={[{ name: "Visits", hourly }]}
             showLegend={false}
+            className="h-full w-full p-2"
           />
         </WrapChartCard>
       ) : null}
@@ -146,18 +150,25 @@ function MyActivitySection({
 }: {
   data: NonNullable<GoogleInsights["myActivity"]>
 }) {
-  const products = data.products ?? []
+  const products = (data.products ?? []).filter((p) => (p.eventCount ?? 0) >= 10)
   const [selected, setSelected] = useState(products[0]?.name ?? "")
   const active =
     products.find((p) => p.name === selected) ?? products[0] ?? null
   const hourly = padHourly(active?.hourly)
+  const peak = hourly.some((n) => n > 0) ? peakHourLabel(hourly) : null
+  const hourTotal = hourly.reduce((a, b) => a + b, 0)
 
   return (
     <section className="flex flex-col gap-5 text-start">
-      <p className="text-sm text-muted-foreground">
-        {fmt(data.totalEvents)} timed events across Google products. Pick one to
-        dig in.
-      </p>
+      <header>
+        <h2 className="font-heading text-xl font-semibold tracking-tight">
+          My Activity
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {fmt(data.totalEvents)} timed events across Google products. Pick one
+          to dig in.
+        </p>
+      </header>
       <div className="flex flex-wrap gap-2">
         {products.map((p) => (
           <button
@@ -174,6 +185,11 @@ function MyActivitySection({
           </button>
         ))}
       </div>
+      {products.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No products with 10+ events in this export.
+        </p>
+      ) : null}
       {active ? (
         <>
           {active.activity?.daily?.length ? (
@@ -195,11 +211,19 @@ function MyActivitySection({
           {hourly.some((n) => n > 0) ? (
             <WrapChartCard
               title={`When · ${active.name}`}
+              description={
+                peak
+                  ? `Peak ${peak} · ${fmt(hourTotal)} events (UTC)`
+                  : undefined
+              }
               exportName={`myactivity-hours-${active.name}`}
+              exportSize="compact"
+              chartClassName="h-80 sm:h-[22rem]"
             >
               <CircadianPolarChart
                 series={[{ name: active.name, hourly }]}
                 showLegend={false}
+                className="h-full w-full p-2"
               />
             </WrapChartCard>
           ) : null}
@@ -387,6 +411,14 @@ function AccessLogSection({
 }) {
   return (
     <section className="flex flex-col gap-5 text-start">
+      <header>
+        <h2 className="font-heading text-xl font-semibold tracking-tight">
+          Access log
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Device and product access activity.
+        </p>
+      </header>
       <WrapKpi
         label="Entries"
         value={fmt(data.entryCount)}
@@ -400,20 +432,12 @@ function AccessLogSection({
           exportName="access-heatmap"
         />
       ) : null}
-      <div className="grid gap-4 md:grid-cols-2">
-        <CountedRankList
-          title="Products"
-          icon={Shield}
-          items={data.topProducts ?? []}
-          emptyLabel="No products"
-        />
-        <CountedRankList
-          title="Cities"
-          icon={MapPinned}
-          items={data.topCities ?? []}
-          emptyLabel="No city data"
-        />
-      </div>
+      <CountedRankList
+        title="Products"
+        icon={Shield}
+        items={data.topProducts ?? []}
+        emptyLabel="No products"
+      />
     </section>
   )
 }
