@@ -134,7 +134,7 @@ export function PlatformImportView({
       total: totalSize,
     })
     try {
-      const { analytics, instagramSocial, googleInsights, linkedinInsights } =
+      const { analytics, instagramSocial, googleInsights, linkedinInsights, xInsights } =
         await importPlatformFiles(
           platform,
           files,
@@ -155,6 +155,9 @@ export function PlatformImportView({
         instagramSocial,
         googleInsights,
         linkedinInsights,
+        xInsights,
+        archiveBlob:
+          platform.id === "x" && files[0] ? files[0] : undefined,
       })
       navigate(wrapEntryPath(wrap), { replace: true })
     } catch (err) {
@@ -177,13 +180,17 @@ export function PlatformImportView({
           ? progress?.phase === "computing"
             ? "Building your LinkedIn wrap"
             : "Reading your LinkedIn ZIP (messages + network)"
-          : platform.id === "google" || platform.id === "youtube"
+          : platform.id === "x"
             ? progress?.phase === "computing"
-              ? "Building your Google wrap"
-              : `Reading Takeout ZIP${files.length > 1 ? "s" : ""} on your device`
-            : progress?.phase === "computing"
-              ? "Building your wrap from chats and messages"
-              : "Parsing JSON on your device"
+              ? "Building your X wrap"
+              : "Reading your X archive ZIP (tweets + DMs)"
+            : platform.id === "google" || platform.id === "youtube"
+              ? progress?.phase === "computing"
+                ? "Building your Google wrap"
+                : `Reading Takeout ZIP${files.length > 1 ? "s" : ""} on your device`
+              : progress?.phase === "computing"
+                ? "Building your wrap from chats and messages"
+                : "Parsing JSON on your device"
 
   const totalSelected = files.reduce((s, f) => s + f.size, 0)
 

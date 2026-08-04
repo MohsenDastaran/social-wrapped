@@ -9,6 +9,7 @@ import type {
   WrapAnalytics,
 } from "@/platform/analytics-types"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
+import type { XInsights } from "@/platform/x-types"
 
 export type PlatformStoryCatalog = {
   storySpecs: WrapStorySpec[]
@@ -22,6 +23,7 @@ export type StoryCatalogInput = {
   analytics: WrapAnalytics
   instagramSocial?: InstagramSocialInsights | null
   linkedinInsights?: LinkedInInsights | null
+  xInsights?: XInsights | null
 }
 
 const MESSAGING_VIDEO_IDS = [
@@ -44,6 +46,14 @@ const INSTAGRAM_VIDEO_IDS = [
 const LINKEDIN_VIDEO_IDS = [
   "li-network",
   "li-career",
+  "heatmap",
+  "activity",
+  "sent-received",
+] as const
+
+const X_VIDEO_IDS = [
+  "x-network",
+  "x-tweets",
   "heatmap",
   "activity",
   "sent-received",
@@ -142,6 +152,41 @@ export function buildLinkedInStorySpecs(
   return specs
 }
 
+/** X network / tweet slides (gated on data). */
+export function buildXStorySpecs(insights: XInsights): WrapStorySpec[] {
+  const specs: WrapStorySpec[] = []
+
+  if (insights.followerCount > 0 || insights.followingCount > 0) {
+    specs.push({
+      id: "x-network",
+      exportName: "x-network-kpis",
+      heading: "Your network",
+      subtext: `${fmt(insights.followerCount)} followers · ${fmt(insights.followingCount)} following`,
+      kpis: [
+        { label: "Followers", value: fmt(insights.followerCount) },
+        { label: "Following", value: fmt(insights.followingCount) },
+        { label: "Likes", value: fmt(insights.likeCount) },
+      ],
+    })
+  }
+
+  if (insights.tweetCount > 0) {
+    specs.push({
+      id: "x-tweets",
+      exportName: "x-tweet-kpis",
+      heading: "Your posts",
+      subtext: `${fmt(insights.tweetCount)} tweets · ${fmt(insights.likeCount)} likes`,
+      kpis: [
+        { label: "Tweets", value: fmt(insights.tweetCount) },
+        { label: "Originals", value: fmt(insights.originalCount) },
+        { label: "Replies", value: fmt(insights.replyCount) },
+      ],
+    })
+  }
+
+  return specs
+}
+
 function pickVideoIds(
   preferred: readonly string[],
   available: WrapStorySpec[]
@@ -174,6 +219,15 @@ export function buildPlatformStoryCatalog(
     return {
       storySpecs,
       videoSlideIds: pickVideoIds(LINKEDIN_VIDEO_IDS, storySpecs),
+    }
+  }
+
+  if (input.platformId === "x" && input.xInsights) {
+    const x = buildXStorySpecs(input.xInsights)
+    const storySpecs = [...x, ...messaging]
+    return {
+      storySpecs,
+      videoSlideIds: pickVideoIds(X_VIDEO_IDS, storySpecs),
     }
   }
 

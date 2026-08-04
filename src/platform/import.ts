@@ -5,18 +5,21 @@ import type {
 } from "@/platform/analytics-types"
 import type { GoogleInsights } from "@/platform/google-types"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
+import type { XInsights } from "@/platform/x-types"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
 
 export type { WrapAnalytics, InstagramSocialInsights } from "@/platform/analytics-types"
 export type { GoogleInsights } from "@/platform/google-types"
 export type { LinkedInInsights } from "@/platform/linkedin-types"
+export type { XInsights } from "@/platform/x-types"
 
-/** Result of a platform import pass (Instagram / Google / LinkedIn may include side insights). */
+/** Result of a platform import pass (side insights for IG / Google / LinkedIn / X). */
 export type ImportResult = {
   analytics: WrapAnalytics
   instagramSocial?: InstagramSocialInsights
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
+  xInsights?: XInsights
 }
 export type {
   AnalyticsResult,
@@ -101,6 +104,8 @@ export type LinkedInImportWorkerRequest =
   | { type: "file"; file: File }
   | { type: "identity"; meName: string }
 
+export type XImportWorkerRequest = { type: "file"; file: File }
+
 export type ImportWorkerResponse =
   | {
       type: "progress"
@@ -165,6 +170,15 @@ function validateFile(platform: PlatformConfig, file: File): void {
     return
   }
 
+  if (platform.id === "x") {
+    if (!lower.endsWith(".zip")) {
+      throw new Error(
+        "Please choose your X (Twitter) data archive as a ZIP."
+      )
+    }
+    return
+  }
+
   if (platform.id === "google" || platform.id === "youtube") {
     if (!lower.endsWith(".zip")) {
       throw new Error(
@@ -175,7 +189,7 @@ function validateFile(platform: PlatformConfig, file: File): void {
   }
 
   throw new Error(
-    `${platform.name} import isn't wired yet. Telegram, WhatsApp, Instagram, LinkedIn, Google, and YouTube exports can be analyzed right now.`
+    `${platform.name} import isn't wired yet. Telegram, WhatsApp, Instagram, LinkedIn, X, Google, and YouTube exports can be analyzed right now.`
   )
 }
 
@@ -551,6 +565,88 @@ function importLinkedInFile(
   })
 }
 
+function parseXAnalyzeJson(analyticsJson: string): ImportResult {
+  const payload = JSON.parse(analyticsJson) as {
+    analytics?: WrapAnalytics
+    xInsights?: XInsights
+  }
+
+  if (!payload.analytics?.account) {
+    throw new Error("X import returned incomplete analytics.")
+  }
+
+  return {
+    analytics: normalizeAnalytics(payload.analytics),
+    xInsights: payload.xInsights,
+  }
+}
+
+function importXFile(
+  file: File,
+  onProgress?: (progress: ImportProgress) => void
+): Promise<ImportResult> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL("../workers/x-import.worker.ts", import.meta.url),
+      { type: "module", name: "x-import" }
+    )
+
+    let settled = false
+
+    const fail = (error: Error) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      reject(error)
+    }
+
+    const succeed = (result: ImportResult) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      resolve(result)
+    }
+
+    worker.onmessage = (event: MessageEvent<ImportWorkerResponse>) => {
+      const message = event.data
+      if (message.type === "progress") {
+        const phase = normalizeProgressPhase(message.phase)
+        const { current, total } = message
+        const percent =
+          total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0
+        onProgress?.({
+          phase,
+          percent,
+          overallPercent: importOverallPercent(phase, percent),
+          current,
+          total,
+        })
+        return
+      }
+
+      if (message.type === "done") {
+        try {
+          succeed(parseXAnalyzeJson(message.analyticsJson))
+        } catch (error) {
+          fail(error instanceof Error ? error : new Error(String(error)))
+        }
+        return
+      }
+
+      fail(new Error(message.message || "X import failed."))
+    }
+
+    worker.onerror = (event) => {
+      fail(new Error(event.message || "Import worker failed to start."))
+    }
+
+    worker.postMessage({
+      type: "file",
+      file,
+    } satisfies XImportWorkerRequest)
+  })
+}
+
 function parseGoogleAnalyzeJson(analyticsJson: string): ImportResult {
   const payload = JSON.parse(analyticsJson) as {
     analytics?: WrapAnalytics
@@ -692,6 +788,10 @@ export function importPlatformFiles(
 
   if (platform.id === "linkedin") {
     return importLinkedInFile(file, onProgress, onNeedIdentity)
+  }
+
+  if (platform.id === "x") {
+    return importXFile(file, onProgress)
   }
 
   return importTelegramFile(file, onProgress)

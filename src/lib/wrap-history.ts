@@ -8,14 +8,16 @@ import type {
 } from "@/platform/analytics-types"
 import type { GoogleInsights } from "@/platform/google-types"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
+import type { XInsights } from "@/platform/x-types"
 import { getAppSettings } from "@/lib/app-settings"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
 import { analyticsToStats, type TelegramExportStats } from "@/platform/import"
 
 const LEGACY_STORAGE_KEY = "social-wrapped:wraps"
 const DB_NAME = "social-wrapped"
-const DB_VERSION = 1
+const DB_VERSION = 2
 const WRAPS_STORE = "wraps"
+const ARCHIVE_BLOBS_STORE = "archiveBlobs"
 
 export type WrapRecord = {
   id: string
@@ -32,6 +34,10 @@ export type WrapRecord = {
   googleInsights?: GoogleInsights
   /** LinkedIn network / career / engagement insights. */
   linkedinInsights?: LinkedInInsights
+  /** X (Twitter) tweets / likes / network insights. */
+  xInsights?: XInsights
+  /** True when an archive ZIP blob is stored for Official X HTML. */
+  hasArchiveBlob?: boolean
 }
 
 /**
@@ -69,6 +75,8 @@ type StoredWrap = {
   instagramSocial?: InstagramSocialInsights
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
+  xInsights?: XInsights
+  hasArchiveBlob?: boolean
 }
 
 type LegacyStoredWrap = Partial<WrapRecord> & {
@@ -81,6 +89,8 @@ type LegacyStoredWrap = Partial<WrapRecord> & {
   instagramSocial?: InstagramSocialInsights
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
+  xInsights?: XInsights
+  hasArchiveBlob?: boolean
 }
 
 const EMPTY_CONTENT_MIX: ContentMixStats = {
@@ -114,6 +124,9 @@ function openDb(): Promise<IDBDatabase> {
       const db = request.result
       if (!db.objectStoreNames.contains(WRAPS_STORE)) {
         db.createObjectStore(WRAPS_STORE, { keyPath: "id" })
+      }
+      if (!db.objectStoreNames.contains(ARCHIVE_BLOBS_STORE)) {
+        db.createObjectStore(ARCHIVE_BLOBS_STORE, { keyPath: "id" })
       }
     }
 
@@ -403,6 +416,8 @@ function normalizeWrap(raw: LegacyStoredWrap): WrapRecord | null {
     ...(raw.instagramSocial ? { instagramSocial: raw.instagramSocial } : {}),
     ...(raw.googleInsights ? { googleInsights: raw.googleInsights } : {}),
     ...(raw.linkedinInsights ? { linkedinInsights: raw.linkedinInsights } : {}),
+    ...(raw.xInsights ? { xInsights: raw.xInsights } : {}),
+    ...(raw.hasArchiveBlob ? { hasArchiveBlob: true } : {}),
   }
 }
 
@@ -419,6 +434,8 @@ function toStored(wrap: WrapRecord): StoredWrap {
     ...(wrap.linkedinInsights
       ? { linkedinInsights: wrap.linkedinInsights }
       : {}),
+    ...(wrap.xInsights ? { xInsights: wrap.xInsights } : {}),
+    ...(wrap.hasArchiveBlob ? { hasArchiveBlob: true } : {}),
   }
 }
 
@@ -552,6 +569,9 @@ export async function saveWrap(input: {
   instagramSocial?: InstagramSocialInsights
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
+  xInsights?: XInsights
+  /** Optional archive ZIP for Official X HTML (stored separately). */
+  archiveBlob?: Blob
 }): Promise<WrapRecord> {
   const wrap: WrapRecord = {
     id: crypto.randomUUID(),
@@ -579,6 +599,8 @@ export async function saveWrap(input: {
     ...(input.linkedinInsights
       ? { linkedinInsights: input.linkedinInsights }
       : {}),
+    ...(input.xInsights ? { xInsights: input.xInsights } : {}),
+    ...(input.archiveBlob ? { hasArchiveBlob: true } : {}),
   }
 
   // Cache before the write so navigation can resolve instantly.
@@ -589,6 +611,20 @@ export async function saveWrap(input: {
   tx.objectStore(WRAPS_STORE).put(toStored(wrap))
   await idbTxDone(tx)
 
+  if (input.archiveBlob) {
+    try {
+      await saveArchiveBlob(wrap.id, input.archiveBlob)
+    } catch (error) {
+      console.warn("Failed to persist archive ZIP for Official HTML:", error)
+      // Analytics wrap still saved; Official HTML section will show a fallback.
+      wrap.hasArchiveBlob = false
+      memoryCache.set(wrap.id, wrap)
+      const tx2 = db.transaction(WRAPS_STORE, "readwrite")
+      tx2.objectStore(WRAPS_STORE).put(toStored(wrap))
+      await idbTxDone(tx2)
+    }
+  }
+
   await pruneExcessWraps(getAppSettings().maxWraps)
 
   return wrap
@@ -596,17 +632,66 @@ export async function saveWrap(input: {
 
 export async function deleteWrap(id: string): Promise<void> {
   memoryCache.delete(id)
+  try {
+    await caches.delete(`x-archive-${id}`)
+  } catch {
+    /* ignore */
+  }
   const db = await ensureReady()
-  const tx = db.transaction(WRAPS_STORE, "readwrite")
+  const stores = [WRAPS_STORE]
+  if (db.objectStoreNames.contains(ARCHIVE_BLOBS_STORE)) {
+    stores.push(ARCHIVE_BLOBS_STORE)
+  }
+  const tx = db.transaction(stores, "readwrite")
   tx.objectStore(WRAPS_STORE).delete(id)
+  if (stores.includes(ARCHIVE_BLOBS_STORE)) {
+    tx.objectStore(ARCHIVE_BLOBS_STORE).delete(id)
+  }
   await idbTxDone(tx)
 }
+
+export async function saveArchiveBlob(
+  wrapId: string,
+  blob: Blob
+): Promise<void> {
+  const db = await ensureReady()
+  if (!db.objectStoreNames.contains(ARCHIVE_BLOBS_STORE)) {
+    throw new Error("Archive blob store is unavailable. Reload and try again.")
+  }
+  const tx = db.transaction(ARCHIVE_BLOBS_STORE, "readwrite")
+  tx.objectStore(ARCHIVE_BLOBS_STORE).put({ id: wrapId, blob })
+  await idbTxDone(tx)
+}
+
+export async function getArchiveBlob(wrapId: string): Promise<Blob | null> {
+  const db = await ensureReady()
+  if (!db.objectStoreNames.contains(ARCHIVE_BLOBS_STORE)) return null
+  const tx = db.transaction(ARCHIVE_BLOBS_STORE, "readonly")
+  const row = await idbReq<{ id: string; blob: Blob } | undefined>(
+    tx.objectStore(ARCHIVE_BLOBS_STORE).get(wrapId)
+  )
+  await idbTxDone(tx)
+  return row?.blob ?? null
+}
+
+/** DB constants for the Official X HTML service worker (same origin). */
+export const X_ARCHIVE_IDB = {
+  dbName: DB_NAME,
+  storeName: ARCHIVE_BLOBS_STORE,
+} as const
 
 export async function clearAllWraps(): Promise<void> {
   memoryCache.clear()
   const db = await ensureReady()
-  const tx = db.transaction(WRAPS_STORE, "readwrite")
+  const stores = [WRAPS_STORE]
+  if (db.objectStoreNames.contains(ARCHIVE_BLOBS_STORE)) {
+    stores.push(ARCHIVE_BLOBS_STORE)
+  }
+  const tx = db.transaction(stores, "readwrite")
   tx.objectStore(WRAPS_STORE).clear()
+  if (stores.includes(ARCHIVE_BLOBS_STORE)) {
+    tx.objectStore(ARCHIVE_BLOBS_STORE).clear()
+  }
   await idbTxDone(tx)
 }
 

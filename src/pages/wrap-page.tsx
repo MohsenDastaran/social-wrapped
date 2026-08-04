@@ -12,6 +12,9 @@ import { InstagramSocialInsights } from "@/components/wrap/instagram-social-insi
 import { LinkedInCareerInsights } from "@/components/wrap/linkedin-career"
 import { LinkedInEngagement } from "@/components/wrap/linkedin-engagement"
 import { LinkedInNetworkInsights } from "@/components/wrap/linkedin-network"
+import { OfficialXHtml } from "@/components/wrap/official-x-html"
+import { XEngagement } from "@/components/wrap/x-engagement"
+import { XNetworkInsights } from "@/components/wrap/x-network"
 import { WrapMainAnalytics } from "@/components/wrap/wrap-main-analytics"
 import { WrapShareMedia } from "@/components/wrap/wrap-share-media"
 import { WrapTopContacts } from "@/components/wrap/wrap-top-contacts"
@@ -19,6 +22,7 @@ import { normalizeInstagramSocial } from "@/lib/instagram-social"
 import { getPlatform } from "@/lib/platforms"
 import { normalizeGoogleInsights } from "@/platform/google-types"
 import { normalizeLinkedInInsights } from "@/platform/linkedin-types"
+import { normalizeXInsights } from "@/platform/x-types"
 import { getWrap, wrapChatPath, wrapEntryPath, wrapGoogleProductPath, type WrapRecord } from "@/lib/wrap-history"
 
 function formatDate(iso: string): string {
@@ -78,9 +82,11 @@ export function WrapPage() {
   const hasFullAnalytics =
     isGoogleFamily && googleInsights
       ? true
-      : wrap.analytics.chats.length > 0 ||
-        wrap.analytics.account.heatmap.days.length > 0 ||
-        wrap.analytics.account.emojis.topOverall.length > 0
+      : wrap.platformId === "x" && wrap.xInsights
+        ? true
+        : wrap.analytics.chats.length > 0 ||
+          wrap.analytics.account.heatmap.days.length > 0 ||
+          wrap.analytics.account.emojis.topOverall.length > 0
   const igSocial =
     wrap.platformId === "instagram"
       ? normalizeInstagramSocial(wrap.instagramSocial)
@@ -89,6 +95,8 @@ export function WrapPage() {
     wrap.platformId === "linkedin"
       ? normalizeLinkedInInsights(wrap.linkedinInsights)
       : null
+  const xInsights =
+    wrap.platformId === "x" ? normalizeXInsights(wrap.xInsights) : null
 
   return (
     <div className="-mt-4 flex w-full max-w-4xl flex-col items-stretch gap-6 text-start sm:-mt-6 sm:gap-8 md:max-w-4xl lg:max-w-5xl">
@@ -140,6 +148,7 @@ export function WrapPage() {
           platformName={platform?.name ?? "Export"}
           instagramSocial={igSocial}
           linkedinInsights={liInsights}
+          xInsights={xInsights}
         />
       ) : null}
 
@@ -181,11 +190,33 @@ export function WrapPage() {
           <WrapMainAnalytics analytics={wrap.analytics} />
           <LinkedInEngagement data={liInsights} />
         </>
+      ) : xInsights ? (
+        <>
+          <OfficialXHtml
+            wrapId={wrap.id}
+            hasArchiveBlob={wrap.hasArchiveBlob}
+          />
+          <XNetworkInsights data={xInsights} />
+          <XEngagement data={xInsights} />
+          {wrap.analytics.chats.length > 0 ? (
+            <>
+              <header className="text-start">
+                <h2 className="font-heading text-xl font-semibold tracking-tight">
+                  X messaging analysis
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Direct messages from this X data archive.
+                </p>
+              </header>
+              <WrapMainAnalytics analytics={wrap.analytics} />
+            </>
+          ) : null}
+        </>
       ) : (
         <WrapMainAnalytics analytics={wrap.analytics} />
       )}
 
-      {!isGoogleFamily ? (
+      {!isGoogleFamily && wrap.analytics.chats.length > 0 ? (
         <WrapTopContacts
           analytics={wrap.analytics}
           onSelect={(chatId) => {

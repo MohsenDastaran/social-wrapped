@@ -4,7 +4,7 @@ import type { PlatformLogoId } from "@/components/platform-logo"
 export const PLATFORM_ENABLED = {
   telegram: true,
   whatsapp: true,
-  x: false,
+  x: true,
   google: true,
   instagram: true,
   tiktok: false,
@@ -103,17 +103,19 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
       "from-zinc-500/20 via-zinc-400/10 to-transparent dark:from-zinc-300/15 dark:via-zinc-500/5",
     summary: "Request your full archive ZIP from account settings.",
     exportPath: "Account Settings → Download an archive of your data",
-    formats: "JSON + HTML (ZIP)",
+    formats: "JS + HTML (ZIP)",
     extractable:
-      "Tweets, DMs, likes, bookmarks, followers, following, and engagement history.",
+      "Tweets, DMs, likes, followers, following, blocks, and the official archive HTML viewer.",
     steps: [
-      "Request your archive from X settings and wait for the email.",
-      "Download and unzip the archive.",
-      "Import into Social Wrapped when X support ships.",
+      "Open X → Settings and privacy → Your account → Download an archive of your data.",
+      "Confirm and wait for the email, then download the ZIP (do not unzip).",
+      "In Social Wrapped, import that ZIP from Home → X (Twitter).",
     ],
+    importHint:
+      "Upload the complete archive ZIP. Media is skipped for analytics; the Official X HTML viewer uses the full ZIP.",
     importTitle: "Import X (Twitter) data",
     importDescription:
-      "Upload your X data archive ZIP after you download it from account settings.",
+      "Upload your X data archive ZIP. Tweets, DMs, and likes are analyzed on your device — plus the official archive HTML.",
     acceptedFiles: [".zip"],
     accept: ".zip,application/zip",
   },

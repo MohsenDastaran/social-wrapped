@@ -22,6 +22,7 @@ import type {
   WrapAnalytics,
 } from "@/platform/analytics-types"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
+import type { XInsights } from "@/platform/x-types"
 import { cn } from "@/lib/utils"
 import type { VideoChartSlide } from "../../remotion/Composition"
 
@@ -33,6 +34,7 @@ type WrapShareMediaProps = {
   platformName?: string
   instagramSocial?: InstagramSocialInsights | null
   linkedinInsights?: LinkedInInsights | null
+  xInsights?: XInsights | null
 }
 
 /** Share strip — video + stories tiles in one row; fullscreen on tap. */
@@ -43,6 +45,7 @@ export function WrapShareMedia({
   platformName = "Telegram",
   instagramSocial = null,
   linkedinInsights = null,
+  xInsights = null,
 }: WrapShareMediaProps) {
   const catalog = useMemo(
     () =>
@@ -52,8 +55,16 @@ export function WrapShareMedia({
         analytics,
         instagramSocial,
         linkedinInsights,
+        xInsights,
       }),
-    [platformId, displayName, analytics, instagramSocial, linkedinInsights]
+    [
+      platformId,
+      displayName,
+      analytics,
+      instagramSocial,
+      linkedinInsights,
+      xInsights,
+    ]
   )
   const specs = catalog.storySpecs
   const [stories, setStories] = useState<ComposedWrapStory[]>([])

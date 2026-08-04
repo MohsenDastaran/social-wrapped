@@ -192,7 +192,19 @@ stub_parser!(WhatsAppParser, Platform::WhatsApp, |path: &Path| {
 });
 
 stub_parser!(XParser, Platform::X, |path: &Path| {
-    zip_or_dir_contains(path, &["data/tweet.js", "data/account.js"])
+    if file_name_matches(path, &["Your archive.html", "account.js", "tweets.js"]) {
+        return true;
+    }
+
+    zip_or_dir_contains(
+        path,
+        &[
+            "data/tweets.js",
+            "data/account.js",
+            "Your archive.html",
+            "data/tweet.js",
+        ],
+    )
 });
 
 stub_parser!(GoogleParser, Platform::Google, |path: &Path| {
