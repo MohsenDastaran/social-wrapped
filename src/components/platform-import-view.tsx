@@ -1,5 +1,5 @@
 import { useId, useRef, useState, type ChangeEvent, type DragEvent } from "react"
-import { ArrowLeft, CircleHelp, FileUp, Upload } from "lucide-react"
+import { ArrowLeft, CircleHelp, FileUp, Upload, X } from "lucide-react"
 import { Link, useNavigate } from "react-router"
 
 import { AppLoader } from "@/components/app-loader"
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { saveWrap, wrapEntryPath } from "@/lib/wrap-history"
 import { formatInvokeError } from "@/platform/api"
 import {
-  importPlatformFile,
+  importPlatformFiles,
   type ImportProgress,
 } from "@/platform/import"
 
@@ -36,6 +36,27 @@ type IdentityPrompt = {
   reject: (error: Error) => void
 }
 
+function allowsMultiple(platformId: string): boolean {
+  return platformId === "google" || platformId === "youtube"
+}
+
+function fileAllowed(name: string, acceptedFiles: string[]): boolean {
+  const lower = name.toLowerCase()
+  return acceptedFiles.some((ext) => {
+    const normalized = ext.startsWith(".")
+      ? ext.toLowerCase()
+      : `.${ext.toLowerCase()}`
+    return lower.endsWith(normalized)
+  })
+}
+
+function formatBytes(size: number): string {
+  if (size >= 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(2)} MB`
+  }
+  return `${(size / 1024).toFixed(1)} KB`
+}
+
 /** Shared import UI — used by every platform’s dedicated import route. */
 export function PlatformImportView({
   platform,
@@ -49,7 +70,8 @@ export function PlatformImportView({
   const navigate = useNavigate()
   const inputId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
-  const [file, setFile] = useState<File | null>(null)
+  const multi = allowsMultiple(platform.id)
+  const [files, setFiles] = useState<File[]>([])
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState("")
   const [progress, setProgress] = useState<ImportProgress | null>(null)
@@ -58,37 +80,37 @@ export function PlatformImportView({
   )
   const loading = progress !== null
 
-  function takeFile(next: File | null) {
+  function takeFiles(next: FileList | File[] | null) {
     if (!next) return
+    const list = Array.from(next)
+    const valid = list.filter((f) => fileAllowed(f.name, acceptedFiles))
+    if (!valid.length) {
+      setError(`Please choose one of: ${acceptedFiles.join(", ")}`)
+      return
+    }
     setError("")
-    setFile(next)
-    onFileSelect?.(next)
+    if (multi) {
+      setFiles((prev) => {
+        const map = new Map(prev.map((f) => [`${f.name}:${f.size}`, f]))
+        for (const f of valid) {
+          map.set(`${f.name}:${f.size}`, f)
+        }
+        return Array.from(map.values())
+      })
+    } else {
+      setFiles([valid[0]])
+      onFileSelect?.(valid[0])
+    }
   }
 
   function onInputChange(event: ChangeEvent<HTMLInputElement>) {
-    const next = event.target.files?.[0] ?? null
-    takeFile(next)
+    takeFiles(event.target.files)
   }
 
   function onDrop(event: DragEvent<HTMLLabelElement>) {
     event.preventDefault()
     setDragging(false)
-    const next = event.dataTransfer.files?.[0] ?? null
-    if (!next) return
-
-    const name = next.name.toLowerCase()
-    const allowed = acceptedFiles.some((ext) => {
-      const normalized = ext.startsWith(".")
-        ? ext.toLowerCase()
-        : `.${ext.toLowerCase()}`
-      return name.endsWith(normalized)
-    })
-
-    if (!allowed) {
-      setError(`Please choose one of: ${acceptedFiles.join(", ")}`)
-      return
-    }
-    takeFile(next)
+    takeFiles(event.dataTransfer.files)
   }
 
   function promptIdentity(
@@ -101,29 +123,35 @@ export function PlatformImportView({
   }
 
   async function handleAnalyze() {
-    if (!file) return
+    if (!files.length) return
     setError("")
+    const totalSize = files.reduce((s, f) => s + f.size, 0)
     setProgress({
       phase: "reading",
       percent: 0,
       overallPercent: 0,
       current: 0,
-      total: file.size,
+      total: totalSize,
     })
     try {
-      const { analytics, instagramSocial } = await importPlatformFile(
-        platform,
-        file,
-        setProgress,
-        platform.id === "whatsapp" || platform.id === "instagram"
-          ? promptIdentity
-          : undefined
-      )
+      const { analytics, instagramSocial, googleInsights } =
+        await importPlatformFiles(
+          platform,
+          files,
+          setProgress,
+          platform.id === "whatsapp" || platform.id === "instagram"
+            ? promptIdentity
+            : undefined
+        )
       const wrap = await saveWrap({
         platformId: platform.id,
-        fileName: file.name,
+        fileName:
+          files.length === 1
+            ? files[0].name
+            : `${files.length} Takeout ZIPs`,
         analytics,
         instagramSocial,
+        googleInsights,
       })
       navigate(wrapEntryPath(wrap), { replace: true })
     } catch (err) {
@@ -142,9 +170,15 @@ export function PlatformImportView({
         ? progress?.phase === "computing"
           ? "Building your wrap from Instagram chats"
           : "Reading your Instagram ZIP (messages + social)"
-        : progress?.phase === "computing"
-          ? "Building your wrap from chats and messages"
-          : "Parsing JSON on your device"
+        : platform.id === "google" || platform.id === "youtube"
+          ? progress?.phase === "computing"
+            ? "Building your Google wrap"
+            : `Reading Takeout ZIP${files.length > 1 ? "s" : ""} on your device`
+          : progress?.phase === "computing"
+            ? "Building your wrap from chats and messages"
+            : "Parsing JSON on your device"
+
+  const totalSelected = files.reduce((s, f) => s + f.size, 0)
 
   return (
     <div
@@ -198,6 +232,7 @@ export function PlatformImportView({
         </p>
         <p className="mt-3 text-xs font-medium text-muted-foreground">
           Accepted: {acceptedFiles.join(", ")}
+          {multi ? " · multiple ZIPs OK" : null}
         </p>
       </header>
 
@@ -206,6 +241,7 @@ export function PlatformImportView({
         id={inputId}
         type="file"
         accept={accept}
+        multiple={multi}
         className="sr-only"
         onChange={onInputChange}
       />
@@ -234,7 +270,7 @@ export function PlatformImportView({
         </span>
         <div>
           <p className="font-heading text-base font-semibold tracking-tight">
-            Drop your export here
+            {multi ? "Drop Takeout ZIP parts here" : "Drop your export here"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
             or click to browse — files stay on your device
@@ -248,27 +284,60 @@ export function PlatformImportView({
         </p>
       ) : null}
 
-      {file ? (
-        <div className="mt-4 flex items-start gap-3 rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10">
-          <FileUp className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-          <div className="min-w-0 flex-1 text-start">
-            <p className="truncate text-sm font-medium">{file.name}</p>
+      {files.length > 0 ? (
+        <div className="mt-4 flex flex-col gap-2">
+          {files.map((file) => (
+            <div
+              key={`${file.name}:${file.size}`}
+              className="flex items-start gap-3 rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10"
+            >
+              <FileUp
+                className="mt-0.5 size-4 shrink-0 text-primary"
+                aria-hidden
+              />
+              <div className="min-w-0 flex-1 text-start">
+                <p className="truncate text-sm font-medium">{file.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatBytes(file.size)}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                disabled={loading}
+                aria-label={`Remove ${file.name}`}
+                onClick={() => {
+                  setFiles((prev) =>
+                    prev.filter(
+                      (f) => !(f.name === file.name && f.size === file.size)
+                    )
+                  )
+                  setError("")
+                  if (inputRef.current) inputRef.current.value = ""
+                }}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+          ))}
+          {multi && files.length > 1 ? (
             <p className="text-xs text-muted-foreground">
-              {(file.size / (1024 * 1024)).toFixed(2)} MB selected
+              {files.length} files · {formatBytes(totalSelected)} total
             </p>
-          </div>
+          ) : null}
           <Button
             type="button"
             variant="outline"
             size="default"
             disabled={loading}
             onClick={() => {
-              setFile(null)
+              setFiles([])
               setError("")
               if (inputRef.current) inputRef.current.value = ""
             }}
           >
-            Clear
+            Clear all
           </Button>
         </div>
       ) : null}
@@ -277,7 +346,7 @@ export function PlatformImportView({
         type="button"
         size="lg"
         className="mt-6 w-full"
-        disabled={!file || loading}
+        disabled={!files.length || loading}
         onClick={() => void handleAnalyze()}
       >
         {progress ? (

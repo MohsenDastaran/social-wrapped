@@ -190,3 +190,51 @@ pub fn analyze_instagram_bytes_with_progress(
     .and_then(|result| result.to_json())
     .map_err(|e| JsValue::from_str(&e.to_string()))
 }
+
+/// Analyze one Google Takeout ZIP part.
+///
+/// Returns JSON `{ analytics, googleInsights }`.
+/// When `youtube_only` is true, only YouTube products are parsed.
+#[wasm_bindgen]
+pub fn analyze_google_zip_bytes_with_progress(
+    data: &[u8],
+    youtube_only: bool,
+    on_progress: &js_sys::Function,
+) -> Result<String, JsValue> {
+    app_core::parsers::google::analyze_zip_bytes_with_progress(
+        data,
+        youtube_only,
+        |phase, current, total| {
+            let _ = on_progress.call3(
+                &JsValue::NULL,
+                &JsValue::from_str(phase.as_str()),
+                &JsValue::from_f64(current as f64),
+                &JsValue::from_f64(total as f64),
+            );
+        },
+    )
+    .and_then(|result| result.to_json())
+    .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// Merge two `GoogleInsights` JSON objects (multi-part Takeout).
+#[wasm_bindgen]
+pub fn merge_google_insights_json(a: &str, b: &str) -> Result<String, JsValue> {
+    let left: app_core::parsers::google::GoogleInsights = serde_json::from_str(a)
+        .map_err(|e| JsValue::from_str(&format!("Invalid google insights A: {e}")))?;
+    let right: app_core::parsers::google::GoogleInsights = serde_json::from_str(b)
+        .map_err(|e| JsValue::from_str(&format!("Invalid google insights B: {e}")))?;
+    let merged = app_core::parsers::google::merge_insights(left, right);
+    serde_json::to_string(&merged).map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// Build wrap shell analytics JSON for a merged Google insights payload.
+#[wasm_bindgen]
+pub fn google_shell_analytics_json(
+    display_name: &str,
+    file_size_bytes: u64,
+) -> Result<String, JsValue> {
+    let analytics =
+        app_core::parsers::google::shell_analytics(display_name.to_string(), file_size_bytes);
+    serde_json::to_string(&analytics).map_err(|e| JsValue::from_str(&e.to_string()))
+}

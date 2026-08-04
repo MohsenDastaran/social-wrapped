@@ -6,6 +6,7 @@ import type {
   InstagramSocialInsights,
   WrapAnalytics,
 } from "@/platform/analytics-types"
+import type { GoogleInsights } from "@/platform/google-types"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
 import { analyticsToStats, type TelegramExportStats } from "@/platform/import"
 
@@ -25,6 +26,8 @@ export type WrapRecord = {
   stats: TelegramExportStats
   /** Instagram outbound / graph insights (absent for TG/WA). */
   instagramSocial?: InstagramSocialInsights
+  /** Google Takeout / YouTube product insights. */
+  googleInsights?: GoogleInsights
 }
 
 /**
@@ -60,6 +63,7 @@ type StoredWrap = {
   stats: TelegramExportStats
   analytics: CompactAnalytics
   instagramSocial?: InstagramSocialInsights
+  googleInsights?: GoogleInsights
 }
 
 type LegacyStoredWrap = Partial<WrapRecord> & {
@@ -70,6 +74,7 @@ type LegacyStoredWrap = Partial<WrapRecord> & {
   stats?: TelegramExportStats
   analytics?: CompactAnalytics | WrapAnalytics
   instagramSocial?: InstagramSocialInsights
+  googleInsights?: GoogleInsights
 }
 
 const EMPTY_CONTENT_MIX: ContentMixStats = {
@@ -390,6 +395,7 @@ function normalizeWrap(raw: LegacyStoredWrap): WrapRecord | null {
     analytics,
     stats,
     ...(raw.instagramSocial ? { instagramSocial: raw.instagramSocial } : {}),
+    ...(raw.googleInsights ? { googleInsights: raw.googleInsights } : {}),
   }
 }
 
@@ -402,6 +408,7 @@ function toStored(wrap: WrapRecord): StoredWrap {
     stats: wrap.stats,
     analytics: compactAnalytics(wrap.analytics),
     ...(wrap.instagramSocial ? { instagramSocial: wrap.instagramSocial } : {}),
+    ...(wrap.googleInsights ? { googleInsights: wrap.googleInsights } : {}),
   }
 }
 
@@ -506,6 +513,14 @@ export function wrapChatPath(wrapId: string, chatId: number): string {
   return `/wrap/${wrapId}/chat/${chatId}`
 }
 
+/** Route path for a Google Takeout product deep-dive. */
+export function wrapGoogleProductPath(
+  wrapId: string,
+  productId: string
+): string {
+  return `/wrap/${wrapId}/google/${productId}`
+}
+
 /**
  * Landing route after import / from History.
  * WhatsApp exports are a single chat, so open the chat analytics page directly.
@@ -525,6 +540,7 @@ export async function saveWrap(input: {
   fileName: string
   analytics: WrapAnalytics
   instagramSocial?: InstagramSocialInsights
+  googleInsights?: GoogleInsights
 }): Promise<WrapRecord> {
   const wrap: WrapRecord = {
     id: crypto.randomUUID(),
@@ -548,6 +564,7 @@ export async function saveWrap(input: {
     ...(input.instagramSocial
       ? { instagramSocial: input.instagramSocial }
       : {}),
+    ...(input.googleInsights ? { googleInsights: input.googleInsights } : {}),
   }
 
   // Cache before the write so navigation can resolve instantly.

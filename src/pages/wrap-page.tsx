@@ -5,6 +5,7 @@ import { Link, Navigate, useNavigate, useParams } from "react-router"
 import { AppLoader } from "@/components/app-loader"
 import { Button } from "@/components/ui/button"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
+import { GoogleWrapInsights } from "@/components/wrap/google/google-wrap-insights"
 import { InstagramEngagement } from "@/components/wrap/instagram-engagement"
 import { InstagramSaved } from "@/components/wrap/instagram-saved"
 import { InstagramSocialInsights } from "@/components/wrap/instagram-social-insights"
@@ -13,7 +14,8 @@ import { WrapShareMedia } from "@/components/wrap/wrap-share-media"
 import { WrapTopContacts } from "@/components/wrap/wrap-top-contacts"
 import { normalizeInstagramSocial } from "@/lib/instagram-social"
 import { getPlatform } from "@/lib/platforms"
-import { getWrap, wrapChatPath, wrapEntryPath, type WrapRecord } from "@/lib/wrap-history"
+import { normalizeGoogleInsights } from "@/platform/google-types"
+import { getWrap, wrapChatPath, wrapEntryPath, wrapGoogleProductPath, type WrapRecord } from "@/lib/wrap-history"
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -64,10 +66,17 @@ export function WrapPage() {
   }
 
   const platform = getPlatform(wrap.platformId)
+  const isGoogleFamily =
+    wrap.platformId === "google" || wrap.platformId === "youtube"
+  const googleInsights = isGoogleFamily
+    ? normalizeGoogleInsights(wrap.googleInsights)
+    : null
   const hasFullAnalytics =
-    wrap.analytics.chats.length > 0 ||
-    wrap.analytics.account.heatmap.days.length > 0 ||
-    wrap.analytics.account.emojis.topOverall.length > 0
+    isGoogleFamily && googleInsights
+      ? true
+      : wrap.analytics.chats.length > 0 ||
+        wrap.analytics.account.heatmap.days.length > 0 ||
+        wrap.analytics.account.emojis.topOverall.length > 0
   const igSocial =
     wrap.platformId === "instagram"
       ? normalizeInstagramSocial(wrap.instagramSocial)
@@ -115,15 +124,25 @@ export function WrapPage() {
         </p>
       ) : null}
 
-      <WrapShareMedia
-        displayName={wrap.stats.displayName}
-        analytics={wrap.analytics}
-        platformId={wrap.platformId}
-        platformName={platform?.name ?? "Export"}
-        instagramSocial={igSocial}
-      />
+      {!isGoogleFamily ? (
+        <WrapShareMedia
+          displayName={wrap.stats.displayName}
+          analytics={wrap.analytics}
+          platformId={wrap.platformId}
+          platformName={platform?.name ?? "Export"}
+          instagramSocial={igSocial}
+        />
+      ) : null}
 
-      {igSocial ? (
+      {googleInsights ? (
+        <GoogleWrapInsights
+          insights={googleInsights}
+          youtubeOnly={wrap.platformId === "youtube"}
+          onSelectProduct={(productId) => {
+            navigate(wrapGoogleProductPath(wrap.id, productId))
+          }}
+        />
+      ) : igSocial ? (
         <>
           <InstagramSocialInsights data={igSocial} />
           <InstagramSaved data={igSocial} />
@@ -142,12 +161,14 @@ export function WrapPage() {
         <WrapMainAnalytics analytics={wrap.analytics} />
       )}
 
-      <WrapTopContacts
-        analytics={wrap.analytics}
-        onSelect={(chatId) => {
-          navigate(wrapChatPath(wrap.id, chatId))
-        }}
-      />
+      {!isGoogleFamily ? (
+        <WrapTopContacts
+          analytics={wrap.analytics}
+          onSelect={(chatId) => {
+            navigate(wrapChatPath(wrap.id, chatId))
+          }}
+        />
+      ) : null}
     </div>
   )
 }

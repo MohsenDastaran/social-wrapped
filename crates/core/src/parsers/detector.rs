@@ -233,16 +233,34 @@ stub_parser!(SpotifyParser, Platform::Spotify, |path: &Path| {
 });
 
 stub_parser!(YouTubeParser, Platform::YouTube, |path: &Path| {
-    if file_name_matches(path, &["watch-history.json", "search-history.json"]) {
+    if file_name_matches(
+        path,
+        &[
+            "watch-history.json",
+            "search-history.json",
+            "watch-history.html",
+            "search-history.html",
+        ],
+    ) {
         return true;
     }
 
     if path.is_file() {
         let content = fs::read_to_string(path).unwrap_or_default();
-        return content.contains("\"header\"") && content.contains("YouTube");
+        return content.contains("\"header\"") && content.contains("YouTube")
+            || content.contains("watch-history")
+            || (content.contains("content-cell") && content.contains("youtube.com"));
     }
 
-    zip_or_dir_contains(path, &["watch-history.json", "search-history.json"])
+    zip_or_dir_contains(
+        path,
+        &[
+            "watch-history.json",
+            "search-history.json",
+            "watch-history.html",
+            "YouTube and YouTube Music",
+        ],
+    )
 });
 
 #[cfg(test)]

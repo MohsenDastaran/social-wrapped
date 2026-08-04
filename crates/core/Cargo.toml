@@ -20,6 +20,7 @@ thiserror = "2"
 unicode-segmentation = "1"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 tempfile = "3"
+regex = "1"
 rayon = { version = "1", optional = true }
 duckdb = { version = "1", features = ["bundled"], optional = true }
 

@@ -5,11 +5,11 @@ export const PLATFORM_ENABLED = {
   telegram: true,
   whatsapp: true,
   x: false,
-  google: false,
+  google: true,
   instagram: true,
   tiktok: false,
   spotify: false,
-  youtube: false,
+  youtube: true,
 } as const satisfies Record<PlatformLogoId, boolean>
 
 export type PlatformId = keyof typeof PLATFORM_ENABLED
@@ -122,21 +122,24 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     accentClass: "border-blue-500/50",
     gradientClass:
       "from-blue-500/25 via-blue-400/10 to-transparent dark:from-blue-400/20 dark:via-blue-500/5",
-    summary: "Use Google Takeout to package Chat, Maps, Chrome, and more.",
+    summary:
+      "Import Google Takeout ZIP parts — Chrome, My Activity, Fit, Keep, and more.",
     exportPath: "Google Takeout (takeout.google.com)",
-    formats: "JSON, CSV, GeoJSON, KML",
+    formats: "JSON, CSV, HTML, ICS (ZIP)",
     extractable:
-      "Chat/Hangouts, location history, Keep, Chrome history, Calendar, Maps places, and more.",
+      "YouTube, Chrome history, My Activity, Fit, Keep, Calendar, Photos metadata, Access Log.",
     steps: [
-      "Open Google Takeout and select the services you want.",
-      "Export and download the archive when ready.",
-      "Import into Social Wrapped when Google support ships.",
+      "Open Google Takeout and select the services you want (YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos, …).",
+      "Export and download all ZIP parts when ready — do not unzip.",
+      "In Social Wrapped, import every Takeout ZIP part together from Home → Google.",
     ],
+    importHint:
+      "Multi-part Takeout downloads are supported. Mail and Drive file bodies are skipped.",
     importTitle: "Import Google Takeout",
     importDescription:
-      "Upload a Google Takeout archive (.zip) or extracted JSON/CSV files.",
-    acceptedFiles: [".zip", ".json", ".csv"],
-    accept: ".zip,.json,.csv,application/zip,application/json,text/csv",
+      "Upload one or more Google Takeout ZIP archives. Everything is processed on your device — Mail/Drive binaries are skipped.",
+    acceptedFiles: [".zip"],
+    accept: ".zip,application/zip",
   },
   {
     id: "instagram",
@@ -214,19 +217,21 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
       "from-red-500/25 via-orange-400/10 to-transparent dark:from-red-400/20 dark:via-orange-500/5",
     summary: "Pull watch and search history via Google Takeout.",
     exportPath: "Google Takeout → YouTube and YouTube Music",
-    formats: "JSON, CSV",
+    formats: "HTML, CSV (ZIP)",
     extractable:
-      "Watch history, search history, playlists, comments, subscriptions, and more.",
+      "Watch history, search history, playlists, comments, subscriptions, and channel info.",
     steps: [
-      "Use Google Takeout and include YouTube.",
-      "Download the archive when ready.",
-      "Import into Social Wrapped when YouTube support ships.",
+      "Use Google Takeout and include YouTube and YouTube Music.",
+      "Download the archive ZIP when ready (HTML history is fine).",
+      "In Social Wrapped, import that ZIP from Home → YouTube.",
     ],
+    importHint:
+      "Full Takeout multi-ZIPs work too — only YouTube data is analyzed on this path.",
     importTitle: "Import YouTube data",
     importDescription:
-      "Upload YouTube data from Google Takeout — ZIP, JSON, or CSV.",
-    acceptedFiles: [".zip", ".json", ".csv"],
-    accept: ".zip,.json,.csv,application/zip,application/json,text/csv",
+      "Upload YouTube data from Google Takeout — one or more ZIP parts. Processed on your device.",
+    acceptedFiles: [".zip"],
+    accept: ".zip,application/zip",
   },
 ]
 

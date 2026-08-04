@@ -8,6 +8,7 @@ import { HomePage } from "@/pages/home-page"
 import { ImportPage } from "@/pages/import-page"
 import { SettingsPage } from "@/pages/settings-page"
 import { WrapChatPage } from "@/pages/wrap-chat-page"
+import { WrapGoogleProductPage } from "@/pages/wrap-google-product-page"
 import { WrapPage } from "@/pages/wrap-page"
 
 export function App() {
@@ -19,6 +20,10 @@ export function App() {
           <Route path="import/:platformId" element={<ImportPage />} />
           <Route path="wrap/:wrapId" element={<WrapPage />} />
           <Route path="wrap/:wrapId/chat/:chatId" element={<WrapChatPage />} />
+          <Route
+            path="wrap/:wrapId/google/:productId"
+            element={<WrapGoogleProductPage />}
+          />
           <Route path="docs" element={<DocsPage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="settings" element={<SettingsPage />} />

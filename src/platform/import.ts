@@ -3,14 +3,17 @@ import type {
   InstagramSocialInsights,
   WrapAnalytics,
 } from "@/platform/analytics-types"
+import type { GoogleInsights } from "@/platform/google-types"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
 
 export type { WrapAnalytics, InstagramSocialInsights } from "@/platform/analytics-types"
+export type { GoogleInsights } from "@/platform/google-types"
 
-/** Result of a platform import pass (Instagram may include social insights). */
+/** Result of a platform import pass (Instagram / Google may include side insights). */
 export type ImportResult = {
   analytics: WrapAnalytics
   instagramSocial?: InstagramSocialInsights
+  googleInsights?: GoogleInsights
 }
 export type {
   AnalyticsResult,
@@ -146,8 +149,17 @@ function validateFile(platform: PlatformConfig, file: File): void {
     return
   }
 
+  if (platform.id === "google" || platform.id === "youtube") {
+    if (!lower.endsWith(".zip")) {
+      throw new Error(
+        "Please choose Google Takeout archive ZIP(s). Multi-part downloads are supported."
+      )
+    }
+    return
+  }
+
   throw new Error(
-    `${platform.name} import isn't wired yet. Telegram, WhatsApp, and Instagram exports can be analyzed right now.`
+    `${platform.name} import isn't wired yet. Telegram, WhatsApp, Instagram, Google, and YouTube exports can be analyzed right now.`
   )
 }
 
@@ -411,6 +423,79 @@ function importInstagramFile(
   })
 }
 
+function parseGoogleAnalyzeJson(analyticsJson: string): ImportResult {
+  const payload = JSON.parse(analyticsJson) as {
+    analytics?: WrapAnalytics
+    googleInsights?: GoogleInsights
+  }
+
+  if (!payload.analytics?.account) {
+    throw new Error("Google import returned incomplete analytics.")
+  }
+
+  return {
+    analytics: normalizeAnalytics(payload.analytics),
+    googleInsights: payload.googleInsights,
+  }
+}
+
+function importGoogleFiles(
+  files: File[],
+  youtubeOnly: boolean,
+  onProgress?: (progress: ImportProgress) => void
+): Promise<ImportResult> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL("../workers/google-import.worker.ts", import.meta.url),
+      { type: "module", name: youtubeOnly ? "youtube-import" : "google-import" }
+    )
+
+    worker.onmessage = (event: MessageEvent<ImportWorkerResponse>) => {
+      const message = event.data
+      if (message.type === "progress") {
+        const phase = normalizeProgressPhase(message.phase)
+        const { current, total } = message
+        const percent =
+          total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0
+        onProgress?.({
+          phase,
+          percent,
+          overallPercent: importOverallPercent(phase, percent),
+          current,
+          total,
+        })
+        return
+      }
+
+      worker.terminate()
+      if (message.type === "done") {
+        try {
+          resolve(parseGoogleAnalyzeJson(message.analyticsJson))
+        } catch (error) {
+          reject(
+            error instanceof Error ? error : new Error(String(error))
+          )
+        }
+      } else if (message.type === "error") {
+        reject(new Error(message.message))
+      } else {
+        reject(new Error("Unexpected response from Google import worker."))
+      }
+    }
+
+    worker.onerror = (event) => {
+      worker.terminate()
+      reject(new Error(event.message || "Import worker failed to start."))
+    }
+
+    worker.postMessage({
+      type: "files",
+      files,
+      youtubeOnly,
+    })
+  })
+}
+
 /**
  * Central entry point for importing a platform export.
  *
@@ -419,10 +504,13 @@ function importInstagramFile(
  * browser and in Tauri webviews (Linux, Android, …) since both run the
  * same WASM parser off the main thread.
  *
- * Returns {@link ImportResult} (`analytics` plus optional Instagram social).
+ * Returns {@link ImportResult} (`analytics` plus optional Instagram / Google insights).
  *
  * For WhatsApp (and Instagram when profile Name is ambiguous),
  * `onNeedIdentity` resolves with the user's display name from the export.
+ *
+ * Google / YouTube accept multiple Takeout ZIP parts via
+ * {@link importPlatformFiles}.
  */
 export function importPlatformFile(
   platform: PlatformConfig,
@@ -430,7 +518,41 @@ export function importPlatformFile(
   onProgress?: (progress: ImportProgress) => void,
   onNeedIdentity?: NeedIdentityHandler
 ): Promise<ImportResult> {
-  validateFile(platform, file)
+  return importPlatformFiles(platform, [file], onProgress, onNeedIdentity)
+}
+
+/** Import one or more export files (multi-ZIP for Google / YouTube). */
+export function importPlatformFiles(
+  platform: PlatformConfig,
+  files: File[],
+  onProgress?: (progress: ImportProgress) => void,
+  onNeedIdentity?: NeedIdentityHandler
+): Promise<ImportResult> {
+  if (!files.length) {
+    return Promise.reject(new Error("No files selected."))
+  }
+
+  for (const file of files) {
+    validateFile(platform, file)
+  }
+
+  if (platform.id === "google" || platform.id === "youtube") {
+    return importGoogleFiles(
+      files,
+      platform.id === "youtube",
+      onProgress
+    )
+  }
+
+  if (files.length > 1) {
+    return Promise.reject(
+      new Error(
+        `${platform.name} imports one file at a time. Google Takeout supports multiple ZIP parts.`
+      )
+    )
+  }
+
+  const file = files[0]
 
   if (platform.id === "whatsapp") {
     return importWhatsAppFile(file, onProgress, onNeedIdentity)
