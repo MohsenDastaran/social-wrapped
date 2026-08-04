@@ -37,6 +37,29 @@ function formatCount(n: number): string {
   return new Intl.NumberFormat().format(n)
 }
 
+function formatBytes(size: number): string {
+  if (size >= 1024 * 1024 * 1024) {
+    return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`
+  }
+  if (size >= 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(2)} MB`
+  }
+  return `${(size / 1024).toFixed(1)} KB`
+}
+
+function wrapMetaLine(wrap: WrapRecord): string {
+  const date = formatDate(wrap.createdAt)
+  const messages = wrap.stats.totalMessages
+  if (messages > 0) {
+    return `${formatCount(messages)} messages · ${date}`
+  }
+  const bytes = wrap.stats.fileSizeBytes || wrap.analytics.fileSizeBytes || 0
+  if (bytes > 0) {
+    return `${formatBytes(bytes)} · ${date}`
+  }
+  return date
+}
+
 function wrapTitle(wrap: WrapRecord): string {
   if (wrap.platformId === "whatsapp") {
     return (
@@ -156,8 +179,7 @@ export function HistoryPage() {
                     ) : null}
                   </p>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {formatCount(wrap.stats.totalMessages)} messages ·{" "}
-                    {formatDate(wrap.createdAt)}
+                    {wrapMetaLine(wrap)}
                   </p>
                 </div>
               </Link>
