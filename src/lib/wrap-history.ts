@@ -8,6 +8,7 @@ import type {
 } from "@/platform/analytics-types"
 import type { GoogleInsights } from "@/platform/google-types"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
+import { getAppSettings } from "@/lib/app-settings"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
 import { analyticsToStats, type TelegramExportStats } from "@/platform/import"
 
@@ -588,6 +589,8 @@ export async function saveWrap(input: {
   tx.objectStore(WRAPS_STORE).put(toStored(wrap))
   await idbTxDone(tx)
 
+  await pruneExcessWraps(getAppSettings().maxWraps)
+
   return wrap
 }
 
@@ -597,4 +600,95 @@ export async function deleteWrap(id: string): Promise<void> {
   const tx = db.transaction(WRAPS_STORE, "readwrite")
   tx.objectStore(WRAPS_STORE).delete(id)
   await idbTxDone(tx)
+}
+
+export async function clearAllWraps(): Promise<void> {
+  memoryCache.clear()
+  const db = await ensureReady()
+  const tx = db.transaction(WRAPS_STORE, "readwrite")
+  tx.objectStore(WRAPS_STORE).clear()
+  await idbTxDone(tx)
+}
+
+export type WrapStorageSummary = {
+  wrapCount: number
+  /** Origin storage usage from `navigator.storage.estimate()`, when available. */
+  usageBytes: number | null
+  /** Origin storage quota from `navigator.storage.estimate()`, when available. */
+  quotaBytes: number | null
+  /** Sum of wrap `fileSizeBytes` as a fallback signal. */
+  wrapFileBytes: number
+}
+
+export async function getWrapStorageSummary(): Promise<WrapStorageSummary> {
+  const wraps = await listWraps()
+  let wrapFileBytes = 0
+  for (const wrap of wraps) {
+    wrapFileBytes +=
+      wrap.stats.fileSizeBytes || wrap.analytics.fileSizeBytes || 0
+  }
+
+  let usageBytes: number | null = null
+  let quotaBytes: number | null = null
+  try {
+    if (navigator.storage?.estimate) {
+      const estimate = await navigator.storage.estimate()
+      usageBytes =
+        typeof estimate.usage === "number" ? estimate.usage : null
+      quotaBytes =
+        typeof estimate.quota === "number" ? estimate.quota : null
+    }
+  } catch {
+    /* estimate unavailable */
+  }
+
+  return {
+    wrapCount: wraps.length,
+    usageBytes,
+    quotaBytes,
+    wrapFileBytes,
+  }
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+/** Delete wraps older than `autoClearDays`. No-op when days is null (never). */
+export async function pruneExpiredWraps(
+  autoClearDays: number | null
+): Promise<number> {
+  if (autoClearDays === null || autoClearDays <= 0) return 0
+
+  const cutoff = Date.now() - autoClearDays * MS_PER_DAY
+  const wraps = await listWraps()
+  const expired = wraps.filter(
+    (wrap) => new Date(wrap.createdAt).getTime() < cutoff
+  )
+
+  for (const wrap of expired) {
+    await deleteWrap(wrap.id)
+  }
+  return expired.length
+}
+
+/** Keep the newest `maxWraps` wraps; delete the rest. */
+export async function pruneExcessWraps(maxWraps: number): Promise<number> {
+  if (!Number.isFinite(maxWraps) || maxWraps <= 0) return 0
+
+  const wraps = await listWraps()
+  if (wraps.length <= maxWraps) return 0
+
+  const excess = wraps.slice(maxWraps)
+  for (const wrap of excess) {
+    await deleteWrap(wrap.id)
+  }
+  return excess.length
+}
+
+export async function enforceRetentionPolicies(settings: {
+  maxWraps: number
+  autoClearDays: number | null
+}): Promise<{ expired: number; excess: number }> {
+  const expired = await pruneExpiredWraps(settings.autoClearDays)
+  const excess = await pruneExcessWraps(settings.maxWraps)
+  return { expired, excess }
 }
