@@ -5,13 +5,23 @@ use std::io::Read;
 
 use zip::ZipArchive;
 
-use super::html_activity::{feed_entries, parse_activity_html};
+use super::html_activity::{
+    feed_entries, is_noise_title, parse_activity_html, ActivityAction,
+};
 use super::series::{top_counts, EventSeries};
 use super::types::{MyActivityInsights, MyActivityProduct};
 use super::youtube::empty_activity;
 
 /// Products we deep-parse (others counted lightly if small).
 const DEEP: &[&str] = &["Search", "YouTube", "Maps", "Chrome", "Gemini Apps"];
+
+/// Products whose “top items” should be real search queries only.
+const QUERY_PRODUCTS: &[&str] = &[
+    "Search",
+    "Image Search",
+    "Video Search",
+    "Song Search",
+];
 
 pub fn parse_my_activity_from_archive<R: Read + std::io::Seek>(
     archive: &mut ZipArchive<R>,
@@ -47,6 +57,9 @@ pub fn parse_my_activity_from_archive<R: Read + std::io::Seek>(
 
     for (product, path) in html_files {
         let deep = DEEP.iter().any(|d| product.eq_ignore_ascii_case(d));
+        let queries_only = QUERY_PRODUCTS
+            .iter()
+            .any(|d| product.eq_ignore_ascii_case(d));
         // Skip huge non-deep files beyond a soft size to keep WASM memory safe —
         // still count via streaming length when not deep.
         let mut file = match archive.by_name(&path) {
@@ -78,14 +91,14 @@ pub fn parse_my_activity_from_archive<R: Read + std::io::Seek>(
         feed_entries(&mut series, &entries);
         let mut items: HashMap<String, u64> = HashMap::new();
         for e in &entries {
-            let label = e
-                .title
-                .strip_prefix("Searched for ")
-                .unwrap_or(&e.title)
-                .trim();
-            if !label.is_empty() {
-                *items.entry(label.to_string()).or_insert(0) += 1;
+            if queries_only && e.action != ActivityAction::Searched {
+                continue;
             }
+            let label = e.title.trim();
+            if label.is_empty() || is_noise_title(label) {
+                continue;
+            }
+            *items.entry(label.to_string()).or_insert(0) += 1;
         }
 
         total_events += series.total();

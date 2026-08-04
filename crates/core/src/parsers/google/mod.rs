@@ -381,3 +381,24 @@ mod yt_filter_tests {
         println!("top searches: {:?}", yt.top_searches.iter().take(8).map(|v| (&v.name, v.count)).collect::<Vec<_>>());
     }
 }
+
+#[cfg(test)]
+mod search_noise_tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn search_top_items_exclude_noise() {
+        let path = PathBuf::from("/home/mohsen/Downloads/takeout-20260803T132251Z-5-001.zip");
+        if !path.exists() { return; }
+        let data = std::fs::read(&path).unwrap();
+        let result = analyze_zip_bytes_with_progress(&data, false, |_, _, _| {}).unwrap();
+        let ma = result.google_insights.my_activity.expect("my activity");
+        let search = ma.products.iter().find(|p| p.name == "Search").expect("Search");
+        println!("Search event_count={}", search.event_count);
+        println!("top: {:?}", search.top_items.iter().take(15).map(|i| (&i.name, i.count)).collect::<Vec<_>>());
+        for bad in ["here", "this general area", "Used Search", "Searched with an image", "your places"] {
+            assert!(!search.top_items.iter().any(|i| i.name == bad), "found noise: {bad}");
+        }
+    }
+}

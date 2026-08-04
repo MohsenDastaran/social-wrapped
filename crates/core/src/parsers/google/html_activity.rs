@@ -28,11 +28,21 @@ pub enum ActivityKindFilter {
     Searched,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActivityAction {
+    Searched,
+    Watched,
+    Visited,
+    Used,
+    Other,
+}
+
 #[derive(Debug, Clone)]
 pub struct ActivityEntry {
     pub title: String,
     pub href: Option<String>,
     pub secondary: Option<String>,
+    pub action: ActivityAction,
     #[allow(dead_code)]
     pub timestamp_secs: Option<i64>,
     pub hour: Option<u8>,
@@ -125,18 +135,24 @@ fn is_google_ad_card(card: &str) -> bool {
 fn parse_body_cell(body: &str, kind: ActivityKindFilter) -> Option<ActivityEntry> {
     let plain_prefix = strip_tags(body);
     // Drop caption / settings noise if it leaked in.
-    if plain_prefix.contains("Why is this here?") || plain_prefix.starts_with("Products:") {
+    if plain_prefix.contains("Why is this here?")
+        || plain_prefix.starts_with("Products:")
+        || plain_prefix.starts_with("Locations:")
+        || plain_prefix.starts_with("Details:")
+    {
         return None;
     }
 
+    let action = classify_action(&plain_prefix);
+
     match kind {
         ActivityKindFilter::Watched => {
-            if !plain_prefix.starts_with("Watched") {
+            if action != ActivityAction::Watched {
                 return None;
             }
         }
         ActivityKindFilter::Searched => {
-            if !plain_prefix.starts_with("Searched for") {
+            if action != ActivityAction::Searched {
                 return None;
             }
         }
@@ -148,11 +164,7 @@ fn parse_body_cell(body: &str, kind: ActivityKindFilter) -> Option<ActivityEntry
         .filter_map(|c| {
             let href = c.get(1)?.as_str().to_string();
             let text = strip_tags(c.get(2)?.as_str());
-            // Ignore account-settings “here” links.
-            if href.contains("myaccount.google.com/activitycontrols") {
-                return None;
-            }
-            if text.eq_ignore_ascii_case("here") {
+            if is_noise_link(&href, &text) {
                 return None;
             }
             Some((href, text))
@@ -180,30 +192,42 @@ fn parse_body_cell(body: &str, kind: ActivityKindFilter) -> Option<ActivityEntry
             None => (None, None, None),
         };
 
-    let title = if kind == ActivityKindFilter::Searched {
-        let raw = parts
-            .iter()
-            .find(|p| p.starts_with("Searched for"))
-            .cloned()
-            .or_else(|| links.first().map(|(_, t)| format!("Searched for {t}")))
-            .unwrap_or_default();
-        raw.strip_prefix("Searched for ")
-            .unwrap_or(&raw)
-            .trim()
-            .to_string()
-    } else if let Some((_, text)) = links.first() {
-        text.clone()
-    } else {
-        parts
-            .iter()
-            .find(|p| !looks_like_timestamp(p) && !p.starts_with("Watched at"))
-            .map(|p| {
-                p.strip_prefix("Watched ")
-                    .unwrap_or(p)
-                    .trim()
-                    .to_string()
-            })
-            .unwrap_or_default()
+    let title = match action {
+        ActivityAction::Searched => {
+            // Prefer the query link text; fall back to stripping the prefix.
+            if let Some((_, text)) = links.first() {
+                text.clone()
+            } else {
+                parts
+                    .iter()
+                    .find(|p| p.starts_with("Searched for"))
+                    .map(|p| {
+                        p.strip_prefix("Searched for ")
+                            .unwrap_or(p)
+                            .trim()
+                            .to_string()
+                    })
+                    .unwrap_or_default()
+            }
+        }
+        _ => {
+            if let Some((_, text)) = links.first() {
+                text.clone()
+            } else {
+                parts
+                    .iter()
+                    .find(|p| !looks_like_timestamp(p) && !p.starts_with("Watched at"))
+                    .map(|p| {
+                        p.strip_prefix("Watched ")
+                            .or_else(|| p.strip_prefix("Visited "))
+                            .or_else(|| p.strip_prefix("Used "))
+                            .unwrap_or(p)
+                            .trim()
+                            .to_string()
+                    })
+                    .unwrap_or_default()
+            }
+        }
     };
 
     let href = links.first().map(|(h, _)| h.clone());
@@ -217,10 +241,63 @@ fn parse_body_cell(body: &str, kind: ActivityKindFilter) -> Option<ActivityEntry
         title,
         href,
         secondary,
+        action,
         timestamp_secs,
         hour,
         date,
     })
+}
+
+fn classify_action(plain: &str) -> ActivityAction {
+    if plain.starts_with("Searched for") {
+        ActivityAction::Searched
+    } else if plain.starts_with("Watched") {
+        ActivityAction::Watched
+    } else if plain.starts_with("Visited") {
+        ActivityAction::Visited
+    } else if plain.starts_with("Used ") || plain.starts_with("Used\u{00a0}") {
+        ActivityAction::Used
+    } else if plain.starts_with("Searched with")
+        || plain.starts_with("Invoked ")
+        || plain.starts_with("Viewed ")
+    {
+        ActivityAction::Other
+    } else {
+        ActivityAction::Other
+    }
+}
+
+fn is_noise_link(href: &str, text: &str) -> bool {
+    if href.contains("myaccount.google.com/activitycontrols") {
+        return true;
+    }
+    if href.contains("support.google.com/maps") {
+        return true;
+    }
+    // Location caption link inside body leaks (shouldn't, but belt-and-suspenders).
+    if href.contains("google.com/maps/@") && text.eq_ignore_ascii_case("this general area") {
+        return true;
+    }
+    is_noise_title(text)
+}
+
+/// Captions / generic Takeout actions that are not real queries or titles.
+pub fn is_noise_title(title: &str) -> bool {
+    let t = title.trim();
+    if t.is_empty() {
+        return true;
+    }
+    let lower = t.to_ascii_lowercase();
+    matches!(
+        lower.as_str(),
+        "here"
+            | "this general area"
+            | "your places"
+            | "used search"
+            | "search"
+            | "searched with an image"
+            | "invoked circle to search"
+    ) || lower.starts_with("why is this here")
 }
 
 pub fn feed_entries(series: &mut EventSeries, entries: &[ActivityEntry]) {
