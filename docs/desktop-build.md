@@ -80,11 +80,11 @@ Publishing a GitHub Release runs [`.github/workflows/release.yml`](../.github/wo
 - macOS Apple Silicon + Intel (`.dmg`)
 - Linux x64 (`.deb`, `.rpm`, `.AppImage`)
 
-Installers are uploaded as **assets on that Release**. After builds finish, assets are renamed with numeric prefixes so GitHub’s alphabetical list shows:
+Installers are uploaded as **assets on that Release**. Asset names are prefixed so GitHub’s alphabetical list shows:
 
-`01a` arm64 APK → `01b` universal APK → `02` Windows → `03` macOS → `04` deb → `05` rpm → `06` AppImage
+`01a` arm64-v8a APK → `01b` universal APK → `02` Windows → `03` macOS → `04` deb → `05` rpm → `06` AppImage
 
-**Android install note:** Release APKs must be signed. CI signs with `src-tauri/gen/android/ci-release.jks` (sideload). Prefer the **arm64-v8a** asset on real phones. Optional secrets `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `ANDROID_KEY_BASE64` override with your own keystore.
+**Android note:** Without `--split-per-abi`, an aarch64-only build is still named `*_universal.apk` and overwrites the other APK on the release. CI builds arm64 with `--apk --split-per-abi --target aarch64` and universal separately. Prefer the **arm64-v8a** asset on phones.
 
 Local signed release APK:
 

@@ -2,7 +2,7 @@
 #
 # Trigger: publish a Release on GitHub (or run manually via Actions → Release).
 # Assets (sorted alphabetically via numeric prefixes):
-#   01 APK (arm64 then universal) → 02 Windows → 03 macOS → 04 deb → 05 rpm → 06 AppImage
+#   01a arm64-v8a APK → 01b universal APK → 02 Windows → 03 macOS → 04 deb → 05 rpm → 06 AppImage
 
 name: Release
 
@@ -24,31 +24,38 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Prefer arm64-v8a for real phones (smaller + correct ABI).
+          # --split-per-abi is required: without it, --target aarch64 still
+          # produces a *universal*-named APK and overwrites the other Android asset.
           - platform: ubuntu-22.04
-            args: --apk --target aarch64
+            args: --apk --split-per-abi --target aarch64
             mobile: android
+            asset_pattern: 01a-[name]_[version]_arm64-v8a[ext]
             rust_targets: aarch64-linux-android,wasm32-unknown-unknown
-          # Universal APK (all ABIs) for emulators / unusual devices.
           - platform: ubuntu-22.04
             args: --apk
             mobile: android
+            asset_pattern: 01b-[name]_[version]_universal[ext]
             rust_targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android,wasm32-unknown-unknown
           - platform: windows-latest
             args: ''
             mobile: ''
+            asset_pattern: 02-[name]_[version]_[arch][setup][ext]
             rust_targets: wasm32-unknown-unknown
           - platform: macos-latest
             args: --target aarch64-apple-darwin
             mobile: ''
+            asset_pattern: 03-[name]_[version]_[arch][ext]
             rust_targets: aarch64-apple-darwin,wasm32-unknown-unknown
           - platform: macos-latest
             args: --target x86_64-apple-darwin
             mobile: ''
+            asset_pattern: 03-[name]_[version]_[arch][ext]
             rust_targets: x86_64-apple-darwin,wasm32-unknown-unknown
           - platform: ubuntu-22.04
             args: ''
             mobile: ''
+            # Linux: order-assets renames deb/rpm/AppImage to 04/05/06.
+            asset_pattern: ''
             rust_targets: wasm32-unknown-unknown
 
     runs-on: ${{ matrix.platform }}
@@ -111,8 +118,6 @@ jobs:
             echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
             echo "Using ANDROID_KEY_* secrets for release signing."
           else
-            # Committed sideload keystore — APKs install and update across releases.
-            # Override with ANDROID_KEY_* secrets for Play Store / private keys.
             echo "keyAlias=upload" > keystore.properties
             echo "password=social-wrapped-release" >> keystore.properties
             echo "storeFile=$PWD/ci-release.jks" >> keystore.properties
@@ -139,14 +144,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         with:
-          # Attach bundles to the Release that triggered this workflow.
-          # Empty on workflow_dispatch → build only (no upload).
           releaseId: ${{ github.event.release.id }}
           tagName: ${{ github.event.release.tag_name }}
           args: ${{ matrix.args }}
           mobile: ${{ matrix.mobile }}
+          releaseAssetNamePattern: ${{ matrix.asset_pattern }}
 
-  # GitHub lists release assets alphabetically — rename with sort prefixes.
+  # Rename Linux bundles (and any leftovers) into the sort order.
   order-assets:
     needs: build-tauri
     if: github.event_name == 'release'
@@ -154,7 +158,7 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-      - name: Prefix asset names for display order
+      - name: Prefix / normalize asset names for display order
         uses: actions/github-script@v7
         with:
           script: |
@@ -166,33 +170,37 @@ jobs:
               per_page: 100,
             })
 
-            function sortPrefix(name) {
-              const bare = name.replace(/^\d{2}[a-z]?-/, '').replace(/\.sig$/i, '').toLowerCase()
+            function desiredName(name) {
+              // Already prefixed by releaseAssetNamePattern — leave alone.
+              if (/^\d{2}[a-z]?-/.test(name)) return name
+
+              const bare = name.replace(/\.sig$/i, '').toLowerCase()
+              let prefix = '99'
               if (bare.endsWith('.apk') || bare.endsWith('.aab')) {
-                if (
-                  bare.includes('arm64') ||
-                  bare.includes('aarch64') ||
-                  bare.includes('arm64-v8a')
-                )
-                  return '01a'
-                return '01b'
-              }
-              if (bare.endsWith('.msi') || bare.endsWith('.exe')) return '02'
-              if (
+                prefix =
+                  bare.includes('arm64') || bare.includes('aarch64')
+                    ? '01a'
+                    : '01b'
+              } else if (bare.endsWith('.msi') || bare.endsWith('.exe')) {
+                prefix = '02'
+              } else if (
                 bare.endsWith('.dmg') ||
                 bare.endsWith('.app') ||
                 bare.includes('.app.tar')
-              )
-                return '03'
-              if (bare.endsWith('.deb')) return '04'
-              if (bare.endsWith('.rpm')) return '05'
-              if (bare.endsWith('.appimage')) return '06'
-              return '99'
+              ) {
+                prefix = '03'
+              } else if (bare.endsWith('.deb')) {
+                prefix = '04'
+              } else if (bare.endsWith('.rpm')) {
+                prefix = '05'
+              } else if (bare.endsWith('.appimage')) {
+                prefix = '06'
+              }
+              return `${prefix}-${name}`
             }
 
             for (const asset of assets) {
-              const base = asset.name.replace(/^\d{2}[a-z]?-/, '')
-              const next = `${sortPrefix(asset.name)}-${base}`
+              const next = desiredName(asset.name)
               if (next === asset.name) continue
               core.info(`${asset.name} → ${next}`)
               await github.rest.repos.updateReleaseAsset({
