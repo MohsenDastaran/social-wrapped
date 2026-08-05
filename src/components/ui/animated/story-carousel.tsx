@@ -201,7 +201,7 @@ export function StoryCarousel({
           "z-20 flex h-1 gap-2",
           alwaysShowControls
             ? // Fullscreen: sit under close/share chrome (viewport-fixed).
-              "fixed inset-x-4 top-[calc(max(0.75rem,env(safe-area-inset-top))+4rem)] z-215"
+              "fixed inset-x-4 top-[calc(max(0.75rem,var(--safe-area-inset-top))+4rem)] z-215"
             : "absolute inset-x-4 top-4"
         )}
       >

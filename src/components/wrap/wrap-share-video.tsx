@@ -485,7 +485,7 @@ export function WrapShareVideo({
               <button
                 type="button"
                 onClick={cancelEncode}
-                className="absolute top-[max(0.75rem,env(safe-area-inset-top))] end-3 flex size-11 items-center justify-center rounded-full bg-white text-black shadow-lg ring-2 ring-white/80"
+                className="absolute top-[max(0.75rem,var(--safe-area-inset-top))] end-3 flex size-11 items-center justify-center rounded-full bg-white text-black shadow-lg ring-2 ring-white/80"
                 aria-label="Cancel render"
               >
                 <X className="size-5" strokeWidth={2.5} />

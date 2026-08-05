@@ -63,7 +63,7 @@ export function MediaFullscreenChrome({
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[210] h-28 bg-gradient-to-b from-black/80 via-black/40 to-transparent" />
 
-      <div className="absolute inset-x-0 top-0 z-[220] flex items-center justify-between gap-3 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+      <div className="absolute inset-x-0 top-0 z-[220] flex items-center justify-between gap-3 px-3 pt-[max(0.75rem,var(--safe-area-inset-top))] pb-3">
         <button
           type="button"
           onClick={onClose}
