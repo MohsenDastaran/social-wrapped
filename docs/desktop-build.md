@@ -75,16 +75,21 @@ Config: `src-tauri/tauri.conf.json` (`bundle.targets: "all"`). Icons live in `sr
 
 Publishing a GitHub Release runs [`.github/workflows/release.yml`](../.github/workflows/release.yml), which builds for:
 
-- macOS Apple Silicon (`aarch64`) and Intel (`x86_64`)
-- Linux x64 (`.deb`, `.rpm`, `.AppImage`)
+- Android (`.apk`)
 - Windows x64 (`.msi`, NSIS `.exe`)
+- macOS Apple Silicon + Intel (`.dmg`)
+- Linux x64 (`.deb`, `.rpm`, `.AppImage`)
 
-Installers are uploaded as **assets on that Release**. You can also run the workflow manually from **Actions → Release** (build only; no upload unless a release event provided an id).
+Installers are uploaded as **assets on that Release**. After builds finish, assets are renamed with numeric prefixes so GitHub’s alphabetical list shows:
 
-Repo setting: **Settings → Actions → General → Workflow permissions → Read and write permissions** (needed so the job can attach assets).
+`01` APK → `02` Windows → `03` macOS → `04` deb → `05` rpm → `06` AppImage
+
+You can also run the workflow manually from **Actions → Release** (build only; no upload / reorder unless a release event provided an id).
+
+Repo setting: **Settings → Actions → General → Workflow permissions → Read and write permissions** (needed so the job can attach and rename assets).
 
 ## Notes
 
 - Frontend-only (browser): `bun run build` / `bun run preview` — no native shell or FS plugins.
-- Android is separate: `bun run android:dev` / `bun run android:build`.
+- Local Android: `bun run android:dev` / `bun run android:build`.
 - Cross-compiling desktop targets is not the default workflow; build on each OS (or CI matrix) you ship.

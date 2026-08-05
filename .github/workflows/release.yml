@@ -1,7 +1,8 @@
-# Build desktop installers and attach them to the GitHub Release.
+# Build installers and attach them to the GitHub Release.
 #
 # Trigger: publish a Release on GitHub (or run manually via Actions → Release).
-# Assets: .dmg / .app (macOS), .msi / .exe (Windows), .deb / .AppImage / .rpm (Linux)
+# Assets (sorted alphabetically via numeric prefixes):
+#   01 APK → 02 Windows → 03 macOS → 04 deb → 05 rpm → 06 AppImage
 
 name: Release
 
@@ -23,27 +24,35 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - platform: ubuntu-22.04
+            args: --apk
+            mobile: android
+            rust_targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android,wasm32-unknown-unknown
+          - platform: windows-latest
+            args: ''
+            mobile: ''
+            rust_targets: wasm32-unknown-unknown
           - platform: macos-latest
             args: --target aarch64-apple-darwin
+            mobile: ''
             rust_targets: aarch64-apple-darwin,wasm32-unknown-unknown
           - platform: macos-latest
             args: --target x86_64-apple-darwin
+            mobile: ''
             rust_targets: x86_64-apple-darwin,wasm32-unknown-unknown
           - platform: ubuntu-22.04
             args: ''
-            rust_targets: wasm32-unknown-unknown
-          - platform: windows-latest
-            args: ''
+            mobile: ''
             rust_targets: wasm32-unknown-unknown
 
     runs-on: ${{ matrix.platform }}
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
       - uses: actions/checkout@v5
 
-      - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: Install Linux desktop dependencies
+        if: matrix.platform == 'ubuntu-22.04' && matrix.mobile != 'android'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
@@ -58,6 +67,29 @@ jobs:
         with:
           targets: ${{ matrix.rust_targets }}
 
+      - name: Setup Java
+        if: matrix.mobile == 'android'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        if: matrix.mobile == 'android'
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform / build-tools
+        if: matrix.mobile == 'android'
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
+
+      - name: Setup Android NDK
+        if: matrix.mobile == 'android'
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r29
+          link-to-sdk: true
+
       - name: Install wasm-pack
         uses: baptiste0928/cargo-install@v3
         with:
@@ -67,6 +99,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: '. -> target'
+          key: ${{ matrix.mobile || 'desktop' }}-${{ matrix.args }}
 
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
@@ -75,9 +108,60 @@ jobs:
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         with:
           # Attach bundles to the Release that triggered this workflow.
           # Empty on workflow_dispatch → build only (no upload).
           releaseId: ${{ github.event.release.id }}
           tagName: ${{ github.event.release.tag_name }}
           args: ${{ matrix.args }}
+          mobile: ${{ matrix.mobile }}
+
+  # GitHub lists release assets alphabetically — rename with sort prefixes.
+  order-assets:
+    needs: build-tauri
+    if: github.event_name == 'release'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prefix asset names for display order
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const release_id = context.payload.release.id
+            const { data: assets } = await github.rest.repos.listReleaseAssets({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id,
+              per_page: 100,
+            })
+
+            function sortPrefix(name) {
+              const bare = name.replace(/^\d{2}-/, '').replace(/\.sig$/i, '').toLowerCase()
+              if (bare.endsWith('.apk') || bare.endsWith('.aab')) return '01'
+              if (bare.endsWith('.msi') || bare.endsWith('.exe')) return '02'
+              if (
+                bare.endsWith('.dmg') ||
+                bare.endsWith('.app') ||
+                bare.includes('.app.tar')
+              )
+                return '03'
+              if (bare.endsWith('.deb')) return '04'
+              if (bare.endsWith('.rpm')) return '05'
+              if (bare.endsWith('.appimage')) return '06'
+              return '99'
+            }
+
+            for (const asset of assets) {
+              const base = asset.name.replace(/^\d{2}-/, '')
+              const next = `${sortPrefix(asset.name)}-${base}`
+              if (next === asset.name) continue
+              core.info(`${asset.name} → ${next}`)
+              await github.rest.repos.updateReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                asset_id: asset.id,
+                name: next,
+              })
+            }
