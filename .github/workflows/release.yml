@@ -40,7 +40,7 @@ jobs:
     timeout-minutes: 90
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -59,9 +59,9 @@ jobs:
           targets: ${{ matrix.rust_targets }}
 
       - name: Install wasm-pack
-        uses: jetli/wasm-pack-action@v0.4.0
+        uses: baptiste0928/cargo-install@v3
         with:
-          version: latest
+          crate: wasm-pack
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2

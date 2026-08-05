@@ -82,7 +82,6 @@ const PLATFORM_STICKER_LABELS = [
 const BG = "#041512"
 const INK = "#ecfdf5"
 const MUTED = "rgba(167, 243, 208, 0.78)"
-const ACCENT = "#34d399"
 const MARKER = "#facc15"
 const PAPER = "#fbfaf6"
 const PAPER_INK = "#041512"

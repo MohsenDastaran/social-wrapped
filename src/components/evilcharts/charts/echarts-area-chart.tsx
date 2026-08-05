@@ -45,7 +45,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type FC,
   type ReactNode,
 } from "react"
@@ -55,10 +54,7 @@ import {
   sampleGradient,
   type DotVariant,
 } from "@/components/evilcharts/ui/echarts-dot"
-import {
-  LegendOverlay,
-  type LegendVariant,
-} from "@/components/evilcharts/ui/echarts-legend"
+import { type LegendVariant } from "@/components/evilcharts/ui/echarts-legend"
 import type { ComposeOption, ImagePatternObject } from "echarts/core"
 import { LineChart, type LineSeriesOption } from "echarts/charts"
 import { motion, useReducedMotion } from "motion/react"
@@ -1704,7 +1700,7 @@ export function EChartsAreaChart<TData extends Record<string, unknown>>({
   // Hover-highlight mirrors into the legend (React state) and tooltip
   // (live.hoveredKey — its formatter runs on every hover, and pushing an option
   // to sync it would reset ECharts' blur state mid-hover).
-  const [hoveredDataKey, setHoveredDataKey] = useState<string | null>(null)
+  const [, setHoveredDataKey] = useState<string | null>(null)
 
   // ── Declarative config, collected from children by reference ─────────────────
   const collected = useMemo(() => collectConfig(children), [children])
@@ -2413,21 +2409,6 @@ export function EChartsAreaChart<TData extends Record<string, unknown>>({
     return () => cancelAnimationFrame(raf)
   }, [live, isLoading, loadingPoints, loadingData])
 
-  // ── Legend overlay position ──────────────────────────────────────────────────
-  // Insets match the Recharts legend's breathing room inside the plot frame.
-  const legendStyle: CSSProperties = {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    zIndex: 2,
-    pointerEvents: "auto",
-    ...(legendSlot.verticalAlign === "top"
-      ? { top: 12 }
-      : legendSlot.verticalAlign === "bottom"
-        ? { bottom: showBrush ? brushHeight + 16 : 12 }
-        : { top: "50%", transform: "translateY(-50%)" }),
-  }
-
   return (
     <div
       ref={containerRef}
@@ -2439,21 +2420,6 @@ export function EChartsAreaChart<TData extends Record<string, unknown>>({
       <div className="relative min-h-0 w-full flex-1">
         <div ref={mountRef} className="h-full min-h-0 w-full" />
       </div>
-
-      {/* {legendSlot.present && !isLoading && (
-        <LegendOverlay
-          seriesKeys={seriesKeys}
-          config={config}
-          variant={legendSlot.variant}
-          align={legendSlot.align}
-          verticalAlign={legendSlot.verticalAlign}
-          selectedKey={selectedDataKey}
-          hoveredKey={hoveredDataKey}
-          isClickable={legendSlot.isClickable}
-          onToggle={toggleSelection}
-          style={legendStyle}
-        />
-      )} */}
 
       {isLoading && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">

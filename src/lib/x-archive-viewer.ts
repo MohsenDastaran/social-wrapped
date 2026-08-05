@@ -93,7 +93,7 @@ export async function ensureXArchiveCached(
           .join("/")}`
         await cache.put(
           url,
-          new Response(data, {
+          new Response(data.slice(), {
             headers: {
               "Content-Type": mimeForPath(path),
               "Cache-Control": "no-cache",

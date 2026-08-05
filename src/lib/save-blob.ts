@@ -78,7 +78,23 @@ async function saveViaFilePicker(
   const ext = extensionOf(filename) ?? "png"
   const mime = blob.type || mimeForExt(ext)
 
-  const handle = await window.showSaveFilePicker({
+  const showSaveFilePicker = (
+    window as Window & {
+      showSaveFilePicker?: (options?: {
+        suggestedName?: string
+        types?: Array<{
+          description?: string
+          accept: Record<string, string[]>
+        }>
+      }) => Promise<FileSystemFileHandle>
+    }
+  ).showSaveFilePicker
+
+  if (!showSaveFilePicker) {
+    throw new Error("showSaveFilePicker is unavailable")
+  }
+
+  const handle = await showSaveFilePicker({
     suggestedName: filename,
     types: [
       {
@@ -140,25 +156,4 @@ function isAbortError(error: unknown): boolean {
     (error instanceof DOMException && error.name === "AbortError") ||
     (error instanceof Error && error.name === "AbortError")
   )
-}
-
-declare global {
-  interface Window {
-    showSaveFilePicker?: (options?: {
-      suggestedName?: string
-      types?: Array<{
-        description?: string
-        accept: Record<string, string[]>
-      }>
-    }) => Promise<FileSystemFileHandle>
-  }
-
-  interface FileSystemFileHandle {
-    createWritable: () => Promise<FileSystemWritableFileStream>
-  }
-
-  interface FileSystemWritableFileStream extends WritableStream {
-    write: (data: Blob | BufferSource | string) => Promise<void>
-    close: () => Promise<void>
-  }
 }

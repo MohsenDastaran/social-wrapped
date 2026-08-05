@@ -24,7 +24,7 @@ import type {
 import type { LinkedInInsights } from "@/platform/linkedin-types"
 import type { XInsights } from "@/platform/x-types"
 import { cn } from "@/lib/utils"
-import type { VideoChartSlide } from "../../remotion/Composition"
+import type { VideoChartSlide } from "@sw-remotion/Composition"
 
 type WrapShareMediaProps = {
   displayName: string
@@ -146,7 +146,7 @@ export function WrapShareMedia({
   const videoChartSlides = useMemo((): VideoChartSlide[] => {
     const byId = new Map(stories.map((s) => [s.id, s]))
     return catalog.videoSlideIds
-      .map((id) => {
+      .map((id): VideoChartSlide | null => {
         const story = byId.get(id)
         if (!story?.image) return null
         return {
@@ -154,9 +154,9 @@ export function WrapShareMedia({
           src: story.image,
           heading: story.heading,
           motion: "fit",
-        } satisfies VideoChartSlide
+        }
       })
-      .filter((s): s is VideoChartSlide => Boolean(s))
+      .filter((s): s is VideoChartSlide => s != null)
   }, [stories, catalog.videoSlideIds])
 
   return (

@@ -14,7 +14,7 @@ import {
   MediaVolumeRange,
 } from "media-chrome/react";
 import type { ComponentProps } from "react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { MediaFullscreenChrome } from "@/components/media-fullscreen-chrome";
 import { DEFAULT_APP_SHARE_TEXT } from "@/lib/media-share";

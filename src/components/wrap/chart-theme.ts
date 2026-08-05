@@ -29,11 +29,19 @@ export const PALETTES = [
   },
 ] as const
 
+function paletteColors(index: number): { light: string[]; dark: string[] } {
+  const palette = PALETTES[index % PALETTES.length]
+  return {
+    light: [...palette.light],
+    dark: [...palette.dark],
+  }
+}
+
 export function pieConfigForKeys(keys: string[]): PieConfig {
   return Object.fromEntries(
     keys.map((key, i) => [
       key,
-      { label: key, colors: PALETTES[i % PALETTES.length] },
+      { label: key, colors: paletteColors(i) },
     ])
   )
 }
@@ -164,7 +172,7 @@ export function contentMixPieConfig(kinds: string[]): PieConfig {
         key,
         preset ?? {
           label: key,
-          colors: PALETTES[i % PALETTES.length],
+          colors: paletteColors(i),
         },
       ]
     })

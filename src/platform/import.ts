@@ -633,7 +633,12 @@ function importXFile(
         return
       }
 
-      fail(new Error(message.message || "X import failed."))
+      if (message.type === "error") {
+        fail(new Error(message.message || "X import failed."))
+        return
+      }
+
+      fail(new Error("Unexpected X import response."))
     }
 
     worker.onerror = (event) => {

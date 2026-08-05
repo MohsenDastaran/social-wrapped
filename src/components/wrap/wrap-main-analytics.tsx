@@ -2,23 +2,17 @@ import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-ti
 import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
 import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import { TopEmojisCard } from "@/components/wrap/top-emojis-card"
-import {
-  fmt,
-  SENT_RECEIVED_PIE,
-  EMOJI_AREA,
-} from "@/components/wrap/chart-theme"
+import { fmt, SENT_RECEIVED_PIE } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import type { WrapAnalytics } from "@/platform/analytics-types"
-import { withEmojiPresentation, filterEmojiEntries } from "@/lib/emoji"
 import {
   ArrowDownLeft,
   ArrowUpRight,
   MessagesSquare,
   Hash,
 } from "lucide-react"
-import { EChartsAreaChart } from "@/components/evilcharts/charts/echarts-area-chart"
 import { EChartsPieChart } from "@/components/evilcharts/charts/echarts-pie-chart"
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 
@@ -48,13 +42,6 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
       )}%`,
     },
   ]
-
-  const reactionData = filterEmojiEntries(a.emojis.topReactions)
-    .slice(0, 10)
-    .map((e) => ({
-      name: withEmojiPresentation(e.emoji),
-      count: e.count,
-    }))
 
   return (
     <section className="flex flex-col gap-4">
