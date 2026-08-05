@@ -3,6 +3,7 @@
     <style name="Theme.social_wrapped" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@color/black</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
         <item name="android:enforceNavigationBarContrast" tools:targetApi="29">false</item>

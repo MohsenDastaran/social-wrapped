@@ -103,5 +103,5 @@ Repo setting: **Settings → Actions → General → Workflow permissions → Re
 
 - Frontend-only (browser): `bun run build` / `bun run preview` — no native shell or FS plugins.
 - Local Android: `bun run android:dev` / `bun run android:build`.
-- **Safe area (Android):** `MainActivity` injects `--safe-area-inset-*` CSS variables from system bars / cutouts. Use `<SafeArea>` ([`src/components/safe-area.tsx`](../src/components/safe-area.tsx)) or `var(--safe-area-inset-top)` / `pt-safe` utilities. Desktop stays at `0` via CSS fallbacks.
+- **Safe area (Android):** `MainActivity` pads the activity content root with system-bar / cutout / IME insets (edge-to-edge). CSS `--safe-area-inset-*` stay at `0` on Android so `<SafeArea>` does not double-pad; desktop/browser still use `env()` fallbacks. Use `<SafeArea>` ([`src/components/safe-area.tsx`](../src/components/safe-area.tsx)) or `pt-safe` utilities for cross-platform layouts.
 - Cross-compiling desktop targets is not the default workflow; build on each OS (or CI matrix) you ship.

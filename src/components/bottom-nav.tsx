@@ -7,7 +7,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-[max(1rem,var(--safe-area-inset-bottom))] z-50 flex justify-center px-4 md:hidden"
+      className="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4 md:hidden"
     >
       <div className="flex items-center gap-1 rounded-full border border-border/40 bg-foreground/95 p-1.5 text-background shadow-lg shadow-black/10 backdrop-blur">
         {NAV_ITEMS.map((item) => {

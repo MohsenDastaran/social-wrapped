@@ -37,7 +37,7 @@ export function AppLayout() {
       <RetentionPruneOnOpen />
       <SiteHeader />
 
-      <main className="relative z-10 flex flex-1 flex-col items-center px-6 pt-10 pb-[calc(6rem+var(--safe-area-inset-bottom))] text-center md:pb-10">
+      <main className="relative z-10 flex flex-1 flex-col items-center px-6 pt-10 pb-24 text-center md:pb-10">
         <Outlet />
       </main>
 
