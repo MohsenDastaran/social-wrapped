@@ -1,9 +1,7 @@
-import { motion } from "motion/react"
 import { NavLink } from "react-router"
 
 import { ModeToggle } from "@/components/mode-toggle"
-import { NAV_ITEMS } from "@/components/nav-items"
-import { cn } from "@/lib/utils"
+import { MorphNavMenu } from "@/components/ui/animated/morph-nav-menu"
 
 export function SiteHeader() {
   return (
@@ -17,51 +15,7 @@ export function SiteHeader() {
           Social Wrapped
         </NavLink>
 
-        <nav aria-label="Primary" className="relative hidden items-center gap-0.5 md:flex">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon
-
-            return (
-              <NavLink
-                key={item.id}
-                to={item.to}
-                end={item.to === "/"}
-                className={({ isActive }) =>
-                  cn(
-                    "relative inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs/relaxed outline-none transition-colors",
-                    "focus-visible:ring-2 focus-visible:ring-ring/30",
-                    isActive
-                      ? "font-semibold text-primary"
-                      : "font-medium text-muted-foreground hover:text-foreground"
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    {isActive ? (
-                      <motion.span
-                        layoutId="header-nav-active"
-                        className="absolute inset-0 rounded-full bg-primary/15 ring-1 ring-primary/25"
-                        transition={{
-                          type: "spring",
-                          stiffness: 380,
-                          damping: 30,
-                        }}
-                      />
-                    ) : null}
-                    <Icon className="relative size-3.5" />
-                    <span
-                      className="relative"
-                      aria-current={isActive ? "page" : undefined}
-                    >
-                      {item.label}
-                    </span>
-                  </>
-                )}
-              </NavLink>
-            )
-          })}
-        </nav>
+        <MorphNavMenu />
 
         <ModeToggle />
       </div>
