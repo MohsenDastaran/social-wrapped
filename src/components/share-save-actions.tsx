@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react"
-import { Check, Download, Loader2, Share2 } from "lucide-react"
+import { Download, Loader2 } from "lucide-react"
 
 import { DotmSquare12 } from "@/components/ui/dotm-square-12"
 import {
@@ -10,11 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  copyShareText,
-  downloadMediaUrl,
-  filenameFromUrl,
-} from "@/lib/media-share"
+import { downloadMediaUrl, filenameFromUrl } from "@/lib/media-share"
 import { cn } from "@/lib/utils"
 
 export type ShareDownloadMenuItem = {
@@ -30,12 +26,9 @@ export type ShareSaveActionsProps = {
   mediaUrl: string
   /** Preferred download filename. */
   fileName?: string
-  /** Attribution text copied / shared with the system share sheet. */
-  shareText: string
   /** Visual style for overlays on dark fullscreen surfaces. */
   appearance?: "default" | "overlay"
   className?: string
-  shareLabel?: string
   downloadLabel?: string
   /** Compact icon-only pill (fullscreen header). */
   iconOnly?: boolean
@@ -161,7 +154,9 @@ function ActionButton({
     >
       {icon}
       {!compact || wide ? (
-        <span className={cn(overlay && !wide && "text-xs font-semibold tracking-tight")}>
+        <span
+          className={cn(overlay && !wide && "text-xs font-semibold tracking-tight")}
+        >
           {label}
         </span>
       ) : null}
@@ -169,18 +164,12 @@ function ActionButton({
   )
 }
 
-/**
- * Reusable Share + Download actions.
- * Share copies (or system-shares) the app attribution text;
- * Download saves the current media file.
- */
+/** Download / save actions for story & video fullscreen chrome. */
 export function ShareSaveActions({
   mediaUrl,
   fileName,
-  shareText,
   appearance = "default",
   className,
-  shareLabel = "Share",
   downloadLabel = "Save",
   iconOnly = false,
   downloadReady,
@@ -189,8 +178,7 @@ export function ShareSaveActions({
   onRequestDownload,
   downloadMenu,
 }: ShareSaveActionsProps) {
-  const [busy, setBusy] = useState<"share" | "download" | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [busy, setBusy] = useState<"download" | null>(null)
 
   const overlay = appearance === "overlay"
   const hasDownloadMenu = Boolean(downloadMenu?.items.length)
@@ -208,20 +196,6 @@ export function ShareSaveActions({
     downloadProgress != null
       ? Math.round(Math.min(1, Math.max(0, downloadProgress)) * 100)
       : null
-
-  async function handleShare() {
-    setBusy("share")
-    setCopied(false)
-    try {
-      await copyShareText(shareText)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setBusy(null)
-    }
-  }
 
   async function handleDownload() {
     if (hasDownloadMenu) return
@@ -245,9 +219,6 @@ export function ShareSaveActions({
     }
   }
 
-  const shareCaption =
-    busy === "share" ? "Sharing…" : copied ? "Copied!" : shareLabel
-
   const downloadCaption =
     busy === "download" && canDownload
       ? "Saving…"
@@ -262,15 +233,6 @@ export function ShareSaveActions({
               ? `${progressPct}%`
               : (downloadStatus ?? "Encoding…")
             : downloadLabel
-
-  const shareIcon =
-    busy === "share" ? (
-      <Loader2 className="size-4 animate-spin" aria-hidden />
-    ) : copied ? (
-      <Check className="size-4" aria-hidden />
-    ) : (
-      <Share2 className="size-4" aria-hidden />
-    )
 
   const downloadIcon =
     busy === "download" && canDownload ? (
@@ -355,17 +317,7 @@ export function ShareSaveActions({
   )
 
   return (
-    <div className={shellClass} role="group" aria-label="Share and save">
-      <ActionButton
-        label={shareCaption}
-        icon={shareIcon}
-        tone={copied ? "success" : "neutral"}
-        overlay={overlay}
-        compact={iconOnly}
-        disabled={busy !== null}
-        onClick={() => void handleShare()}
-      />
-
+    <div className={shellClass} role="group" aria-label="Save media">
       {hasDownloadMenu ? (
         <DropdownMenu>
           <DropdownMenuTrigger

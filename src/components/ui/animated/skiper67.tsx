@@ -17,7 +17,6 @@ import type { ComponentProps } from "react";
 import { useEffect, useState } from "react";
 
 import { MediaFullscreenChrome } from "@/components/media-fullscreen-chrome";
-import { DEFAULT_APP_SHARE_TEXT } from "@/lib/media-share";
 import { cn } from "@/lib/utils";
 
 export type VideoPlayerProps = ComponentProps<typeof MediaController>;
@@ -130,9 +129,7 @@ export type Skiper67Props = {
   className?: string
   /** Hide the large “click to play” caption (tighter layouts). */
   compact?: boolean
-  /** Text included when sharing the video (Web Share API). */
-  shareText?: string
-  /** Filename used when sharing/downloading the video file. */
+  /** Filename used when downloading the video file. */
   shareFileName?: string
 }
 
@@ -140,7 +137,6 @@ export const Skiper67 = ({
   videoSrc = "/showreel/skiper-ui-showreel.mp4",
   className,
   compact = false,
-  shareText = DEFAULT_APP_SHARE_TEXT,
   shareFileName = "social-wrapped.mp4",
 }: Skiper67Props) => {
   const [showVideoPopOver, setShowVideoPopOver] = useState(false);
@@ -164,7 +160,6 @@ export const Skiper67 = ({
         {showVideoPopOver && (
           <VideoPopOver
             videoSrc={videoSrc}
-            shareText={shareText}
             shareFileName={shareFileName}
             setShowVideoPopOver={setShowVideoPopOver}
           />
@@ -198,12 +193,10 @@ export const Skiper67 = ({
 
 const VideoPopOver = ({
   videoSrc,
-  shareText,
   shareFileName,
   setShowVideoPopOver,
 }: {
   videoSrc: string;
-  shareText: string;
   shareFileName: string;
   setShowVideoPopOver: (showVideoPopOver: boolean) => void;
 }) => {
@@ -223,7 +216,6 @@ const VideoPopOver = ({
   return (
     <MediaFullscreenChrome
       title="Wrap video"
-      shareText={shareText}
       mediaUrl={videoSrc}
       fileName={shareFileName}
       onClose={() => setShowVideoPopOver(false)}

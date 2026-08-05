@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils"
 
 export type MediaFullscreenChromeProps = {
   title?: string
-  shareText: string
   mediaUrl: string
   fileName: string
   onClose: () => void
@@ -30,10 +29,9 @@ export type MediaFullscreenChromeProps = {
   }
 }
 
-/** Shared fullscreen shell: close + share/save overlay the media (ported to body). */
+/** Shared fullscreen shell: close + save overlay the media (ported to body). */
 export function MediaFullscreenChrome({
   title,
-  shareText,
   mediaUrl,
   fileName,
   onClose,
@@ -78,7 +76,6 @@ export function MediaFullscreenChrome({
           iconOnly
           mediaUrl={mediaUrl}
           fileName={fileName}
-          shareText={shareText}
           downloadReady={downloadReady}
           downloadProgress={downloadProgress}
           downloadStatus={downloadStatus}

@@ -8,7 +8,6 @@ import {
   type StoryItem,
 } from "@/components/ui/animated/story-carousel"
 import { WrapShareVideo } from "@/components/wrap/wrap-share-video"
-import { DEFAULT_APP_SHARE_TEXT } from "@/lib/media-share"
 import type { PlatformId } from "@/lib/platforms"
 import { buildPlatformStoryCatalog } from "@/lib/wrap-story-catalog"
 import {
@@ -129,8 +128,6 @@ export function WrapShareMedia({
     }
   }, [storiesOpen])
 
-  const videoShareText = `Check out my Social Wrapped for ${displayName}. ${DEFAULT_APP_SHARE_TEXT}`
-  const storyShareText = `Check out my Social Wrapped story for ${displayName}. ${DEFAULT_APP_SHARE_TEXT}`
   const currentStory = stories[storyIndex] ?? stories[0]
   const cover = stories[0]
 
@@ -213,7 +210,6 @@ export function WrapShareMedia({
               platformName={platformName}
               chartSlides={videoChartSlides}
               ready
-              shareText={videoShareText}
               shareFileName={`social-wrapped-${displayName}.mp4`}
             />
           </div>
@@ -274,7 +270,6 @@ export function WrapShareMedia({
       {storiesOpen && carouselItems.length > 0 ? (
         <MediaFullscreenChrome
           title="Stories"
-          shareText={storyShareText}
           mediaUrl={currentStory?.image ?? ""}
           fileName={`social-wrapped-story-${currentStory?.id ?? storyIndex + 1}.png`}
           onClose={() => setStoriesOpen(false)}

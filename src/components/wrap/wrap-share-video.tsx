@@ -42,7 +42,6 @@ type WrapShareVideoProps = {
   chartSlides?: VideoChartSlide[]
   /** Charts already captured by the parent share strip. */
   ready: boolean
-  shareText: string
   shareFileName: string
   className?: string
 }
@@ -67,7 +66,6 @@ export function WrapShareVideo({
   platformName = "Telegram",
   chartSlides = [],
   ready,
-  shareText,
   shareFileName,
   className,
 }: WrapShareVideoProps) {
@@ -453,7 +451,6 @@ export function WrapShareVideo({
       {open && playerReady && !encoding ? (
         <MediaFullscreenChrome
           title="Wrap video"
-          shareText={shareText}
           mediaUrl=""
           fileName={shareFileName}
           downloadMenu={downloadMenu}
