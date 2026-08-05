@@ -2,7 +2,7 @@
 #
 # Trigger: publish a Release on GitHub (or run manually via Actions → Release).
 # Assets (sorted alphabetically via numeric prefixes):
-#   01 APK → 02 Windows → 03 macOS → 04 deb → 05 rpm → 06 AppImage
+#   01 APK (arm64 then universal) → 02 Windows → 03 macOS → 04 deb → 05 rpm → 06 AppImage
 
 name: Release
 
@@ -24,6 +24,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Prefer arm64-v8a for real phones (smaller + correct ABI).
+          - platform: ubuntu-22.04
+            args: --apk --target aarch64
+            mobile: android
+            rust_targets: aarch64-linux-android,wasm32-unknown-unknown
+          # Universal APK (all ABIs) for emulators / unusual devices.
           - platform: ubuntu-22.04
             args: --apk
             mobile: android
@@ -90,6 +96,29 @@ jobs:
           ndk-version: r29
           link-to-sdk: true
 
+      - name: Setup Android signing
+        if: matrix.mobile == 'android'
+        env:
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
+        run: |
+          cd src-tauri/gen/android
+          if [ -n "$ANDROID_KEY_BASE64" ] && [ -n "$ANDROID_KEY_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            echo "keyAlias=$ANDROID_KEY_ALIAS" > keystore.properties
+            echo "password=$ANDROID_KEY_PASSWORD" >> keystore.properties
+            echo "$ANDROID_KEY_BASE64" | base64 -d > "$RUNNER_TEMP/keystore.jks"
+            echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
+            echo "Using ANDROID_KEY_* secrets for release signing."
+          else
+            # Committed sideload keystore — APKs install and update across releases.
+            # Override with ANDROID_KEY_* secrets for Play Store / private keys.
+            echo "keyAlias=upload" > keystore.properties
+            echo "password=social-wrapped-release" >> keystore.properties
+            echo "storeFile=$PWD/ci-release.jks" >> keystore.properties
+            echo "Using committed ci-release.jks for sideload signing."
+          fi
+
       - name: Install wasm-pack
         uses: baptiste0928/cargo-install@v3
         with:
@@ -138,8 +167,16 @@ jobs:
             })
 
             function sortPrefix(name) {
-              const bare = name.replace(/^\d{2}-/, '').replace(/\.sig$/i, '').toLowerCase()
-              if (bare.endsWith('.apk') || bare.endsWith('.aab')) return '01'
+              const bare = name.replace(/^\d{2}[a-z]?-/, '').replace(/\.sig$/i, '').toLowerCase()
+              if (bare.endsWith('.apk') || bare.endsWith('.aab')) {
+                if (
+                  bare.includes('arm64') ||
+                  bare.includes('aarch64') ||
+                  bare.includes('arm64-v8a')
+                )
+                  return '01a'
+                return '01b'
+              }
               if (bare.endsWith('.msi') || bare.endsWith('.exe')) return '02'
               if (
                 bare.endsWith('.dmg') ||
@@ -154,7 +191,7 @@ jobs:
             }
 
             for (const asset of assets) {
-              const base = asset.name.replace(/^\d{2}-/, '')
+              const base = asset.name.replace(/^\d{2}[a-z]?-/, '')
               const next = `${sortPrefix(asset.name)}-${base}`
               if (next === asset.name) continue
               core.info(`${asset.name} → ${next}`)

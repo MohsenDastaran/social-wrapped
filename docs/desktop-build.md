@@ -75,14 +75,25 @@ Config: `src-tauri/tauri.conf.json` (`bundle.targets: "all"`). Icons live in `sr
 
 Publishing a GitHub Release runs [`.github/workflows/release.yml`](../.github/workflows/release.yml), which builds for:
 
-- Android (`.apk`)
+- Android **arm64-v8a** APK (phones) + **universal** APK
 - Windows x64 (`.msi`, NSIS `.exe`)
 - macOS Apple Silicon + Intel (`.dmg`)
 - Linux x64 (`.deb`, `.rpm`, `.AppImage`)
 
 Installers are uploaded as **assets on that Release**. After builds finish, assets are renamed with numeric prefixes so GitHub’s alphabetical list shows:
 
-`01` APK → `02` Windows → `03` macOS → `04` deb → `05` rpm → `06` AppImage
+`01a` arm64 APK → `01b` universal APK → `02` Windows → `03` macOS → `04` deb → `05` rpm → `06` AppImage
+
+**Android install note:** Release APKs must be signed. CI signs with `src-tauri/gen/android/ci-release.jks` (sideload). Prefer the **arm64-v8a** asset on real phones. Optional secrets `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `ANDROID_KEY_BASE64` override with your own keystore.
+
+Local signed release APK:
+
+```bash
+cp src-tauri/gen/android/keystore.properties.example src-tauri/gen/android/keystore.properties
+bun run android:build
+# arm64 only:
+bunx tauri android build --apk --target aarch64
+```
 
 You can also run the workflow manually from **Actions → Release** (build only; no upload / reorder unless a release event provided an id).
 
