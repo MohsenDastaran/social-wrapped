@@ -40,77 +40,96 @@ function MorphNavItem({ item }: { item: NavItem }) {
         end={item.to === "/"}
         className={({ isActive }) =>
           cn(
-            "block outline-none focus-visible:ring-2 focus-visible:ring-ring/30 rounded-md",
-            isActive && "[&_span]:text-primary"
+            "block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
+            isActive && "bg-primary"
           )
         }
       >
-        <motion.span
-          className="relative block overflow-hidden rounded-md px-2.5 py-2"
-          initial="initial"
-          whileHover="hover"
-          variants={{
-            initial: {},
-            hover: {},
-          }}
-        >
-          <span className="relative text-transparent">{item.label}</span>
-
+        {({ isActive }) => (
           <motion.span
-            className="absolute inset-0 z-2 flex h-full w-full items-center justify-center text-foreground"
-            initial={{ y: 0, scale: 1, rotate: 0 }}
-            variants={{
-              hover: {
-                y: -100,
-                scale: 0.5,
-                rotate: -30,
-              },
-            }}
-            transition={SPRING_CONFIG_TEXT}
+            className="relative block overflow-hidden rounded-md px-2.5 py-2"
+            initial="initial"
+            whileHover="hover"
           >
-            {item.label}
-          </motion.span>
+            {/* Base text layer - invisible normally, visible when active (highest z-index) */}
+            <span
+              className="relative z-30"
+              style={{
+                color: isActive ? "var(--primary-foreground)" : "transparent",
+              }}
+            >
+              {item.label}
+            </span>
 
-          <motion.span
-            className="absolute inset-0 z-1 h-full w-full scale-x-150 overflow-hidden bg-primary"
-            initial={{ y: 100, rotate: -40 }}
-            variants={{
-              hover: {
-                y: 0,
-                rotate: 0,
-              },
-            }}
-            transition={EASE_CUBIC_CONFIG}
-            aria-hidden
-          >
+            {/* Normal state text */}
             <motion.span
-              className="absolute inset-0 h-full w-full bg-foreground"
-              initial={{ y: 150, rotate: -60 }}
+              className="absolute inset-0 z-2 flex h-full w-full items-center justify-center"
+              style={{ color: isActive ? "transparent" : "var(--foreground)" }}
+              initial={{ y: 0, scale: 1, rotate: 0 }}
               variants={{
-                hover: {
-                  y: 0,
-                  rotate: 0,
-                },
+                hover: isActive
+                  ? {}
+                  : {
+                      y: -100,
+                      scale: 0.5,
+                      rotate: -30,
+                    },
+              }}
+              transition={SPRING_CONFIG_TEXT}
+            >
+              {item.label}
+            </motion.span>
+
+            {/* Background fill animation */}
+            <motion.span
+              className="absolute inset-0 z-1 h-full w-full scale-x-150 overflow-hidden bg-primary"
+              initial={{ y: 100, rotate: -40 }}
+              variants={{
+                hover: isActive
+                  ? {}
+                  : {
+                      y: 0,
+                      rotate: 0,
+                    },
               }}
               transition={EASE_CUBIC_CONFIG}
-            />
-          </motion.span>
+              aria-hidden
+            >
+              <motion.span
+                className="absolute inset-0 h-full w-full bg-foreground"
+                initial={{ y: 150, rotate: -60 }}
+                variants={{
+                  hover: isActive
+                    ? {}
+                    : {
+                        y: 0,
+                        rotate: 0,
+                      },
+                }}
+                transition={EASE_CUBIC_CONFIG}
+              />
+            </motion.span>
 
-          <motion.span
-            className="absolute inset-0 z-2 flex items-center justify-center text-background"
-            initial={{ y: 180, rotate: -60, scale: 0.5 }}
-            variants={{
-              hover: {
-                y: 0,
-                rotate: 0,
-                scale: 1,
-              },
-            }}
-            transition={SPRING_CONFIG_TEXT}
-          >
-            {item.label}
+            {/* Hover text */}
+            <motion.span
+              className="absolute inset-0 z-2 flex items-center justify-center"
+              style={{ color: isActive ? "transparent" : "var(--background)" }}
+              initial={{ y: 180, rotate: -60, scale: 0.5 }}
+              variants={{
+                hover: isActive
+                  ? {}
+                  : {
+                      y: 0,
+                      rotate: 0,
+                      scale: 1,
+                    },
+              }}
+              transition={SPRING_CONFIG_TEXT}
+            >
+              {item.label}
+            </motion.span>
           </motion.span>
-        </motion.span>
+        )}
       </NavLink>
     </li>
   )

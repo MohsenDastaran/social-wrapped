@@ -1,3 +1,4 @@
+import { motion } from "motion/react"
 import { NavLink } from "react-router"
 
 import { NAV_ITEMS } from "@/components/nav-items"
@@ -20,24 +21,42 @@ export function BottomNav() {
               end={item.to === "/"}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-xs font-medium transition-all duration-300 ease-out",
+                  "relative flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium whitespace-nowrap transition-all duration-300 ease-out",
                   isActive
-                    ? "bg-background pr-4 text-foreground"
-                    : "text-background/70 hover:text-background"
+                    ? "bg-primary pr-4 text-primary-foreground shadow-md"
+                    : "text-background/70 hover:bg-background/10 hover:text-background"
                 )
               }
             >
               {({ isActive }) => (
                 <>
-                  <Icon className="size-4 shrink-0" />
+                  <Icon
+                    className={cn(
+                      "size-4 shrink-0 transition-transform duration-300",
+                      isActive && "scale-110"
+                    )}
+                  />
                   <span
                     className={cn(
                       "overflow-hidden transition-all duration-300 ease-out",
-                      isActive ? "max-w-24 opacity-100" : "max-w-0 opacity-0"
+                      isActive
+                        ? "max-w-24 font-semibold opacity-100"
+                        : "max-w-0 opacity-0"
                     )}
                   >
                     {item.label}
                   </span>
+                  {isActive && (
+                    <motion.span
+                      className="absolute inset-0 rounded-full bg-primary-foreground/10"
+                      layoutId="activeNavIndicator"
+                      transition={{
+                        type: "spring",
+                        stiffness: 380,
+                        damping: 30,
+                      }}
+                    />
+                  )}
                 </>
               )}
             </NavLink>
