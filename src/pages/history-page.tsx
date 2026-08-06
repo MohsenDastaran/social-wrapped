@@ -108,7 +108,7 @@ export function HistoryPage() {
 
   return (
     <div className="flex w-full max-w-4xl flex-col items-stretch">
-      <header className="relative mb-7 overflow-hidden rounded-3xl border border-border/60 bg-card px-5 py-8 text-center shadow-[0_18px_50px_-34px] shadow-foreground/50 sm:mb-9 sm:px-8 sm:py-10">
+      <header className="relative mx-auto mb-7 w-full max-w-lg overflow-hidden rounded-3xl border border-border/60 bg-card px-5 py-8 text-center shadow-[0_18px_50px_-34px] shadow-foreground/50 sm:mb-9 sm:px-8 sm:py-10">
         <div className="pointer-events-none absolute -inset-s-20 -top-24 size-60 rounded-full bg-primary/15 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -inset-e-16 size-64 rounded-full bg-sky-500/15 blur-3xl" />
         <div className="relative">
