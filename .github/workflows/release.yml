@@ -8,6 +8,9 @@
 
 name: Release
 
+# Actions list title: prefer release title (often "vX.Y.Z: …"); fall back to tag.
+run-name: ${{ github.event.release.name || github.event.inputs.tag || github.workflow }}
+
 on:
   release:
     types: [published]
@@ -224,8 +227,11 @@ jobs:
           releaseAssetNamePattern: ${{ matrix.asset_pattern }}
 
   # Rename Linux bundles (and any leftovers) into the sort order.
+  # Still run when some matrix builds fail (e.g. a flaky macOS runner) so
+  # successful uploads (deb/rpm/AppImage) get their 04/05/06 prefixes.
   order-assets:
     needs: [meta, build-tauri]
+    if: ${{ always() && !cancelled() && needs.meta.result == 'success' }}
     permissions:
       contents: write
     runs-on: ubuntu-latest
