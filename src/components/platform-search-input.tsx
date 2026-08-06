@@ -19,7 +19,7 @@ export function PlatformSearchInput({
   const hasValue = typeof value === "string" && value.length > 0
 
   return (
-    <div className="relative w-full">
+    <div className={cn("relative w-full", className)}>
       <label htmlFor={id} className="sr-only">
         Search platforms
       </label>
@@ -38,8 +38,7 @@ export function PlatformSearchInput({
           "placeholder:text-muted-foreground",
           "transition-[border-color,box-shadow] duration-200",
           "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
-          "[&::-webkit-search-cancel-button]:hidden",
-          className
+          "[&::-webkit-search-cancel-button]:hidden"
         )}
         {...props}
       />
