@@ -1,0 +1,3 @@
+[submodule "core"]
+	path = crates/core
+	url = https://github.com/MohsenDastaran/social-wrapped-core.git
