@@ -263,6 +263,19 @@ pub struct ContentMixStats {
     pub total_voice_duration_secs: u64,
     /// Non-zero types only, sorted by count descending.
     pub types: Vec<ContentTypeCount>,
+    /// Per-sender content mix (for You / Contact toggles).
+    #[serde(default)]
+    pub by_participant: Vec<ContentMixParticipant>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentMixParticipant {
+    pub name: String,
+    pub total: u64,
+    pub total_voice_duration_secs: u64,
+    /// Non-zero types only, sorted by count descending.
+    pub types: Vec<ContentTypeCount>,
 }
 
 // stat 16
@@ -553,7 +566,9 @@ struct EngineState {
 
     // ── content mix (stat 23) ─────────────────────────────────────────────
     content_counts: HashMap<ContentKind, u64>,
+    content_by_sender: HashMap<String, HashMap<ContentKind, u64>>,
     voice_secs: u64,
+    voice_secs_by_sender: HashMap<String, u64>,
 
     // ── message length (stat 16) ──────────────────────────────────────────
     msg_chars: HashMap<String, u64>,
@@ -613,7 +628,9 @@ impl EngineState {
             sent_count: 0,
             received_count: 0,
             content_counts: HashMap::new(),
+            content_by_sender: HashMap::new(),
             voice_secs: 0,
+            voice_secs_by_sender: HashMap::new(),
             msg_chars: HashMap::new(),
             msg_char_counts: HashMap::new(),
             rt_delays: HashMap::new(),
@@ -656,8 +673,18 @@ impl EngineState {
 
         // ── Content mix (normal / link / emoji / media…) ─────────────────
         *self.content_counts.entry(ev.content_kind).or_default() += 1;
+        *self
+            .content_by_sender
+            .entry(sender.clone())
+            .or_default()
+            .entry(ev.content_kind)
+            .or_default() += 1;
         if ev.kind.is_voice_like() {
             self.voice_secs += ev.voice_duration_secs as u64;
+            *self
+                .voice_secs_by_sender
+                .entry(sender.clone())
+                .or_default() += ev.voice_duration_secs as u64;
         }
 
         // ── Message length (text only) ────────────────────────────────────
@@ -837,10 +864,46 @@ impl EngineState {
             })
             .collect();
         types.sort_by(|a, b| b.count.cmp(&a.count));
+
+        let mut by_participant: Vec<ContentMixParticipant> = self
+            .content_by_sender
+            .iter()
+            .map(|(name, map)| {
+                let total: u64 = map.values().sum();
+                let mut part_types: Vec<ContentTypeCount> = map
+                    .iter()
+                    .filter(|(_, &c)| c > 0)
+                    .map(|(kind, &count)| ContentTypeCount {
+                        kind: kind.as_key().to_string(),
+                        label: kind.label().to_string(),
+                        count,
+                        pct: if total > 0 {
+                            count as f64 / total as f64 * 100.0
+                        } else {
+                            0.0
+                        },
+                    })
+                    .collect();
+                part_types.sort_by(|a, b| b.count.cmp(&a.count));
+                ContentMixParticipant {
+                    name: name.clone(),
+                    total,
+                    total_voice_duration_secs: *self
+                        .voice_secs_by_sender
+                        .get(name)
+                        .unwrap_or(&0),
+                    types: part_types,
+                }
+            })
+            .filter(|p| p.total > 0)
+            .collect();
+        by_participant.sort_by(|a, b| a.name.cmp(&b.name));
+
         let content_mix = ContentMixStats {
             total: mix_total,
             total_voice_duration_secs: self.voice_secs,
             types,
+            by_participant,
         };
 
         // ── Message length ────────────────────────────────────────────────
@@ -1949,6 +2012,19 @@ mod tests {
         assert_eq!(mix.types.len(), 4);
         let pct_sum: f64 = mix.types.iter().map(|t| t.pct).sum();
         assert!((pct_sum - 100.0).abs() < 0.01);
+        assert_eq!(mix.by_participant.len(), 2);
+        let me = mix
+            .by_participant
+            .iter()
+            .find(|p| p.name == "Me")
+            .expect("Me participant");
+        assert_eq!(me.total, 2);
+        let bob = mix
+            .by_participant
+            .iter()
+            .find(|p| p.name == "Bob")
+            .expect("Bob participant");
+        assert_eq!(bob.total, 2);
     }
 
     #[test]

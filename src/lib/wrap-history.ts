@@ -98,6 +98,7 @@ const EMPTY_CONTENT_MIX: ContentMixStats = {
   total: 0,
   totalVoiceDurationSecs: 0,
   types: [],
+  byParticipant: [],
 }
 
 /** Session cache so navigate-after-save and repeat reads stay instant. */

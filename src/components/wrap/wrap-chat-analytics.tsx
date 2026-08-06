@@ -2,7 +2,7 @@ import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-ti
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 import { GhostingChart } from "@/components/wrap/charts/ghosting-chart"
 import { KeywordBattleChart } from "@/components/wrap/charts/keyword-battle-chart"
-import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
+import { MessageTypesChart, buildMessageTypesScopes } from "@/components/wrap/charts/message-types-chart"
 import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import { ComparisonKpiCard } from "@/components/wrap/comparison-kpi-card"
 import { chatDisplay } from "@/components/wrap/chat-display"
@@ -32,6 +32,16 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
     a.emojis,
     selfName,
     display.isDeleted ? (display.subtitle ?? "Contact") : display.title
+  )
+  const contactLabel = display.isDeleted
+    ? (display.subtitle ?? "Contact")
+    : display.title
+  const messageTypesScopes = buildMessageTypesScopes(
+    a.contentMix?.types ?? [],
+    a.contentMix?.totalVoiceDurationSecs ?? 0,
+    a.contentMix?.byParticipant ?? [],
+    selfName,
+    contactLabel
   )
 
   const responseRows = a.responseTime.participants.map((p) => ({
@@ -116,6 +126,7 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
         types={a.contentMix?.types ?? []}
         totalVoiceDurationSecs={a.contentMix?.totalVoiceDurationSecs ?? 0}
         exportName={`chat-${chat.chatId}-message-types`}
+        scopes={messageTypesScopes}
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

@@ -33,6 +33,15 @@ export type ContentMixStats = {
   total: number
   totalVoiceDurationSecs: number
   types: ContentTypeCount[]
+  /** Per-sender breakdown for All / You / Contact toggles. */
+  byParticipant?: ContentMixParticipant[]
+}
+
+export type ContentMixParticipant = {
+  name: string
+  total: number
+  totalVoiceDurationSecs: number
+  types: ContentTypeCount[]
 }
 
 // ── Stat 16: Message Length Balance ──────────────────────────────────────────

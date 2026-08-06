@@ -146,8 +146,8 @@ export function WrapChartCard({
         className
       )}
     >
-      <div className="flex items-start justify-between gap-3 px-4 pt-4">
-        <div className="min-w-0 text-start">
+      <div className="flex flex-wrap items-start justify-between gap-2 px-3 pt-3 sm:gap-3 sm:px-4 sm:pt-4">
+        <div className="min-w-0 flex-1 basis-[min(100%,12rem)] text-start">
           <h3 className="font-heading text-sm font-semibold tracking-tight">
             {title}
           </h3>
@@ -164,7 +164,7 @@ export function WrapChartCard({
             </p>
           ) : null}
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+        <div className="ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1.5">
           {headerExtra}
           <Button
             type="button"
