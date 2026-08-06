@@ -1,20 +1,22 @@
-# React + TypeScript + Vite + shadcn/ui
+# Social Wrapped
 
-This is a template for a new Vite project with React, TypeScript, and shadcn/ui.
+Local-first social export analytics (Tauri + React). The **app shell is public** so you can verify imports stay on-device. The analytics engine (`crates/core` / `app-core`) is a **private git submodule**.
 
-## Adding components
+## Clone
 
-To add components to your app, run the following command:
+```bash
+git clone --recurse-submodules https://github.com/MohsenDastaran/social-wrapped.git
+cd social-wrapped
+bun install
+```
+
+You need access to the private [`social-wrapped-core`](https://github.com/MohsenDastaran/social-wrapped-core) repo. See [docs/private-core.md](docs/private-core.md).
+
+## UI (shadcn)
 
 ```bash
 npx shadcn@latest add button
 ```
-
-This will place the ui components in the `src/components` directory.
-
-## Using components
-
-To use the components in your app, import them as follows:
 
 ```tsx
 import { Button } from "@/components/ui/button"

@@ -63,6 +63,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          # Private submodule `crates/core` — create a fine-grained PAT (or classic)
+          # with Contents: Read on MohsenDastaran/social-wrapped-core, then add it
+          # as repo secret SUBMODULE_TOKEN on social-wrapped.
+          token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
 
       - name: Install Linux desktop dependencies
         if: matrix.platform == 'ubuntu-22.04' && matrix.mobile != 'android'
