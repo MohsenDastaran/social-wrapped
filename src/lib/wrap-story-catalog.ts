@@ -9,6 +9,7 @@ import type {
   WrapAnalytics,
 } from "@/platform/analytics-types"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
+import type { TikTokInsights } from "@/platform/tiktok-types"
 import type { XInsights } from "@/platform/x-types"
 
 export type PlatformStoryCatalog = {
@@ -24,6 +25,7 @@ export type StoryCatalogInput = {
   instagramSocial?: InstagramSocialInsights | null
   linkedinInsights?: LinkedInInsights | null
   xInsights?: XInsights | null
+  tiktokInsights?: TikTokInsights | null
 }
 
 const MESSAGING_VIDEO_IDS = [
@@ -54,6 +56,14 @@ const LINKEDIN_VIDEO_IDS = [
 const X_VIDEO_IDS = [
   "x-network",
   "x-tweets",
+  "heatmap",
+  "activity",
+  "sent-received",
+] as const
+
+const TIKTOK_VIDEO_IDS = [
+  "tt-activity",
+  "tt-engage",
   "heatmap",
   "activity",
   "sent-received",
@@ -187,6 +197,47 @@ export function buildXStorySpecs(insights: XInsights): WrapStorySpec[] {
   return specs
 }
 
+/** TikTok activity slides (gated on data). */
+export function buildTikTokStorySpecs(
+  insights: TikTokInsights
+): WrapStorySpec[] {
+  const specs: WrapStorySpec[] = []
+
+  if (insights.watchCount > 0 || insights.likeCount > 0) {
+    specs.push({
+      id: "tt-activity",
+      exportName: "tiktok-network-kpis",
+      heading: "Your TikTok year",
+      subtext: `${fmt(insights.watchCount)} watches · ${fmt(insights.likeCount)} likes`,
+      kpis: [
+        { label: "Watches", value: fmt(insights.watchCount) },
+        { label: "Likes", value: fmt(insights.likeCount) },
+        { label: "Comments", value: fmt(insights.commentCount) },
+      ],
+    })
+  }
+
+  if (
+    insights.favouriteVideoCount > 0 ||
+    insights.dmThreadCount > 0 ||
+    insights.commentCount > 0
+  ) {
+    specs.push({
+      id: "tt-engage",
+      exportName: "tiktok-engage-kpis",
+      heading: "Saved & chats",
+      subtext: `${fmt(insights.favouriteVideoCount)} favorites · ${fmt(insights.dmThreadCount)} DM threads`,
+      kpis: [
+        { label: "Favorites", value: fmt(insights.favouriteVideoCount) },
+        { label: "DM threads", value: fmt(insights.dmThreadCount) },
+        { label: "DM msgs", value: fmt(insights.dmMessageCount) },
+      ],
+    })
+  }
+
+  return specs
+}
+
 function pickVideoIds(
   preferred: readonly string[],
   available: WrapStorySpec[]
@@ -228,6 +279,15 @@ export function buildPlatformStoryCatalog(
     return {
       storySpecs,
       videoSlideIds: pickVideoIds(X_VIDEO_IDS, storySpecs),
+    }
+  }
+
+  if (input.platformId === "tiktok" && input.tiktokInsights) {
+    const tt = buildTikTokStorySpecs(input.tiktokInsights)
+    const storySpecs = [...tt, ...messaging]
+    return {
+      storySpecs,
+      videoSlideIds: pickVideoIds(TIKTOK_VIDEO_IDS, storySpecs),
     }
   }
 

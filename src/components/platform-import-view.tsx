@@ -134,14 +134,15 @@ export function PlatformImportView({
       total: totalSize,
     })
     try {
-      const { analytics, instagramSocial, googleInsights, linkedinInsights, xInsights } =
+      const { analytics, instagramSocial, googleInsights, linkedinInsights, xInsights, tiktokInsights } =
         await importPlatformFiles(
           platform,
           files,
           setProgress,
           platform.id === "whatsapp" ||
             platform.id === "instagram" ||
-            platform.id === "linkedin"
+            platform.id === "linkedin" ||
+            platform.id === "tiktok"
             ? promptIdentity
             : undefined
         )
@@ -156,6 +157,7 @@ export function PlatformImportView({
         googleInsights,
         linkedinInsights,
         xInsights,
+        tiktokInsights,
         archiveBlob:
           platform.id === "x" && files[0] ? files[0] : undefined,
       })
@@ -180,7 +182,11 @@ export function PlatformImportView({
           ? progress?.phase === "computing"
             ? "Building your LinkedIn wrap"
             : "Reading your LinkedIn ZIP (messages + network)"
-          : platform.id === "x"
+          : platform.id === "tiktok"
+            ? progress?.phase === "computing"
+              ? "Building your TikTok wrap"
+              : "Reading your TikTok ZIP (activity + DMs)"
+            : platform.id === "x"
             ? progress?.phase === "computing"
               ? "Building your X wrap"
               : "Reading your X archive ZIP (tweets + DMs)"

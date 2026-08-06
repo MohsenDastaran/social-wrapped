@@ -44,6 +44,12 @@ type WasmModuleExports = {
     data: Uint8Array,
     onProgress: WasmProgressCallback
   ) => string
+  preview_tiktok_bytes: (data: Uint8Array) => string
+  analyze_tiktok_bytes_with_progress: (
+    data: Uint8Array,
+    meName: string | null | undefined,
+    onProgress: WasmProgressCallback
+  ) => string
   analyze_google_zip_bytes_with_progress: (
     data: Uint8Array,
     youtubeOnly: boolean,
@@ -72,6 +78,8 @@ declare module "@/wasm-pkg/social_wrapped_wasm" {
   export const analyze_linkedin_bytes_with_progress: WasmModuleExports["analyze_linkedin_bytes_with_progress"]
   export const preview_x_bytes: WasmModuleExports["preview_x_bytes"]
   export const analyze_x_bytes_with_progress: WasmModuleExports["analyze_x_bytes_with_progress"]
+  export const preview_tiktok_bytes: WasmModuleExports["preview_tiktok_bytes"]
+  export const analyze_tiktok_bytes_with_progress: WasmModuleExports["analyze_tiktok_bytes_with_progress"]
   export const analyze_google_zip_bytes_with_progress: WasmModuleExports["analyze_google_zip_bytes_with_progress"]
   export const merge_google_insights_json: WasmModuleExports["merge_google_insights_json"]
   export const google_shell_analytics_json: WasmModuleExports["google_shell_analytics_json"]
@@ -93,6 +101,8 @@ declare module "@/wasm-pkg/social_wrapped_wasm.js" {
   export const analyze_linkedin_bytes_with_progress: WasmModuleExports["analyze_linkedin_bytes_with_progress"]
   export const preview_x_bytes: WasmModuleExports["preview_x_bytes"]
   export const analyze_x_bytes_with_progress: WasmModuleExports["analyze_x_bytes_with_progress"]
+  export const preview_tiktok_bytes: WasmModuleExports["preview_tiktok_bytes"]
+  export const analyze_tiktok_bytes_with_progress: WasmModuleExports["analyze_tiktok_bytes_with_progress"]
   export const analyze_google_zip_bytes_with_progress: WasmModuleExports["analyze_google_zip_bytes_with_progress"]
   export const merge_google_insights_json: WasmModuleExports["merge_google_insights_json"]
   export const google_shell_analytics_json: WasmModuleExports["google_shell_analytics_json"]
@@ -114,6 +124,8 @@ declare module "../wasm-pkg/social_wrapped_wasm.js" {
   export const analyze_linkedin_bytes_with_progress: WasmModuleExports["analyze_linkedin_bytes_with_progress"]
   export const preview_x_bytes: WasmModuleExports["preview_x_bytes"]
   export const analyze_x_bytes_with_progress: WasmModuleExports["analyze_x_bytes_with_progress"]
+  export const preview_tiktok_bytes: WasmModuleExports["preview_tiktok_bytes"]
+  export const analyze_tiktok_bytes_with_progress: WasmModuleExports["analyze_tiktok_bytes_with_progress"]
   export const analyze_google_zip_bytes_with_progress: WasmModuleExports["analyze_google_zip_bytes_with_progress"]
   export const merge_google_insights_json: WasmModuleExports["merge_google_insights_json"]
   export const google_shell_analytics_json: WasmModuleExports["google_shell_analytics_json"]

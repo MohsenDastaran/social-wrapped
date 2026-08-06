@@ -8,6 +8,7 @@ import type {
 } from "@/platform/analytics-types"
 import type { GoogleInsights } from "@/platform/google-types"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
+import type { TikTokInsights } from "@/platform/tiktok-types"
 import type { XInsights } from "@/platform/x-types"
 import { getAppSettings } from "@/lib/app-settings"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
@@ -37,6 +38,8 @@ export type WrapRecord = {
   linkedinInsights?: LinkedInInsights
   /** X (Twitter) tweets / likes / network insights. */
   xInsights?: XInsights
+  /** TikTok watch / likes / comments / DM insights. */
+  tiktokInsights?: TikTokInsights
   /** True when an archive ZIP blob is stored for Official X HTML. */
   hasArchiveBlob?: boolean
 }
@@ -77,6 +80,7 @@ type StoredWrap = {
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
   xInsights?: XInsights
+  tiktokInsights?: TikTokInsights
   hasArchiveBlob?: boolean
 }
 
@@ -91,6 +95,7 @@ type LegacyStoredWrap = Partial<WrapRecord> & {
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
   xInsights?: XInsights
+  tiktokInsights?: TikTokInsights
   hasArchiveBlob?: boolean
 }
 
@@ -422,6 +427,7 @@ function normalizeWrap(raw: LegacyStoredWrap): WrapRecord | null {
     ...(raw.googleInsights ? { googleInsights: raw.googleInsights } : {}),
     ...(raw.linkedinInsights ? { linkedinInsights: raw.linkedinInsights } : {}),
     ...(raw.xInsights ? { xInsights: raw.xInsights } : {}),
+    ...(raw.tiktokInsights ? { tiktokInsights: raw.tiktokInsights } : {}),
     ...(raw.hasArchiveBlob ? { hasArchiveBlob: true } : {}),
   }
 }
@@ -440,6 +446,7 @@ function toStored(wrap: WrapRecord): StoredWrap {
       ? { linkedinInsights: wrap.linkedinInsights }
       : {}),
     ...(wrap.xInsights ? { xInsights: wrap.xInsights } : {}),
+    ...(wrap.tiktokInsights ? { tiktokInsights: wrap.tiktokInsights } : {}),
     ...(wrap.hasArchiveBlob ? { hasArchiveBlob: true } : {}),
   }
 }
@@ -575,6 +582,7 @@ export async function saveWrap(input: {
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
   xInsights?: XInsights
+  tiktokInsights?: TikTokInsights
   /** Optional archive ZIP for Official X HTML (stored separately). */
   archiveBlob?: Blob
 }): Promise<WrapRecord> {
@@ -605,6 +613,7 @@ export async function saveWrap(input: {
       ? { linkedinInsights: input.linkedinInsights }
       : {}),
     ...(input.xInsights ? { xInsights: input.xInsights } : {}),
+    ...(input.tiktokInsights ? { tiktokInsights: input.tiktokInsights } : {}),
     ...(input.archiveBlob ? { hasArchiveBlob: true } : {}),
   }
 

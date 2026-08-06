@@ -258,6 +258,44 @@ pub fn analyze_x_bytes_with_progress(
     .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
+/// Scan a TikTok TXT data-download ZIP and return preview JSON.
+#[wasm_bindgen]
+pub fn preview_tiktok_bytes(data: &[u8]) -> Result<String, JsValue> {
+    app_core::parsers::tiktok::preview_export_bytes(data)
+        .and_then(|preview| preview.to_json())
+        .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// Full TikTok analytics pass.
+///
+/// Returns JSON `{ analytics, tiktokInsights }` (activity + DMs).
+/// `me_name` may be omitted when Profile username matches DM senders.
+#[wasm_bindgen]
+pub fn analyze_tiktok_bytes_with_progress(
+    data: &[u8],
+    me_name: Option<String>,
+    on_progress: &js_sys::Function,
+) -> Result<String, JsValue> {
+    let me = me_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    app_core::parsers::tiktok::analyze_export_bytes_with_progress(
+        data,
+        me,
+        |phase, current, total| {
+            let _ = on_progress.call3(
+                &JsValue::NULL,
+                &JsValue::from_str(phase.as_str()),
+                &JsValue::from_f64(current as f64),
+                &JsValue::from_f64(total as f64),
+            );
+        },
+    )
+    .and_then(|result| result.to_json())
+    .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
 /// Analyze one Google Takeout ZIP part.
 ///
 /// Returns JSON `{ analytics, googleInsights }`.
