@@ -42,3 +42,13 @@ Release builds check out submodules with `secrets.SUBMODULE_TOKEN` (PAT that can
 
 - **Public:** React UI, import workers, IndexedDB history, Tauri commands — review these for network/upload behavior.
 - **Private:** `app-core` parsers & collectors — proprietary analysis; intended to run **on-device only**.
+
+## Important: git history still contains core
+
+Removing `crates/core` from `main` does **not** erase it from older commits on GitHub. Anyone who clones the full history can still recover past versions of the parsers.
+
+Before you rely on this for secrecy:
+
+1. Create and push the private `social-wrapped-core` repo (above).
+2. Rewrite public history (e.g. `git filter-repo --path crates/core --invert-paths`) **or** make the public repo private until you’re ready, then force-push a cleaned history.
+3. Assume any prior clones/forks already have a copy.
