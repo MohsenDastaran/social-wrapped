@@ -19,7 +19,9 @@ on:
         type: string
 
 concurrency:
-  group: release-${{ github.event.release.tag_name || inputs.tag || github.ref }}
+  # Do NOT use `inputs.*` here — that context only exists for workflow_dispatch and
+  # breaks `release` event evaluation (workflow never starts).
+  group: release-${{ github.event.release.tag_name || github.event.inputs.tag || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -43,7 +45,7 @@ jobs:
               tag = context.payload.release.tag_name
               releaseId = String(context.payload.release.id)
             } else {
-              tag = '${{ inputs.tag }}'.trim()
+              tag = (context.payload.inputs?.tag || '').trim()
               if (!tag) throw new Error('workflow_dispatch requires inputs.tag')
               const { data: release } = await github.rest.repos.getReleaseByTag({
                 owner: context.repo.owner,
@@ -113,17 +115,23 @@ jobs:
           SUBMODULE_TOKEN: ${{ secrets.SUBMODULE_TOKEN }}
         run: |
           if [ -z "$SUBMODULE_TOKEN" ]; then
-            echo "::error::Missing secret SUBMODULE_TOKEN. Add a PAT with read access to MohsenDastaran/social-wrapped-core."
+            echo "::error::Missing secret SUBMODULE_TOKEN on social-wrapped (not on social-wrapped-core). Add a fine-grained PAT with Contents: Read on MohsenDastaran/social-wrapped-core."
             exit 1
           fi
 
+      # Clone public app with GITHUB_TOKEN; private submodule needs the PAT separately.
       - uses: actions/checkout@v5
         with:
-          # Build the commit that the release tag points at
           ref: ${{ needs.meta.outputs.tag }}
-          # Token used for this repo + private submodule fetch
-          token: ${{ secrets.SUBMODULE_TOKEN }}
-          submodules: recursive
+          submodules: false
+
+      - name: Checkout private app-core submodule
+        env:
+          SUBMODULE_TOKEN: ${{ secrets.SUBMODULE_TOKEN }}
+        run: |
+          git config --global url."https://x-access-token:${SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
+          git submodule sync --recursive
+          git submodule update --init --recursive
 
       - name: Install Linux desktop dependencies
         if: matrix.platform == 'ubuntu-22.04' && matrix.mobile != 'android'
