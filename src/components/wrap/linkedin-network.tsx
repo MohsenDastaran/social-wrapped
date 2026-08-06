@@ -7,13 +7,7 @@ import type {
 } from "@/platform/linkedin-types"
 import { listScrollMaxClass } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
-import {
-  Building2,
-  Network,
-  UserMinus,
-  UserPlus,
-  Users,
-} from "lucide-react"
+import { Building2, Network, UserMinus, UserPlus, Users } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 type LinkedInNetworkInsightsProps = {
@@ -132,11 +126,13 @@ function YearGrowth({
   return (
     <div className="flex flex-col gap-2 rounded-xl bg-muted/40 p-4 ring-1 ring-border/60">
       <h3 className="text-sm font-medium">Connections by year</h3>
-      <p className="text-xs text-muted-foreground">When you grew your network</p>
+      <p className="text-xs text-muted-foreground">
+        When you grew your network
+      </p>
       <ul className={cn("mt-2 flex flex-col gap-2", listScrollMaxClass)}>
         {years.map((y) => (
           <li key={y.year} className="flex items-center gap-3 text-sm">
-            <span className="w-12 shrink-0 tabular-nums text-muted-foreground">
+            <span className="w-12 shrink-0 text-muted-foreground tabular-nums">
               {y.year}
             </span>
             <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
@@ -177,10 +173,10 @@ function CountedList({
         {items.slice(0, 20).map((item) => (
           <li
             key={item.name}
-            className="flex items-baseline justify-between gap-3 text-sm"
+            className="flex items-baseline justify-between gap-3 pe-2 text-sm"
           >
             <span className="min-w-0 truncate">{item.name}</span>
-            <span className="shrink-0 tabular-nums text-muted-foreground">
+            <span className="shrink-0 text-muted-foreground tabular-nums">
               {fmt(item.count)}
             </span>
           </li>

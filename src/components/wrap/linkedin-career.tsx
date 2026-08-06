@@ -4,13 +4,7 @@ import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
 import { listScrollMaxClass } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
-import {
-  Award,
-  Briefcase,
-  GraduationCap,
-  Search,
-  Sparkles,
-} from "lucide-react"
+import { Award, Briefcase, GraduationCap, Search, Sparkles } from "lucide-react"
 
 type LinkedInCareerInsightsProps = {
   data: LinkedInInsights
@@ -66,8 +60,7 @@ export function LinkedInCareerInsights({ data }: LinkedInCareerInsightsProps) {
           <WrapKpi
             label="Recommendations"
             value={fmt(
-              data.recommendationsGivenCount +
-                data.recommendationsReceivedCount
+              data.recommendationsGivenCount + data.recommendationsReceivedCount
             )}
             icon={GraduationCap}
             accent="emerald"
@@ -132,7 +125,7 @@ export function LinkedInCareerInsights({ data }: LinkedInCareerInsightsProps) {
                   key={`${job.company}-${job.title}-${i}`}
                   className="text-sm"
                 >
-                  <p className="font-medium truncate">
+                  <p className="truncate font-medium">
                     {job.title || "Role"}
                     {job.company ? (
                       <span className="font-normal text-muted-foreground">
@@ -158,14 +151,16 @@ export function LinkedInCareerInsights({ data }: LinkedInCareerInsightsProps) {
               <Search className="size-4 text-muted-foreground" />
               <h3 className="text-sm font-medium">Top searches</h3>
             </div>
-            <ul className={cn("mt-3 flex flex-col gap-1.5", listScrollMaxClass)}>
+            <ul
+              className={cn("mt-3 flex flex-col gap-1.5", listScrollMaxClass)}
+            >
               {data.topSearchQueries.slice(0, 15).map((q) => (
                 <li
                   key={q.name}
-                  className="flex items-baseline justify-between gap-3 text-sm"
+                  className="flex items-baseline justify-between gap-3 pe-2 text-sm"
                 >
                   <span className="min-w-0 truncate capitalize">{q.name}</span>
-                  <span className="shrink-0 tabular-nums text-muted-foreground">
+                  <span className="shrink-0 text-muted-foreground tabular-nums">
                     {fmt(q.count)}
                   </span>
                 </li>

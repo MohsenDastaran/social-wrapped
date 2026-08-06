@@ -9,7 +9,7 @@ import { Link } from "react-router"
 import { AnimatedLines } from "@/components/animated-lines"
 import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
 
-/** Home hero — primary/sky backdrop + CTA into wrap history. */
+/** Home hero — theme-aware primary/sky backdrop + CTA into wrap history. */
 export function Hero() {
   const [hasAnimatedStats, setHasAnimatedStats] = useState(false)
 
@@ -32,12 +32,26 @@ export function Hero() {
 
   return (
     <section className="relative mb-7 w-full sm:mb-9">
-      <div className="relative mx-auto w-full overflow-hidden rounded-3xl bg-linear-to-b from-sky-500 via-primary to-emerald-950 px-5 py-8 sm:px-8 sm:py-10">
+      <div
+        className="relative mx-auto w-full overflow-hidden rounded-3xl border border-border/60 bg-card px-5 py-8 shadow-[0_18px_50px_-34px] shadow-foreground/40 sm:px-8 sm:py-10 dark:shadow-black/50"
+        style={{
+          backgroundImage: `
+            linear-gradient(
+              to bottom,
+              color-mix(in oklch, oklch(0.72 0.12 230) 28%, var(--card)),
+              color-mix(in oklch, var(--primary) 22%, var(--card)) 48%,
+              color-mix(in oklch, var(--primary) 38%, var(--card))
+            )
+          `,
+        }}
+      >
+        <div className="pointer-events-none absolute -inset-s-16 -top-20 size-56 rounded-full bg-sky-400/25 blur-3xl dark:bg-sky-400/20" />
+        <div className="pointer-events-none absolute -bottom-28 -inset-e-12 size-60 rounded-full bg-primary/30 blur-3xl dark:bg-primary/40" />
         <AnimatedLines />
 
         <div className="relative z-10 flex flex-col items-center text-center">
           <motion.p
-            className="mb-2 text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-white/80 sm:text-xs"
+            className="mb-2 text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-primary sm:text-xs"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
@@ -46,7 +60,7 @@ export function Hero() {
           </motion.p>
 
           <motion.h1
-            className="font-heading max-w-xl text-2xl font-semibold leading-tight tracking-tight text-white sm:text-3xl md:text-4xl"
+            className="font-heading max-w-xl text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl md:text-4xl"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.05, ease: "easeOut" }}
@@ -55,7 +69,7 @@ export function Hero() {
           </motion.h1>
 
           <motion.p
-            className="mt-2.5 max-w-xl text-sm leading-relaxed text-white/85 sm:text-base"
+            className="mt-2.5 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.15, ease: "easeOut" }}
@@ -73,10 +87,10 @@ export function Hero() {
             <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
               <Link
                 to="/history"
-                className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-emerald-950 shadow-sm"
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm ring-1 ring-primary/30"
               >
                 Open history
-                <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <span className="flex size-6 items-center justify-center rounded-full bg-primary-foreground text-primary">
                   <ArrowUpRight className="size-3.5" />
                 </span>
               </Link>
@@ -92,14 +106,16 @@ export function Hero() {
         >
           {stats.map((stat) => (
             <div key={stat.label} className="text-center">
-              <p className="text-2xl font-bold text-white sm:text-3xl">
+              <p className="text-2xl font-bold text-foreground sm:text-3xl">
                 <NumberFlow
                   value={hasAnimatedStats ? stat.value : 0}
                   suffix={stat.suffix}
                   plugins={[continuous]}
                 />
               </p>
-              <p className="mt-0.5 text-xs text-white/70 sm:text-sm">{stat.label}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+                {stat.label}
+              </p>
             </div>
           ))}
         </motion.div>
