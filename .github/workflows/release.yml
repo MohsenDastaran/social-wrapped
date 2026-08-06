@@ -1,6 +1,8 @@
 # Build installers and attach them to the GitHub Release.
 #
-# Trigger: publish a Release on GitHub (or run manually via Actions → Release).
+# Trigger:
+#   - Publish a GitHub Release (release published), or
+#   - Actions → Release → Run workflow (pick an existing tag like v0.2.5)
 # Assets (sorted alphabetically via numeric prefixes):
 #   01a arm64-v8a APK → 01b universal APK → 02 Windows → 03 macOS → 04 deb → 05 rpm → 06 AppImage
 
@@ -10,13 +12,53 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build (e.g. v0.2.5)
+        required: true
+        type: string
 
 concurrency:
-  group: release-${{ github.event.release.tag_name || github.ref }}
+  group: release-${{ github.event.release.tag_name || inputs.tag || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Resolve tag + release id for both `release` and manual `workflow_dispatch`.
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      release_id: ${{ steps.resolve.outputs.release_id }}
+    steps:
+      - name: Resolve release
+        id: resolve
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const event = context.eventName
+            let tag = ''
+            let releaseId = ''
+
+            if (event === 'release') {
+              tag = context.payload.release.tag_name
+              releaseId = String(context.payload.release.id)
+            } else {
+              tag = '${{ inputs.tag }}'.trim()
+              if (!tag) throw new Error('workflow_dispatch requires inputs.tag')
+              const { data: release } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              })
+              releaseId = String(release.id)
+            }
+
+            core.info(`tag=${tag} release_id=${releaseId}`)
+            core.setOutput('tag', tag)
+            core.setOutput('release_id', releaseId)
+
   build-tauri:
+    needs: meta
     permissions:
       contents: write
 
@@ -77,6 +119,8 @@ jobs:
 
       - uses: actions/checkout@v5
         with:
+          # Build the commit that the release tag points at
+          ref: ${{ needs.meta.outputs.tag }}
           # Token used for this repo + private submodule fetch
           token: ${{ secrets.SUBMODULE_TOKEN }}
           submodules: recursive
@@ -161,25 +205,26 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         with:
-          releaseId: ${{ github.event.release.id }}
-          tagName: ${{ github.event.release.tag_name }}
+          releaseId: ${{ needs.meta.outputs.release_id }}
+          tagName: ${{ needs.meta.outputs.tag }}
           args: ${{ matrix.args }}
           mobile: ${{ matrix.mobile }}
           releaseAssetNamePattern: ${{ matrix.asset_pattern }}
 
   # Rename Linux bundles (and any leftovers) into the sort order.
   order-assets:
-    needs: build-tauri
-    if: github.event_name == 'release'
+    needs: [meta, build-tauri]
     permissions:
       contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Prefix / normalize asset names for display order
         uses: actions/github-script@v7
+        env:
+          RELEASE_ID: ${{ needs.meta.outputs.release_id }}
         with:
           script: |
-            const release_id = context.payload.release.id
+            const release_id = Number(process.env.RELEASE_ID)
             const { data: assets } = await github.rest.repos.listReleaseAssets({
               owner: context.repo.owner,
               repo: context.repo.repo,
