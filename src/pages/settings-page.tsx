@@ -91,6 +91,7 @@ export function SettingsPage() {
   const [settings, updateSettings] = useAppSettings()
   const [storage, setStorage] = useState<WrapStorageSummary | null>(null)
   const [clearing, setClearing] = useState(false)
+  const [clearDialogOpen, setClearDialogOpen] = useState(false)
 
   const refreshStorage = useCallback(async () => {
     setStorage(await getWrapStorageSummary())
@@ -122,6 +123,7 @@ export function SettingsPage() {
     try {
       await clearAllWraps()
       await refreshStorage()
+      setClearDialogOpen(false)
     } finally {
       setClearing(false)
     }
@@ -291,7 +293,12 @@ export function SettingsPage() {
           </Field>
 
           <Field>
-            <AlertDialog>
+            <AlertDialog
+              open={clearDialogOpen}
+              onOpenChange={(open) => {
+                if (!clearing) setClearDialogOpen(open)
+              }}
+            >
               <AlertDialogTrigger
                 render={
                   <Button
