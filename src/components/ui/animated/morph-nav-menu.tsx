@@ -16,6 +16,12 @@ const EASE_CUBIC_CONFIG = {
   ease: [0.32, 0.72, 0, 1] as Easing,
 } as Transition
 
+const ACTIVE_PILL_SPRING = {
+  type: "spring",
+  stiffness: 380,
+  damping: 30,
+} as Transition
+
 /** Desktop primary nav with morphing hover (hidden on mobile — use BottomNav). */
 export function MorphNavMenu({ className }: { className?: string }) {
   return (
@@ -38,99 +44,103 @@ function MorphNavItem({ item }: { item: NavItem }) {
       <NavLink
         to={item.to}
         end={item.to === "/"}
-        className={({ isActive }) =>
-          cn(
-            "block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
-            isActive && "bg-primary"
-          )
-        }
+        className="relative block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
       >
         {({ isActive }) => (
-          <motion.span
-            className="relative block overflow-hidden rounded-md px-2.5 py-2"
-            initial="initial"
-            whileHover="hover"
-          >
-            {/* Base text layer - invisible normally, visible when active (highest z-index) */}
-            <span
-              className="relative z-30"
-              style={{
-                color: isActive ? "var(--primary-foreground)" : "transparent",
-              }}
-            >
-              {item.label}
-            </span>
-
-            {/* Normal state text */}
-            <motion.span
-              className="absolute inset-0 z-2 flex h-full w-full items-center justify-center"
-              style={{ color: isActive ? "transparent" : "var(--foreground)" }}
-              initial={{ y: 0, scale: 1, rotate: 0 }}
-              variants={{
-                hover: isActive
-                  ? {}
-                  : {
-                      y: -100,
-                      scale: 0.5,
-                      rotate: -30,
-                    },
-              }}
-              transition={SPRING_CONFIG_TEXT}
-            >
-              {item.label}
-            </motion.span>
-
-            {/* Background fill animation */}
-            <motion.span
-              className="absolute inset-0 z-1 h-full w-full scale-x-150 overflow-hidden bg-primary"
-              initial={{ y: 100, rotate: -40 }}
-              variants={{
-                hover: isActive
-                  ? {}
-                  : {
-                      y: 0,
-                      rotate: 0,
-                    },
-              }}
-              transition={EASE_CUBIC_CONFIG}
-              aria-hidden
-            >
+          <>
+            {isActive ? (
               <motion.span
-                className="absolute inset-0 h-full w-full bg-foreground"
-                initial={{ y: 150, rotate: -60 }}
-                variants={{
-                  hover: isActive
-                    ? {}
-                    : {
-                        y: 0,
-                        rotate: 0,
-                      },
-                }}
-                transition={EASE_CUBIC_CONFIG}
+                layoutId="desktop-nav-active"
+                className="absolute inset-0 rounded-md bg-primary shadow-sm ring-1 ring-primary/30"
+                transition={ACTIVE_PILL_SPRING}
+                aria-hidden
               />
-            </motion.span>
+            ) : null}
 
-            {/* Hover text */}
-            <motion.span
-              className="absolute inset-0 z-2 flex items-center justify-center"
-              style={{ color: isActive ? "transparent" : "var(--background)" }}
-              initial={{ y: 180, rotate: -60, scale: 0.5 }}
-              variants={{
-                hover: isActive
-                  ? {}
-                  : {
-                      y: 0,
-                      rotate: 0,
-                      scale: 1,
-                    },
-              }}
-              transition={SPRING_CONFIG_TEXT}
-            >
-              {item.label}
-            </motion.span>
-          </motion.span>
+            {isActive ? (
+              <span
+                className="relative z-10 block px-3 py-2 text-primary-foreground"
+                aria-current="page"
+              >
+                {item.label}
+              </span>
+            ) : (
+              <MorphNavItemHover label={item.label} />
+            )}
+          </>
         )}
       </NavLink>
     </li>
+  )
+}
+
+function MorphNavItemHover({ label }: { label: string }) {
+  return (
+    <motion.span
+      className="relative block overflow-hidden rounded-md px-3 py-2 text-foreground"
+      initial="initial"
+      whileHover="hover"
+      variants={{
+        initial: {},
+        hover: {},
+      }}
+    >
+      <span className="relative text-transparent">{label}</span>
+
+      <motion.span
+        className="absolute inset-0 z-2 flex h-full w-full items-center justify-center text-foreground"
+        initial={{ y: 0, scale: 1, rotate: 0 }}
+        variants={{
+          hover: {
+            y: -100,
+            scale: 0.5,
+            rotate: -30,
+          },
+        }}
+        transition={SPRING_CONFIG_TEXT}
+      >
+        {label}
+      </motion.span>
+
+      <motion.span
+        className="absolute inset-0 z-1 h-full w-full scale-x-150 overflow-hidden bg-primary"
+        initial={{ y: 100, rotate: -40 }}
+        variants={{
+          hover: {
+            y: 0,
+            rotate: 0,
+          },
+        }}
+        transition={EASE_CUBIC_CONFIG}
+        aria-hidden
+      >
+        <motion.span
+          className="absolute inset-0 h-full w-full bg-foreground"
+          initial={{ y: 150, rotate: -60 }}
+          variants={{
+            hover: {
+              y: 0,
+              rotate: 0,
+            },
+          }}
+          transition={EASE_CUBIC_CONFIG}
+        />
+      </motion.span>
+
+      <motion.span
+        className="absolute inset-0 z-2 flex items-center justify-center text-background"
+        initial={{ y: 180, rotate: -60, scale: 0.5 }}
+        variants={{
+          hover: {
+            y: 0,
+            rotate: 0,
+            scale: 1,
+          },
+        }}
+        transition={SPRING_CONFIG_TEXT}
+      >
+        {label}
+      </motion.span>
+    </motion.span>
   )
 }
