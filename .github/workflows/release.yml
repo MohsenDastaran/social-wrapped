@@ -62,13 +62,24 @@ jobs:
     timeout-minutes: 120
 
     steps:
+      # Private submodule crates/core → MohsenDastaran/social-wrapped-core
+      # GITHUB_TOKEN cannot read other private repos. Create a fine-grained PAT
+      # (Contents: Read on social-wrapped-core) and add it as secret SUBMODULE_TOKEN
+      # on the social-wrapped repo: Settings → Secrets and variables → Actions.
+      - name: Require submodule token
+        env:
+          SUBMODULE_TOKEN: ${{ secrets.SUBMODULE_TOKEN }}
+        run: |
+          if [ -z "$SUBMODULE_TOKEN" ]; then
+            echo "::error::Missing secret SUBMODULE_TOKEN. Add a PAT with read access to MohsenDastaran/social-wrapped-core."
+            exit 1
+          fi
+
       - uses: actions/checkout@v5
         with:
+          # Token used for this repo + private submodule fetch
+          token: ${{ secrets.SUBMODULE_TOKEN }}
           submodules: recursive
-          # Private submodule `crates/core` — create a fine-grained PAT (or classic)
-          # with Contents: Read on MohsenDastaran/social-wrapped-core, then add it
-          # as repo secret SUBMODULE_TOKEN on social-wrapped.
-          token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
 
       - name: Install Linux desktop dependencies
         if: matrix.platform == 'ubuntu-22.04' && matrix.mobile != 'android'
