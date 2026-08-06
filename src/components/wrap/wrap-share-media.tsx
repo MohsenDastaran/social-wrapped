@@ -9,6 +9,12 @@ import {
 } from "@/components/ui/animated/story-carousel"
 import { WrapShareVideo } from "@/components/wrap/wrap-share-video"
 import type { PlatformId } from "@/lib/platforms"
+import {
+  getWrapStories,
+  saveWrapStories,
+  wrapStoriesFingerprint,
+  type StoredWrapStorySlide,
+} from "@/lib/wrap-history"
 import { buildPlatformStoryCatalog } from "@/lib/wrap-story-catalog"
 import {
   generateWrapStories,
@@ -26,6 +32,7 @@ import { cn } from "@/lib/utils"
 import type { VideoChartSlide } from "@sw-remotion/Composition"
 
 type WrapShareMediaProps = {
+  wrapId: string
   displayName: string
   analytics: WrapAnalytics
   platformId: PlatformId
@@ -36,8 +43,43 @@ type WrapShareMediaProps = {
   xInsights?: XInsights | null
 }
 
+function storiesFromStored(
+  stored: StoredWrapStorySlide[]
+): ComposedWrapStory[] {
+  return stored.map((slide) => ({
+    id: slide.id,
+    exportName: slide.exportName,
+    heading: slide.heading,
+    subtext: slide.subtext,
+    ...(slide.kpis ? { kpis: slide.kpis } : {}),
+    ...(slide.videoMotion ? { videoMotion: slide.videoMotion } : {}),
+    image: URL.createObjectURL(slide.blob),
+  }))
+}
+
+async function storiesToStored(
+  stories: ComposedWrapStory[]
+): Promise<StoredWrapStorySlide[]> {
+  const out: StoredWrapStorySlide[] = []
+  for (const story of stories) {
+    const response = await fetch(story.image)
+    const blob = await response.blob()
+    out.push({
+      id: story.id,
+      exportName: story.exportName,
+      heading: story.heading,
+      subtext: story.subtext,
+      ...(story.kpis ? { kpis: story.kpis } : {}),
+      ...(story.videoMotion ? { videoMotion: story.videoMotion } : {}),
+      blob,
+    })
+  }
+  return out
+}
+
 /** Share strip — video + stories tiles in one row; fullscreen on tap. */
 export function WrapShareMedia({
+  wrapId,
   displayName,
   analytics,
   platformId,
@@ -66,6 +108,7 @@ export function WrapShareMedia({
     ]
   )
   const specs = catalog.storySpecs
+  const fingerprint = useMemo(() => wrapStoriesFingerprint(specs), [specs])
   const [stories, setStories] = useState<ComposedWrapStory[]>([])
   const [storiesReady, setStoriesReady] = useState(false)
   const [captureProgress, setCaptureProgress] =
@@ -93,18 +136,68 @@ export function WrapShareMedia({
     storiesRef.current = []
     setStories([])
 
-    void generateWrapStories(specs, controller.signal, (progress) => {
-      if (!cancelled) setCaptureProgress(progress)
-    }).then((result) => {
+    if (specs.length === 0) {
+      setStoriesReady(true)
+      setCaptureProgress(null)
+      return () => {
+        cancelled = true
+        controller.abort()
+      }
+    }
+
+    void (async () => {
+      try {
+        const cached = await getWrapStories(wrapId, fingerprint)
+        if (cancelled || controller.signal.aborted) return
+
+        if (cached && cached.length > 0) {
+          const restored = storiesFromStored(cached)
+          if (cancelled || controller.signal.aborted) {
+            revokeStoryUrls(restored)
+            return
+          }
+          storiesRef.current = restored
+          setStories(restored)
+          setStoriesReady(true)
+          setCaptureProgress(null)
+          return
+        }
+      } catch (error) {
+        console.warn("Failed to load cached wrap stories:", error)
+      }
+
+      if (cancelled || controller.signal.aborted) return
+
+      const result = await generateWrapStories(
+        specs,
+        controller.signal,
+        (progress) => {
+          if (!cancelled) setCaptureProgress(progress)
+        }
+      )
+
       if (cancelled || controller.signal.aborted) {
         revokeStoryUrls(result.stories, result.videoPanSources)
         return
       }
+
       storiesRef.current = result.stories
       setStories(result.stories)
       setStoriesReady(true)
       setCaptureProgress(null)
-    })
+
+      // Pan sources are only used during generation; revoke unused ones.
+      revokeStoryUrls([], result.videoPanSources)
+
+      try {
+        const stored = await storiesToStored(result.stories)
+        if (!cancelled && !controller.signal.aborted) {
+          await saveWrapStories(wrapId, fingerprint, stored)
+        }
+      } catch (error) {
+        console.warn("Failed to persist wrap stories:", error)
+      }
+    })()
 
     return () => {
       cancelled = true
@@ -112,7 +205,7 @@ export function WrapShareMedia({
       revokeStoryUrls(storiesRef.current)
       storiesRef.current = []
     }
-  }, [specs])
+  }, [wrapId, fingerprint, specs])
 
   useEffect(() => {
     if (!storiesOpen) return

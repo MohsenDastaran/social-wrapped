@@ -142,6 +142,7 @@ export function WrapPage() {
 
       {!isGoogleFamily ? (
         <WrapShareMedia
+          wrapId={wrap.id}
           displayName={wrap.stats.displayName}
           analytics={wrap.analytics}
           platformId={wrap.platformId}

@@ -15,9 +15,10 @@ import { analyticsToStats, type TelegramExportStats } from "@/platform/import"
 
 const LEGACY_STORAGE_KEY = "social-wrapped:wraps"
 const DB_NAME = "social-wrapped"
-const DB_VERSION = 2
+const DB_VERSION = 3
 const WRAPS_STORE = "wraps"
 const ARCHIVE_BLOBS_STORE = "archiveBlobs"
+const STORIES_STORE = "wrapStories"
 
 export type WrapRecord = {
   id: string
@@ -127,6 +128,9 @@ function openDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(ARCHIVE_BLOBS_STORE)) {
         db.createObjectStore(ARCHIVE_BLOBS_STORE, { keyPath: "id" })
+      }
+      if (!db.objectStoreNames.contains(STORIES_STORE)) {
+        db.createObjectStore(STORIES_STORE, { keyPath: "id" })
       }
     }
 
@@ -642,10 +646,16 @@ export async function deleteWrap(id: string): Promise<void> {
   if (db.objectStoreNames.contains(ARCHIVE_BLOBS_STORE)) {
     stores.push(ARCHIVE_BLOBS_STORE)
   }
+  if (db.objectStoreNames.contains(STORIES_STORE)) {
+    stores.push(STORIES_STORE)
+  }
   const tx = db.transaction(stores, "readwrite")
   tx.objectStore(WRAPS_STORE).delete(id)
   if (stores.includes(ARCHIVE_BLOBS_STORE)) {
     tx.objectStore(ARCHIVE_BLOBS_STORE).delete(id)
+  }
+  if (stores.includes(STORIES_STORE)) {
+    tx.objectStore(STORIES_STORE).delete(id)
   }
   await idbTxDone(tx)
 }
@@ -687,12 +697,82 @@ export async function clearAllWraps(): Promise<void> {
   if (db.objectStoreNames.contains(ARCHIVE_BLOBS_STORE)) {
     stores.push(ARCHIVE_BLOBS_STORE)
   }
+  if (db.objectStoreNames.contains(STORIES_STORE)) {
+    stores.push(STORIES_STORE)
+  }
   const tx = db.transaction(stores, "readwrite")
   tx.objectStore(WRAPS_STORE).clear()
   if (stores.includes(ARCHIVE_BLOBS_STORE)) {
     tx.objectStore(ARCHIVE_BLOBS_STORE).clear()
   }
+  if (stores.includes(STORIES_STORE)) {
+    tx.objectStore(STORIES_STORE).clear()
+  }
   await idbTxDone(tx)
+}
+
+/** One crafted story slide stored as a PNG blob (not an object URL). */
+export type StoredWrapStorySlide = {
+  id: string
+  exportName: string
+  heading: string
+  subtext: string
+  kpis?: Array<{ label: string; value: string }>
+  videoMotion?: "fit" | "pan"
+  blob: Blob
+}
+
+type StoredWrapStories = {
+  id: string
+  /** Spec fingerprint — regenerate when story catalog changes. */
+  fingerprint: string
+  createdAt: string
+  stories: StoredWrapStorySlide[]
+}
+
+/** Fingerprint story specs so catalog changes invalidate the cache. */
+export function wrapStoriesFingerprint(
+  specs: Array<{ id: string; exportName: string; heading: string }>
+): string {
+  return specs.map((s) => `${s.id}\0${s.exportName}\0${s.heading}`).join("\n")
+}
+
+export async function saveWrapStories(
+  wrapId: string,
+  fingerprint: string,
+  stories: StoredWrapStorySlide[]
+): Promise<void> {
+  if (stories.length === 0) return
+  const db = await ensureReady()
+  if (!db.objectStoreNames.contains(STORIES_STORE)) {
+    throw new Error("Stories store is unavailable. Reload and try again.")
+  }
+  const row: StoredWrapStories = {
+    id: wrapId,
+    fingerprint,
+    createdAt: new Date().toISOString(),
+    stories,
+  }
+  const tx = db.transaction(STORIES_STORE, "readwrite")
+  tx.objectStore(STORIES_STORE).put(row)
+  await idbTxDone(tx)
+}
+
+export async function getWrapStories(
+  wrapId: string,
+  fingerprint: string
+): Promise<StoredWrapStorySlide[] | null> {
+  const db = await ensureReady()
+  if (!db.objectStoreNames.contains(STORIES_STORE)) return null
+  const tx = db.transaction(STORIES_STORE, "readonly")
+  const row = await idbReq<StoredWrapStories | undefined>(
+    tx.objectStore(STORIES_STORE).get(wrapId)
+  )
+  await idbTxDone(tx)
+  if (!row || row.fingerprint !== fingerprint || row.stories.length === 0) {
+    return null
+  }
+  return row.stories
 }
 
 export type WrapStorageSummary = {
