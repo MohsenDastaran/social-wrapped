@@ -14,21 +14,18 @@ You need read access to the private [`social-wrapped-core`](https://github.com/M
 
 ## CI (Releases)
 
-The Release workflow lives on **social-wrapped** (not on `social-wrapped-core`). Publishing a release must be done on:
+Builds start **automatically** when you **Publish** a release on **social-wrapped**:
 
-https://github.com/MohsenDastaran/social-wrapped/releases
+https://github.com/MohsenDastaran/social-wrapped/releases/new
 
-### Secret setup
+Use **Publish release** (not “Save draft”). The workflow does **not** live on `social-wrapped-core`.
 
-1. Fine-grained PAT → **Contents: Read** on `MohsenDastaran/social-wrapped-core` only is enough  
-2. Add the secret on **`social-wrapped`** (the public app), not on the core repo:  
-   Settings → Secrets and variables → Actions → New repository secret  
-3. Name must be exactly: `SUBMODULE_TOKEN`
+### Secret (needed for the build, not for the trigger)
 
-### If a release did not start Actions
+1. Fine-grained PAT → **Contents: Read** on `MohsenDastaran/social-wrapped-core`
+2. Secret on **`social-wrapped`**: name `SUBMODULE_TOKEN`
 
-1. Push the latest `.github/workflows/release.yml` to `main`  
-2. Actions → **Release** → **Run workflow** → tag e.g. `v0.2.6`
+Manual “Run workflow” is only a fallback (e.g. to rebuild an old tag).
 
 ## UI (shadcn)
 

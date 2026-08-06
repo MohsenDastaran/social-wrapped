@@ -19,9 +19,11 @@ on:
         type: string
 
 concurrency:
-  # Do NOT use `inputs.*` here — that context only exists for workflow_dispatch and
-  # breaks `release` event evaluation (workflow never starts).
-  group: release-${{ github.event.release.tag_name || github.event.inputs.tag || github.ref }}
+  # Use github.ref only — never `inputs` / `github.event.inputs` here.
+  # Referencing the inputs context on `release` events can prevent the workflow
+  # from starting at all (no run appears in Actions).
+  # release published → github.ref is refs/tags/vX.Y.Z
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
