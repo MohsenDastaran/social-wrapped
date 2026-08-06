@@ -113,6 +113,7 @@ jobs:
       # (Contents: Read on social-wrapped-core) and add it as secret SUBMODULE_TOKEN
       # on the social-wrapped repo: Settings → Secrets and variables → Actions.
       - name: Require submodule token
+        shell: bash
         env:
           SUBMODULE_TOKEN: ${{ secrets.SUBMODULE_TOKEN }}
         run: |
@@ -128,6 +129,7 @@ jobs:
           submodules: false
 
       - name: Checkout private app-core submodule
+        shell: bash
         env:
           SUBMODULE_TOKEN: ${{ secrets.SUBMODULE_TOKEN }}
         run: |
