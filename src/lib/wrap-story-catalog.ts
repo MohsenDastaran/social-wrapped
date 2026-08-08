@@ -9,6 +9,10 @@ import type {
   WrapAnalytics,
 } from "@/platform/analytics-types"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
+import {
+  formatListeningMs,
+  type SpotifyInsights,
+} from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
 import type { XInsights } from "@/platform/x-types"
 
@@ -26,6 +30,7 @@ export type StoryCatalogInput = {
   linkedinInsights?: LinkedInInsights | null
   xInsights?: XInsights | null
   tiktokInsights?: TikTokInsights | null
+  spotifyInsights?: SpotifyInsights | null
 }
 
 const MESSAGING_VIDEO_IDS = [
@@ -64,6 +69,14 @@ const X_VIDEO_IDS = [
 const TIKTOK_VIDEO_IDS = [
   "tt-activity",
   "tt-engage",
+  "heatmap",
+  "activity",
+  "sent-received",
+] as const
+
+const SPOTIFY_VIDEO_IDS = [
+  "sp-listen",
+  "sp-tops",
   "heatmap",
   "activity",
   "sent-received",
@@ -291,8 +304,58 @@ export function buildPlatformStoryCatalog(
     }
   }
 
+  if (input.platformId === "spotify" && input.spotifyInsights) {
+    const sp = buildSpotifyStorySpecs(input.spotifyInsights)
+    const storySpecs = [...sp, ...messaging]
+    return {
+      storySpecs,
+      videoSlideIds: pickVideoIds(SPOTIFY_VIDEO_IDS, storySpecs),
+    }
+  }
+
   return {
     storySpecs: messaging,
     videoSlideIds: pickVideoIds(MESSAGING_VIDEO_IDS, messaging),
   }
+}
+
+/** Spotify listening slides (gated on data). */
+export function buildSpotifyStorySpecs(
+  insights: SpotifyInsights
+): WrapStorySpec[] {
+  const specs: WrapStorySpec[] = []
+
+  if (insights.playCount > 0) {
+    specs.push({
+      id: "sp-listen",
+      exportName: "spotify-listen-kpis",
+      heading: "Your listening year",
+      subtext: `${fmt(insights.playCount)} plays · ${formatListeningMs(insights.totalMsPlayed)}`,
+      kpis: [
+        { label: "Plays", value: fmt(insights.playCount) },
+        {
+          label: "Time",
+          value: formatListeningMs(insights.totalMsPlayed),
+        },
+        { label: "Artists", value: fmt(insights.uniqueArtistCount) },
+      ],
+    })
+  }
+
+  const topArtist = insights.topArtists?.[0]
+  if (topArtist) {
+    specs.push({
+      id: "sp-tops",
+      exportName: "spotify-skip-kpis",
+      heading: "Your #1 artist",
+      subtext: `${topArtist.name} · ${fmt(topArtist.count)} plays`,
+      kpis: [
+        { label: "Artist", value: topArtist.name.slice(0, 18) },
+        { label: "Plays", value: fmt(topArtist.count) },
+        { label: "Tracks", value: fmt(insights.uniqueTrackCount) },
+      ],
+    })
+  }
+
+  return specs
 }

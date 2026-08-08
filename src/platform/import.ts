@@ -5,6 +5,7 @@ import type {
 } from "@/platform/analytics-types"
 import type { GoogleInsights } from "@/platform/google-types"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
+import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
 import type { XInsights } from "@/platform/x-types"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
@@ -12,10 +13,11 @@ import { normalizeContentMix } from "@/lib/normalize-content-mix"
 export type { WrapAnalytics, InstagramSocialInsights } from "@/platform/analytics-types"
 export type { GoogleInsights } from "@/platform/google-types"
 export type { LinkedInInsights } from "@/platform/linkedin-types"
+export type { SpotifyInsights } from "@/platform/spotify-types"
 export type { TikTokInsights } from "@/platform/tiktok-types"
 export type { XInsights } from "@/platform/x-types"
 
-/** Result of a platform import pass (side insights for IG / Google / LinkedIn / X / TikTok). */
+/** Result of a platform import pass (side insights for IG / Google / LinkedIn / X / TikTok / Spotify). */
 export type ImportResult = {
   analytics: WrapAnalytics
   instagramSocial?: InstagramSocialInsights
@@ -23,6 +25,7 @@ export type ImportResult = {
   linkedinInsights?: LinkedInInsights
   xInsights?: XInsights
   tiktokInsights?: TikTokInsights
+  spotifyInsights?: SpotifyInsights
 }
 export type {
   AnalyticsResult,
@@ -111,6 +114,10 @@ export type TikTokImportWorkerRequest =
   | { type: "file"; file: File }
   | { type: "identity"; meName: string }
 
+export type SpotifyImportWorkerRequest =
+  | { type: "file"; file: File }
+  | { type: "files"; files: File[] }
+
 export type XImportWorkerRequest = { type: "file"; file: File }
 
 export type ImportWorkerResponse =
@@ -195,6 +202,15 @@ function validateFile(platform: PlatformConfig, file: File): void {
     return
   }
 
+  if (platform.id === "spotify") {
+    if (!lower.endsWith(".zip") && !lower.endsWith(".json")) {
+      throw new Error(
+        "Please choose your Spotify Account Data ZIP, or StreamingHistory / Streaming_History JSON file(s)."
+      )
+    }
+    return
+  }
+
   if (platform.id === "google" || platform.id === "youtube") {
     if (!lower.endsWith(".zip")) {
       throw new Error(
@@ -205,7 +221,7 @@ function validateFile(platform: PlatformConfig, file: File): void {
   }
 
   throw new Error(
-    `${platform.name} import isn't wired yet. Telegram, WhatsApp, Instagram, LinkedIn, X, Google, and YouTube exports can be analyzed right now.`
+    `${platform.name} import isn't wired yet. Telegram, WhatsApp, Instagram, LinkedIn, X, TikTok, Spotify, Google, and YouTube exports can be analyzed right now.`
   )
 }
 
@@ -693,6 +709,93 @@ function importTikTokFile(
   })
 }
 
+function parseSpotifyAnalyzeJson(analyticsJson: string): ImportResult {
+  const payload = JSON.parse(analyticsJson) as {
+    analytics?: WrapAnalytics
+    spotifyInsights?: SpotifyInsights
+  }
+
+  if (!payload.analytics?.account) {
+    throw new Error("Spotify import returned incomplete analytics.")
+  }
+
+  return {
+    analytics: normalizeAnalytics(payload.analytics),
+    spotifyInsights: payload.spotifyInsights,
+  }
+}
+
+function importSpotifyFiles(
+  files: File[],
+  onProgress?: (progress: ImportProgress) => void
+): Promise<ImportResult> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL("../workers/spotify-import.worker.ts", import.meta.url),
+      { type: "module", name: "spotify-import" }
+    )
+
+    let settled = false
+
+    const fail = (error: Error) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      reject(error)
+    }
+
+    const succeed = (result: ImportResult) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      resolve(result)
+    }
+
+    worker.onmessage = (event: MessageEvent<ImportWorkerResponse>) => {
+      const message = event.data
+      if (message.type === "progress") {
+        const phase = normalizeProgressPhase(message.phase)
+        const { current, total } = message
+        const percent =
+          total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0
+        onProgress?.({
+          phase,
+          percent,
+          overallPercent: importOverallPercent(phase, percent),
+          current,
+          total,
+        })
+        return
+      }
+
+      if (message.type === "done") {
+        try {
+          succeed(parseSpotifyAnalyzeJson(message.analyticsJson))
+        } catch (error) {
+          fail(error instanceof Error ? error : new Error(String(error)))
+        }
+        return
+      }
+
+      if (message.type === "error") {
+        fail(new Error(message.message || "Spotify import failed."))
+        return
+      }
+
+      fail(new Error("Unexpected Spotify import response."))
+    }
+
+    worker.onerror = (event) => {
+      fail(new Error(event.message || "Import worker failed to start."))
+    }
+
+    worker.postMessage({
+      type: "files",
+      files,
+    } satisfies SpotifyImportWorkerRequest)
+  })
+}
+
 function parseXAnalyzeJson(analyticsJson: string): ImportResult {
   const payload = JSON.parse(analyticsJson) as {
     analytics?: WrapAnalytics
@@ -901,10 +1004,14 @@ export function importPlatformFiles(
     )
   }
 
+  if (platform.id === "spotify") {
+    return importSpotifyFiles(files, onProgress)
+  }
+
   if (files.length > 1) {
     return Promise.reject(
       new Error(
-        `${platform.name} imports one file at a time. Google Takeout supports multiple ZIP parts.`
+        `${platform.name} imports one file at a time. Google Takeout and Spotify support multiple files.`
       )
     )
   }

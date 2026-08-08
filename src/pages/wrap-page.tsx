@@ -13,6 +13,8 @@ import { LinkedInCareerInsights } from "@/components/wrap/linkedin-career"
 import { LinkedInEngagement } from "@/components/wrap/linkedin-engagement"
 import { LinkedInNetworkInsights } from "@/components/wrap/linkedin-network"
 import { OfficialXHtml } from "@/components/wrap/official-x-html"
+import { SpotifyEngagement } from "@/components/wrap/spotify-engagement"
+import { SpotifyListeningInsights } from "@/components/wrap/spotify-listening"
 import { TikTokActivityInsights } from "@/components/wrap/tiktok-activity"
 import { TikTokEngagement } from "@/components/wrap/tiktok-engagement"
 import { XEngagement } from "@/components/wrap/x-engagement"
@@ -24,6 +26,7 @@ import { normalizeInstagramSocial } from "@/lib/instagram-social"
 import { getPlatform } from "@/lib/platforms"
 import { normalizeGoogleInsights } from "@/platform/google-types"
 import { normalizeLinkedInInsights } from "@/platform/linkedin-types"
+import { normalizeSpotifyInsights } from "@/platform/spotify-types"
 import { normalizeTikTokInsights } from "@/platform/tiktok-types"
 import { normalizeXInsights } from "@/platform/x-types"
 import { getWrap, wrapChatPath, wrapEntryPath, wrapGoogleProductPath, type WrapRecord } from "@/lib/wrap-history"
@@ -89,9 +92,11 @@ export function WrapPage() {
         ? true
         : wrap.platformId === "tiktok" && wrap.tiktokInsights
           ? true
-          : wrap.analytics.chats.length > 0 ||
-            wrap.analytics.account.heatmap.days.length > 0 ||
-            wrap.analytics.account.emojis.topOverall.length > 0
+          : wrap.platformId === "spotify" && wrap.spotifyInsights
+            ? true
+            : wrap.analytics.chats.length > 0 ||
+              wrap.analytics.account.heatmap.days.length > 0 ||
+              wrap.analytics.account.emojis.topOverall.length > 0
   const igSocial =
     wrap.platformId === "instagram"
       ? normalizeInstagramSocial(wrap.instagramSocial)
@@ -105,6 +110,10 @@ export function WrapPage() {
   const tiktokInsights =
     wrap.platformId === "tiktok"
       ? normalizeTikTokInsights(wrap.tiktokInsights)
+      : null
+  const spotifyInsights =
+    wrap.platformId === "spotify"
+      ? normalizeSpotifyInsights(wrap.spotifyInsights)
       : null
 
   return (
@@ -160,6 +169,7 @@ export function WrapPage() {
           linkedinInsights={liInsights}
           xInsights={xInsights}
           tiktokInsights={tiktokInsights}
+          spotifyInsights={spotifyInsights}
         />
       ) : null}
 
@@ -200,6 +210,11 @@ export function WrapPage() {
           </header>
           <WrapMainAnalytics analytics={wrap.analytics} />
           <LinkedInEngagement data={liInsights} />
+        </>
+      ) : spotifyInsights ? (
+        <>
+          <SpotifyListeningInsights data={spotifyInsights} />
+          <SpotifyEngagement data={spotifyInsights} />
         </>
       ) : tiktokInsights ? (
         <>

@@ -8,7 +8,7 @@ export const PLATFORM_ENABLED = {
   google: true,
   instagram: true,
   tiktok: true,
-  spotify: false,
+  spotify: true,
   youtube: true,
   linkedin: true,
 } as const satisfies Record<PlatformLogoId, boolean>
@@ -199,17 +199,17 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
       "from-green-500/25 via-lime-400/10 to-transparent dark:from-green-400/20 dark:via-lime-500/5",
     summary: "Download your listening history and library as JSON.",
     exportPath: "Account → Privacy settings → Download your data",
-    formats: "JSON",
+    formats: "JSON ZIP",
     extractable:
-      "Extended streaming history, playlists, library, and listening timestamps.",
+      "Streaming history, top artists/tracks, listening time, and profile details.",
     steps: [
-      "Request your data (and extended streaming history if offered).",
-      "Download the ZIP when Spotify emails you.",
-      "Import into Social Wrapped when Spotify support ships.",
+      "In Spotify, go to Account → Privacy settings → Download your data.",
+      "Download the Account Data ZIP (and Extended Streaming History if offered).",
+      "Import the ZIP here — everything stays on your device.",
     ],
     importTitle: "Import Spotify data",
     importDescription:
-      "Upload your Spotify privacy export ZIP or JSON streaming history files.",
+      "Upload your Spotify Account Data ZIP, or StreamingHistory / Streaming_History JSON file(s). We analyze listening history on your device.",
     acceptedFiles: [".zip", ".json"],
     accept: ".zip,.json,application/zip,application/json",
   },

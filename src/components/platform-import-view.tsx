@@ -37,7 +37,11 @@ type IdentityPrompt = {
 }
 
 function allowsMultiple(platformId: string): boolean {
-  return platformId === "google" || platformId === "youtube"
+  return (
+    platformId === "google" ||
+    platformId === "youtube" ||
+    platformId === "spotify"
+  )
 }
 
 function fileAllowed(name: string, acceptedFiles: string[]): boolean {
@@ -134,7 +138,7 @@ export function PlatformImportView({
       total: totalSize,
     })
     try {
-      const { analytics, instagramSocial, googleInsights, linkedinInsights, xInsights, tiktokInsights } =
+      const { analytics, instagramSocial, googleInsights, linkedinInsights, xInsights, tiktokInsights, spotifyInsights } =
         await importPlatformFiles(
           platform,
           files,
@@ -151,13 +155,16 @@ export function PlatformImportView({
         fileName:
           files.length === 1
             ? files[0].name
-            : `${files.length} Takeout ZIPs`,
+            : platform.id === "spotify"
+              ? `${files.length} Spotify files`
+              : `${files.length} Takeout ZIPs`,
         analytics,
         instagramSocial,
         googleInsights,
         linkedinInsights,
         xInsights,
         tiktokInsights,
+        spotifyInsights,
         archiveBlob:
           platform.id === "x" && files[0] ? files[0] : undefined,
       })
@@ -186,7 +193,11 @@ export function PlatformImportView({
             ? progress?.phase === "computing"
               ? "Building your TikTok wrap"
               : "Reading your TikTok ZIP (activity + DMs)"
-            : platform.id === "x"
+            : platform.id === "spotify"
+              ? progress?.phase === "computing"
+                ? "Building your Spotify wrap"
+                : "Reading your Spotify listening history"
+              : platform.id === "x"
             ? progress?.phase === "computing"
               ? "Building your X wrap"
               : "Reading your X archive ZIP (tweets + DMs)"
@@ -252,7 +263,11 @@ export function PlatformImportView({
         </p>
         <p className="mt-3 text-xs font-medium text-muted-foreground">
           Accepted: {acceptedFiles.join(", ")}
-          {multi ? " · multiple ZIPs OK" : null}
+          {multi
+            ? platform.id === "spotify"
+              ? " · multiple JSON files OK"
+              : " · multiple ZIPs OK"
+            : null}
         </p>
       </header>
 

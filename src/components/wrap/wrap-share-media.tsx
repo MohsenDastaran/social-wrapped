@@ -27,6 +27,7 @@ import type {
   WrapAnalytics,
 } from "@/platform/analytics-types"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
+import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
 import type { XInsights } from "@/platform/x-types"
 import { cn } from "@/lib/utils"
@@ -43,6 +44,7 @@ type WrapShareMediaProps = {
   linkedinInsights?: LinkedInInsights | null
   xInsights?: XInsights | null
   tiktokInsights?: TikTokInsights | null
+  spotifyInsights?: SpotifyInsights | null
 }
 
 function storiesFromStored(
@@ -90,6 +92,7 @@ export function WrapShareMedia({
   linkedinInsights = null,
   xInsights = null,
   tiktokInsights = null,
+  spotifyInsights = null,
 }: WrapShareMediaProps) {
   const catalog = useMemo(
     () =>
@@ -101,6 +104,7 @@ export function WrapShareMedia({
         linkedinInsights,
         xInsights,
         tiktokInsights,
+        spotifyInsights,
       }),
     [
       platformId,
@@ -110,6 +114,7 @@ export function WrapShareMedia({
       linkedinInsights,
       xInsights,
       tiktokInsights,
+      spotifyInsights,
     ]
   )
   const specs = catalog.storySpecs

@@ -12,7 +12,7 @@ import { whipPan } from "../src/components/remocn/whip-pan"
 
 /** Powerful percussion bed for the wrap reel (served from /public). */
 const SOUNDTRACK_PATH =
-  "/soundtracks/miromaxmusic-music-promotion-no-copyright.mp3"
+  "/soundtracks/miromaxmusic-music-promotion-no-copyright.m4a"
 
 function soundtrackSrc(): string {
   if (typeof window === "undefined") return SOUNDTRACK_PATH
@@ -205,10 +205,15 @@ function PanChartBeat({ src, heading }: VideoChartSlide) {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   })
-  const labelOpacity = interpolate(frame, [8, 28, SCENE_CHART - 30, SCENE_CHART - 12], [0, 1, 1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  })
+  const labelOpacity = interpolate(
+    frame,
+    [8, 28, SCENE_CHART - 30, SCENE_CHART - 12],
+    [0, 1, 1, 0],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    }
+  )
 
   return (
     <SceneShell>
@@ -275,10 +280,7 @@ export function slidesIncludeEmojis(slides: VideoChartSlide[]): boolean {
 export function slidesIncludeHeatmap(slides: VideoChartSlide[]): boolean {
   return slides
     .slice(0, MAX_CHARTS)
-    .some(
-      (s) =>
-        (s.id === "heatmap") && Boolean(s.src)
-    )
+    .some((s) => s.id === "heatmap" && Boolean(s.src))
 }
 
 /** Must be TransitionSeries.Transition itself — wrappers fail Remotion's child-type check. */

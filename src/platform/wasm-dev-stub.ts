@@ -116,3 +116,18 @@ export function analyze_tiktok_bytes_with_progress(
 ): string {
   throw new Error("WASM module not built. Run: bun run build:wasm:dev")
 }
+
+export function preview_spotify_bytes(_data: Uint8Array): string {
+  throw new Error("WASM module not built. Run: bun run build:wasm:dev")
+}
+
+export function analyze_spotify_bytes_with_progress(
+  _data: Uint8Array,
+  _onProgress: (
+    phase: "reading" | "computing",
+    current: number,
+    total: number
+  ) => void
+): string {
+  throw new Error("WASM module not built. Run: bun run build:wasm:dev")
+}
