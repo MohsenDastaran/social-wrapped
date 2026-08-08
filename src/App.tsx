@@ -2,10 +2,10 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router"
 
 import { AppLayout } from "@/components/app-layout"
 import { AboutPage } from "@/pages/about-page"
-import { DocsPage } from "@/pages/docs-page"
 import { HistoryPage } from "@/pages/history-page"
 import { HomePage } from "@/pages/home-page"
 import { ImportPage } from "@/pages/import-page"
+import { PrivacyPage } from "@/pages/privacy-page"
 import { SettingsPage } from "@/pages/settings-page"
 import { WrapChatPage } from "@/pages/wrap-chat-page"
 import { WrapGoogleProductPage } from "@/pages/wrap-google-product-page"
@@ -24,9 +24,10 @@ export function App() {
             path="wrap/:wrapId/google/:productId"
             element={<WrapGoogleProductPage />}
           />
-          <Route path="docs" element={<DocsPage />} />
+          <Route path="docs" element={<Navigate to="/privacy" replace />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="privacy" element={<PrivacyPage />} />
           <Route path="about" element={<AboutPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

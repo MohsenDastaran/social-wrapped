@@ -3,10 +3,11 @@ import { ArrowLeft, CircleHelp, FileUp, Upload, X } from "lucide-react"
 import { Link, useNavigate } from "react-router"
 
 import { AppLoader } from "@/components/app-loader"
+import { PlatformImportHelpDialog } from "@/components/platform-import-help-dialog"
 import { PlatformLogo } from "@/components/platform-logo"
 import { WhatsAppIdentityPicker } from "@/components/whatsapp-identity-picker"
 import { Button } from "@/components/ui/button"
-import { platformDocsPath, type PlatformConfig } from "@/lib/platforms"
+import { type PlatformConfig } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
 import { saveWrap, wrapEntryPath } from "@/lib/wrap-history"
 import { formatInvokeError } from "@/platform/api"
@@ -229,16 +230,19 @@ export function PlatformImportView({
           <ArrowLeft data-icon="inline-start" />
           Back
         </Button>
-        <Button
-          variant="outline"
-          size="default"
-          className="rounded-full text-primary"
-          render={<Link to={platformDocsPath(platform.id)} />}
-          nativeButton={false}
-        >
-          <CircleHelp data-icon="inline-start" />
-          Need help?
-        </Button>
+        <PlatformImportHelpDialog
+          platform={platform}
+          trigger={
+            <Button
+              variant="outline"
+              size="default"
+              className="rounded-full text-primary"
+            >
+              <CircleHelp data-icon="inline-start" />
+              Need help?
+            </Button>
+          }
+        />
       </div>
 
       <header className="mb-8 flex flex-col items-center text-center">

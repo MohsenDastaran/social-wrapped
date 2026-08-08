@@ -275,8 +275,3 @@ export function getPlatform(
 export function platformImportPath(id: PlatformId): string {
   return `/import/${id}`
 }
-
-/** Deep-link into Docs and open that platform’s guide dialog. */
-export function platformDocsPath(id: PlatformId): string {
-  return `/docs?platform=${id}`
-}

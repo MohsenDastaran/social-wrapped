@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from "react"
 import { ChevronRight, ShieldCheck } from "lucide-react"
+import { Link } from "react-router"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -141,12 +142,26 @@ export function DataSafetyDialog({
 
           <section className="mb-1">
             <SectionHeading>Open source, inspectable</SectionHeading>
+            <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
+              The public app shell is open source. You (or someone you trust)
+              can read how exports are handled, see that analysis is designed
+              to run locally, and report anything that doesn’t match what we
+              claim here. Privacy isn’t a slogan for us — it’s the product:
+              personal insights without giving yourself away.
+            </p>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              The project is open source. You (or someone you trust) can read
-              how exports are handled, see that analysis is designed to run
-              locally, and report anything that doesn’t match what we claim
-              here. Privacy isn’t a slogan for us — it’s the product: personal
-              insights without giving yourself away.
+              <DialogClose
+                render={
+                  <Link
+                    to="/privacy"
+                    className="font-medium text-primary underline-offset-4 hover:underline"
+                  />
+                }
+              >
+                Read the full Privacy page
+              </DialogClose>{" "}
+              for storage details, the trust boundary with the private analytics
+              engine, and the same verification steps in one place.
             </p>
           </section>
         </div>
