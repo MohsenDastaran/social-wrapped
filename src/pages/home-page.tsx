@@ -1,13 +1,59 @@
 import { useMemo, useState } from "react"
+import { ArrowUpRight, ShieldCheck, XIcon } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
+import { Link } from "react-router"
 
 import { Hero } from "@/components/hero"
 import { PlatformImportCard } from "@/components/platform-guide-card"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/reui/alert"
 import { PlatformSearchInput } from "@/components/platform-search-input"
+import { Button } from "@/components/ui/button"
 import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
+
+const TRUST_ALERT_KEY = "social-wrapped:privacy-trust-alert"
+const TRUST_ALERT_MAX_PRIVACY_CLICKS = 2
+
+type TrustAlertState = {
+  privacyClicks: number
+  dismissed: boolean
+}
+
+function readTrustAlertState(): TrustAlertState {
+  try {
+    const raw = localStorage.getItem(TRUST_ALERT_KEY)
+    if (!raw) return { privacyClicks: 0, dismissed: false }
+    const parsed = JSON.parse(raw) as Partial<TrustAlertState>
+    return {
+      privacyClicks:
+        typeof parsed.privacyClicks === "number" && parsed.privacyClicks >= 0
+          ? parsed.privacyClicks
+          : 0,
+      dismissed: Boolean(parsed.dismissed),
+    }
+  } catch {
+    return { privacyClicks: 0, dismissed: false }
+  }
+}
+
+function writeTrustAlertState(state: TrustAlertState) {
+  localStorage.setItem(TRUST_ALERT_KEY, JSON.stringify(state))
+}
+
+function isTrustAlertVisible(state: TrustAlertState): boolean {
+  return (
+    !state.dismissed && state.privacyClicks < TRUST_ALERT_MAX_PRIVACY_CLICKS
+  )
+}
 
 export function HomePage() {
   const [query, setQuery] = useState("")
+  const [showTrustAlert, setShowTrustAlert] = useState(() =>
+    isTrustAlertVisible(readTrustAlertState())
+  )
   const reduceMotion = useReducedMotion()
   const filteredPlatforms = useMemo(() => {
     const search = query.trim().toLowerCase()
@@ -26,9 +72,85 @@ export function HomePage() {
     )
   }, [query])
 
+  function dismissTrustAlert() {
+    writeTrustAlertState({
+      ...readTrustAlertState(),
+      dismissed: true,
+    })
+    setShowTrustAlert(false)
+  }
+
+  function handlePrivacyClick() {
+    const state = readTrustAlertState()
+    const privacyClicks = state.privacyClicks + 1
+    const next: TrustAlertState = {
+      privacyClicks,
+      dismissed:
+        state.dismissed || privacyClicks >= TRUST_ALERT_MAX_PRIVACY_CLICKS,
+    }
+    writeTrustAlertState(next)
+    if (!isTrustAlertVisible(next)) {
+      setShowTrustAlert(false)
+    }
+  }
+
   return (
     <div className="flex w-full max-w-4xl flex-col items-stretch text-start">
       <Hero />
+
+      {showTrustAlert ? (
+        <Alert
+          variant="default"
+          className="relative mb-6 grid-cols-1 gap-0 overflow-hidden rounded-2xl border-primary/25 bg-primary/6 px-3 py-2.5 shadow-[0_10px_28px_-24px] shadow-foreground/40 ring-1 ring-primary/10"
+        >
+          <div
+            className="pointer-events-none absolute -inset-e-8 -top-10 size-28 rounded-full bg-primary/15 blur-2xl"
+            aria-hidden
+          />
+          <div className="relative flex items-start gap-3">
+            <span
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/30"
+              aria-hidden
+            >
+              <ShieldCheck className="size-4" strokeWidth={2.25} />
+            </span>
+
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <div className="min-w-0 flex-1">
+                <AlertTitle className="font-heading col-start-auto min-h-0 text-[0.95rem] leading-tight tracking-tight">
+                  Don&apos;t you trust us?
+                </AlertTitle>
+                <AlertDescription className="col-start-auto mt-0.5 text-xs leading-snug text-muted-foreground">
+                  No accounts, no uploads — analysis stays on this device.
+                </AlertDescription>
+              </div>
+
+              <Button
+                size="sm"
+                className="w-fit shrink-0 rounded-full"
+                render={
+                  <Link to="/privacy" onClick={handlePrivacyClick} />
+                }
+                nativeButton={false}
+              >
+                Peek at Privacy
+                <ArrowUpRight data-icon="inline-end" />
+              </Button>
+            </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="size-9 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Dismiss"
+              onClick={dismissTrustAlert}
+            >
+              <XIcon />
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
 
       <section
         className="mb-6 flex flex-col gap-4"
