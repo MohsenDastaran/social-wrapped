@@ -1,4 +1,4 @@
-import NumberFlow from "@number-flow/react"
+import NumberFlow, { continuous } from "@number-flow/react"
 import {
   motion,
   useMotionValueEvent,
@@ -34,7 +34,7 @@ export function ScrollProgressIndicator({
     setProgressPercent(value)
   })
 
-  const svgRadius = 18
+  const svgRadius = 22
   const circumference = 2 * Math.PI * svgRadius
 
   return (
@@ -43,35 +43,32 @@ export function ScrollProgressIndicator({
       dragMomentum={false}
       className={cn(
         // Clear mobile bottom nav; sit lower on desktop
-        "group fixed end-4 bottom-24 z-40 cursor-grab active:cursor-grabbing md:bottom-6",
+        "fixed end-4 bottom-24 z-40 cursor-grab active:cursor-grabbing md:bottom-6",
         className
       )}
       aria-hidden
     >
-      <NumberFlow
-        value={progressPercent}
-        className={cn(
-          "absolute top-1 flex h-8 -translate-y-full items-center justify-center px-4 text-xs font-medium tabular-nums text-foreground/40 opacity-0 group-hover:opacity-100"
-        )}
-        suffix="%"
-      />
-      <div className="flex size-12 items-center justify-center rounded-2xl border border-foreground/10 bg-background/70 backdrop-blur">
-        <svg className="size-10" viewBox="0 0 48 48" role="presentation">
+      <div className="relative flex size-16 items-center justify-center rounded-2xl border border-foreground/10 bg-background/70 backdrop-blur">
+        <svg
+          className="absolute inset-1 size-14"
+          viewBox="0 0 56 56"
+          role="presentation"
+        >
           <circle
-            cx="24"
-            cy="24"
+            cx="28"
+            cy="28"
             r={svgRadius}
             stroke="currentColor"
-            strokeWidth="3"
+            strokeWidth="2"
             className="opacity-30"
             fill="none"
           />
           <motion.circle
-            cx="24"
-            cy="24"
+            cx="28"
+            cy="28"
             r={svgRadius}
             stroke="currentColor"
-            strokeWidth="3"
+            strokeWidth="2"
             fill="none"
             strokeLinecap="round"
             strokeDasharray={`${circumference}`}
@@ -82,6 +79,12 @@ export function ScrollProgressIndicator({
             }}
           />
         </svg>
+        <NumberFlow
+          value={progressPercent}
+          suffix="%"
+          plugins={[continuous]}
+          className="relative z-10 text-[0.7rem] font-medium tabular-nums tracking-tight text-foreground"
+        />
       </div>
     </motion.div>
   )
