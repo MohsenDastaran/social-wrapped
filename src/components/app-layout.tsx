@@ -4,6 +4,7 @@ import { Outlet, useLocation } from "react-router"
 import { BottomNav } from "@/components/bottom-nav"
 import { SafeArea } from "@/components/safe-area"
 import { SiteHeader } from "@/components/site-header"
+import { StorageLimitGuard } from "@/components/storage-limit-guard"
 import { getAppSettings } from "@/lib/app-settings"
 import { enforceRetentionPolicies } from "@/lib/wrap-history"
 
@@ -35,6 +36,7 @@ export function AppLayout() {
     >
       <ScrollToTop />
       <RetentionPruneOnOpen />
+      <StorageLimitGuard />
       <SiteHeader />
 
       <main className="relative z-10 flex flex-1 flex-col items-center px-6 pt-10 pb-24 text-center md:pb-10">

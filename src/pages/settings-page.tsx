@@ -42,9 +42,11 @@ import {
   type MaxWrapsOption,
 } from "@/lib/app-settings"
 import {
+  APP_STORAGE_LIMIT_BYTES,
   clearAllWraps,
   enforceRetentionPolicies,
   getWrapStorageSummary,
+  storageUsedBytes,
   type WrapStorageSummary,
 } from "@/lib/wrap-history"
 
@@ -132,16 +134,8 @@ export function SettingsPage() {
   const storageLine = (() => {
     if (!storage) return "Calculating…"
     const wraps = `${formatCount(storage.wrapCount)} wrap${storage.wrapCount === 1 ? "" : "s"}`
-    if (storage.usageBytes != null && storage.quotaBytes != null) {
-      return `${wraps} · ${formatBytes(storage.usageBytes)} of ${formatBytes(storage.quotaBytes)} used`
-    }
-    if (storage.usageBytes != null) {
-      return `${wraps} · ${formatBytes(storage.usageBytes)} used`
-    }
-    if (storage.wrapFileBytes > 0) {
-      return `${wraps} · ~${formatBytes(storage.wrapFileBytes)} from exports`
-    }
-    return wraps
+    const used = storageUsedBytes(storage)
+    return `${wraps} · ${formatBytes(used)} of ${formatBytes(APP_STORAGE_LIMIT_BYTES)} used`
   })()
 
   return (
@@ -214,7 +208,8 @@ export function SettingsPage() {
               </div>
             </div>
             <FieldDescription>
-              Analysis stays in this browser or app. Nothing is uploaded.
+              Analysis stays in this browser or app (up to{" "}
+              {formatBytes(APP_STORAGE_LIMIT_BYTES)}). Nothing is uploaded.
             </FieldDescription>
           </Field>
         </FieldGroup>

@@ -798,10 +798,26 @@ export type WrapStorageSummary = {
   wrapCount: number
   /** Origin storage usage from `navigator.storage.estimate()`, when available. */
   usageBytes: number | null
-  /** Origin storage quota from `navigator.storage.estimate()`, when available. */
+  /**
+   * Browser origin quota from `navigator.storage.estimate()` (informational).
+   * The app soft-limit for UI / prompts is {@link APP_STORAGE_LIMIT_BYTES}.
+   */
   quotaBytes: number | null
   /** Sum of wrap `fileSizeBytes` as a fallback signal. */
   wrapFileBytes: number
+}
+
+/** Soft cap for on-device wrap storage shown in Settings and enforced on launch. */
+export const APP_STORAGE_LIMIT_BYTES = 5 * 1024 * 1024 * 1024
+
+/** Best available usage estimate (browser origin usage, else wrap file sizes). */
+export function storageUsedBytes(summary: WrapStorageSummary): number {
+  if (summary.usageBytes != null) return summary.usageBytes
+  return summary.wrapFileBytes
+}
+
+export function isOverAppStorageLimit(summary: WrapStorageSummary): boolean {
+  return storageUsedBytes(summary) > APP_STORAGE_LIMIT_BYTES
 }
 
 export async function getWrapStorageSummary(): Promise<WrapStorageSummary> {
