@@ -5,6 +5,7 @@ import { Link, Navigate, useParams } from "react-router"
 import { AppLoader } from "@/components/app-loader"
 import { Button } from "@/components/ui/button"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
+import { ScrollProgressIndicator } from "@/components/ui/animated/skiper89"
 import { GoogleProductDetail } from "@/components/wrap/google/google-product-detail"
 import { GoogleProductLogo } from "@/components/wrap/google/google-product-logo"
 import {
@@ -71,6 +72,7 @@ export function WrapGoogleProductPage() {
 
   return (
     <div className="-mt-4 flex w-full max-w-4xl flex-col items-stretch gap-6 text-start sm:-mt-6 sm:gap-8 md:max-w-4xl lg:max-w-5xl">
+      <ScrollProgressIndicator />
       <header className="text-start">
         <Button
           variant="ghost"

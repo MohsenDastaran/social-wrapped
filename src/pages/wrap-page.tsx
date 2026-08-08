@@ -22,6 +22,7 @@ import { XNetworkInsights } from "@/components/wrap/x-network"
 import { WrapMainAnalytics } from "@/components/wrap/wrap-main-analytics"
 import { WrapShareMedia } from "@/components/wrap/wrap-share-media"
 import { WrapTopContacts } from "@/components/wrap/wrap-top-contacts"
+import { ScrollProgressIndicator } from "@/components/ui/animated/skiper89"
 import { normalizeInstagramSocial } from "@/lib/instagram-social"
 import { getPlatform } from "@/lib/platforms"
 import { normalizeGoogleInsights } from "@/platform/google-types"
@@ -118,6 +119,7 @@ export function WrapPage() {
 
   return (
     <div className="-mt-4 flex w-full max-w-4xl flex-col items-stretch gap-6 text-start sm:-mt-6 sm:gap-8 md:max-w-4xl lg:max-w-5xl">
+      <ScrollProgressIndicator />
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0 text-start">
           <Button
