@@ -1,10 +1,12 @@
 import { useMemo } from "react"
+import { Disc3, Library, ListMusic, Heart } from "lucide-react"
 
 import {
   CountSeriesChart,
   heatmapDaysToMonthly,
 } from "@/components/wrap/charts/count-series-chart"
 import { fmt } from "@/components/wrap/chart-theme"
+import { TopListeningRanksCard } from "@/components/wrap/top-listening-ranks"
 import {
   formatListeningMs,
   type AppleMusicInsights,
@@ -27,6 +29,7 @@ export function AppleMusicLibraryInsights({
   const decades = data.decades ?? []
   const growth = data.libraryGrowthHeatmap ?? []
   const growthMonthly = useMemo(() => heatmapDaysToMonthly(growth), [growth])
+  const hasRanks = genres.length > 0 || albums.length > 0
 
   return (
     <section className="flex flex-col gap-5 text-start">
@@ -39,6 +42,35 @@ export function AppleMusicLibraryInsights({
         </p>
       </header>
 
+      {hasRanks ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+          {genres.length > 0 ? (
+            <TopListeningRanksCard
+              title="Top genres"
+              description="Where your play counts land"
+              exportName="apple-music-top-genres"
+              items={genres}
+              icon={Library}
+              accent="rose"
+              limit={12}
+            />
+          ) : null}
+
+          {albums.length > 0 ? (
+            <TopListeningRanksCard
+              title="Top albums"
+              description="Albums you returned to most"
+              exportName="apple-music-top-albums"
+              items={albums}
+              icon={Disc3}
+              accent="teal"
+              limit={12}
+              splitArtistTrack
+            />
+          ) : null}
+        </div>
+      ) : null}
+
       {growthMonthly.length > 0 ? (
         <CountSeriesChart
           data={growthMonthly}
@@ -50,58 +82,6 @@ export function AppleMusicLibraryInsights({
           accent="violet"
         />
       ) : null}
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {genres.length > 0 ? (
-          <div className="rounded-xl bg-muted/40 p-4 ring-1 ring-border/60">
-            <h3 className="text-sm font-medium">Top genres</h3>
-            <ul
-              className={cn(
-                "mt-3 flex flex-col gap-2 text-sm",
-                listScrollMaxClass
-              )}
-            >
-              {genres.slice(0, 15).map((g) => (
-                <li
-                  key={g.name}
-                  className="flex min-w-0 items-baseline justify-between gap-2"
-                >
-                  <span className="truncate text-foreground">{g.name}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {fmt(g.count)}
-                    {g.msPlayed ? ` · ${formatListeningMs(g.msPlayed)}` : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        {albums.length > 0 ? (
-          <div className="rounded-xl bg-muted/40 p-4 ring-1 ring-border/60">
-            <h3 className="text-sm font-medium">Top albums</h3>
-            <ul
-              className={cn(
-                "mt-3 flex flex-col gap-2 text-sm",
-                listScrollMaxClass
-              )}
-            >
-              {albums.slice(0, 15).map((a) => (
-                <li
-                  key={a.name}
-                  className="flex min-w-0 items-baseline justify-between gap-2"
-                >
-                  <span className="truncate text-foreground">{a.name}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {fmt(a.count)}
-                    {a.msPlayed ? ` · ${formatListeningMs(a.msPlayed)}` : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-      </div>
 
       {decades.length > 0 ? (
         <div className="rounded-xl bg-muted/40 p-4 ring-1 ring-border/60">
@@ -119,7 +99,10 @@ export function AppleMusicLibraryInsights({
 
       {loved.length > 0 ? (
         <div className="rounded-xl bg-muted/40 p-4 ring-1 ring-border/60">
-          <h3 className="text-sm font-medium">Loved tracks</h3>
+          <div className="flex items-center gap-2">
+            <Heart className="size-3.5 text-muted-foreground" aria-hidden />
+            <h3 className="text-sm font-medium">Loved tracks</h3>
+          </div>
           <ul
             className={cn(
               "mt-3 flex flex-col gap-2 text-sm",
@@ -144,9 +127,12 @@ export function AppleMusicLibraryInsights({
 
       {playlists.length > 0 ? (
         <div className="rounded-xl bg-muted/40 p-4 ring-1 ring-border/60">
-          <h3 className="text-sm font-medium">
-            Playlists ({fmt(data.playlists.userPlaylistCount)} user)
-          </h3>
+          <div className="flex items-center gap-2">
+            <ListMusic className="size-3.5 text-muted-foreground" aria-hidden />
+            <h3 className="text-sm font-medium">
+              Playlists ({fmt(data.playlists.userPlaylistCount)} user)
+            </h3>
+          </div>
           <ul
             className={cn(
               "mt-3 flex flex-col gap-2 text-sm",
