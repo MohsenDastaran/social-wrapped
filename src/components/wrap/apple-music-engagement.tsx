@@ -28,12 +28,18 @@ export function AppleMusicEngagement({ data }: AppleMusicEngagementProps) {
   const artists = data.topArtists ?? []
   const tracks = data.topTracks ?? []
   const years = data.playsByYear ?? []
+  const decades = data.decades ?? []
   const yearChartData = years
     .slice()
     .sort((a, b) => a.year - b.year)
     .map((y) => ({ label: String(y.year), count: y.count }))
+  const decadeChartData = decades
+    .slice()
+    .sort((a, b) => a.decade - b.decade)
+    .map((d) => ({ label: `${d.decade}s`, count: d.count }))
 
   const hasRanks = artists.length > 0 || tracks.length > 0
+  const hasReleaseChart = yearChartData.length > 1 || decadeChartData.length > 0
 
   return (
     <section className="flex flex-col gap-5 text-start">
@@ -108,15 +114,39 @@ export function AppleMusicEngagement({ data }: AppleMusicEngagementProps) {
         </WrapChartCard>
       ) : null}
 
-      {yearChartData.length > 1 ? (
+      {hasReleaseChart ? (
         <CountSeriesChart
-          data={yearChartData}
-          title="Plays by release year"
+          title="Plays by release era"
           description="Play counts weighted by each track's release year"
           exportName="apple-music-plays-by-year"
           valueLabel="Plays"
           variant="bar"
           accent="rose"
+          defaultModeId={yearChartData.length > 1 ? "year" : "decade"}
+          modes={[
+            ...(yearChartData.length > 1
+              ? [
+                  {
+                    id: "year",
+                    label: "Year",
+                    data: yearChartData,
+                    description: "Play counts by release year",
+                    exportName: "apple-music-plays-by-year",
+                  },
+                ]
+              : []),
+            ...(decadeChartData.length > 0
+              ? [
+                  {
+                    id: "decade",
+                    label: "Decade",
+                    data: decadeChartData,
+                    description: "Play counts by release decade",
+                    exportName: "apple-music-plays-by-decade",
+                  },
+                ]
+              : []),
+          ]}
         />
       ) : null}
     </section>

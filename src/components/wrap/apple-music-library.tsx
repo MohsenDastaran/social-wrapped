@@ -26,7 +26,6 @@ export function AppleMusicLibraryInsights({
   const albums = data.topAlbums ?? []
   const loved = data.lovedTracks ?? []
   const playlists = data.playlists?.topPlaylists ?? []
-  const decades = data.decades ?? []
   const growth = data.libraryGrowthHeatmap ?? []
   const growthMonthly = useMemo(() => heatmapDaysToMonthly(growth), [growth])
   const hasRanks = genres.length > 0 || albums.length > 0
@@ -85,20 +84,6 @@ export function AppleMusicLibraryInsights({
           variant="area"
           accent="violet"
         />
-      ) : null}
-
-      {decades.length > 0 ? (
-        <div className="rounded-xl bg-muted/40 p-4 ring-1 ring-border/60">
-          <h3 className="text-sm font-medium">Plays by decade</h3>
-          <ul className="mt-3 flex flex-wrap gap-3 text-sm text-muted-foreground">
-            {decades.map((d) => (
-              <li key={d.decade}>
-                <span className="text-foreground">{d.decade}s</span>:{" "}
-                {fmt(d.count)}
-              </li>
-            ))}
-          </ul>
-        </div>
       ) : null}
 
       {loved.length > 0 ? (

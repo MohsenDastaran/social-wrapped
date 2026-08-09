@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 
 import {
   EChartsAreaChart,
@@ -11,20 +11,32 @@ import {
 import { fmt } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import type { HeatmapDay } from "@/platform/analytics-types"
+import { cn } from "@/lib/utils"
 
 export type CountSeriesPoint = {
   label: string
   count: number
 }
 
-type CountSeriesChartProps = {
+export type CountSeriesMode = {
+  id: string
+  label: string
   data: CountSeriesPoint[]
+  description?: string
+  exportName?: string
+}
+
+type CountSeriesChartProps = {
+  data?: CountSeriesPoint[]
   title: string
   description?: string
   exportName: string
   valueLabel: string
   variant: "bar" | "area"
   accent?: "rose" | "violet"
+  /** Optional Year / Decade (etc.) toggle. Overrides `data` when set. */
+  modes?: CountSeriesMode[]
+  defaultModeId?: string
 }
 
 const ACCENT_COLORS: Record<
@@ -50,10 +62,33 @@ export function CountSeriesChart({
   valueLabel,
   variant,
   accent = "rose",
+  modes,
+  defaultModeId,
 }: CountSeriesChartProps) {
+  const usableModes = useMemo(
+    () => (modes ?? []).filter((mode) => mode.data.length > 0),
+    [modes]
+  )
+  const showToggle = usableModes.length > 1
+
+  const [modeId, setModeId] = useState(
+    () =>
+      defaultModeId ??
+      usableModes.find((m) => m.data.length > 1)?.id ??
+      usableModes[0]?.id ??
+      ""
+  )
+
+  const activeMode =
+    usableModes.find((m) => m.id === modeId) ?? usableModes[0] ?? null
+  const chartData = activeMode?.data ?? data ?? []
+  const activeExportName = activeMode?.exportName ?? exportName
+  const activeDescription =
+    activeMode?.description ?? description
+
   const total = useMemo(
-    () => data.reduce((sum, row) => sum + row.count, 0),
-    [data]
+    () => chartData.reduce((sum, row) => sum + row.count, 0),
+    [chartData]
   )
 
   const config = useMemo(
@@ -67,25 +102,49 @@ export function CountSeriesChart({
     [accent, valueLabel]
   )
 
-  if (data.length === 0) return null
+  if (chartData.length === 0) return null
 
   const chartDescription =
-    description ??
-    `${fmt(total)} ${valueLabel.toLowerCase()} across ${data.length} periods`
+    activeDescription ??
+    `${fmt(total)} ${valueLabel.toLowerCase()} across ${chartData.length} periods`
 
   return (
     <WrapChartCard
       title={title}
       description={chartDescription}
-      exportName={exportName}
+      exportName={activeExportName}
       exportSize="wide"
-      exportLines={[`${valueLabel} ${fmt(total)}`, `${data.length} periods`]}
+      exportLines={[
+        `${valueLabel} ${fmt(total)}`,
+        `${chartData.length} periods`,
+        ...(activeMode ? [`Mode ${activeMode.label}`] : []),
+      ]}
       chartClassName="h-80 sm:h-96"
+      headerExtra={
+        showToggle ? (
+          <div
+            className="flex items-center gap-1 rounded-lg bg-muted p-0.5"
+            role="group"
+            aria-label="Chart period"
+            data-export-ignore
+          >
+            {usableModes.map((mode) => (
+              <ModeButton
+                key={mode.id}
+                active={mode.id === (activeMode?.id ?? modeId)}
+                onClick={() => setModeId(mode.id)}
+              >
+                {mode.label}
+              </ModeButton>
+            ))}
+          </div>
+        ) : null
+      }
     >
       <div className="h-full w-full p-3 pt-0">
         {variant === "area" ? (
           <EChartsAreaChart
-            data={data}
+            data={chartData}
             config={config}
             className="h-full w-full"
             curveType="monotone"
@@ -110,7 +169,7 @@ export function CountSeriesChart({
           </EChartsAreaChart>
         ) : (
           <EChartsBarChart
-            data={data}
+            data={chartData}
             config={config}
             className="h-full w-full"
             xDataKey="label"
@@ -132,6 +191,32 @@ export function CountSeriesChart({
         )}
       </div>
     </WrapChartCard>
+  )
+}
+
+function ModeButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs",
+        active
+          ? "bg-background text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground"
+      )}
+    >
+      {children}
+    </button>
   )
 }
 
