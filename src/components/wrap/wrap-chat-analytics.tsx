@@ -3,6 +3,7 @@ import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 import { GhostingChart } from "@/components/wrap/charts/ghosting-chart"
 import { KeywordBattleChart } from "@/components/wrap/charts/keyword-battle-chart"
 import { MessageTypesChart, buildMessageTypesScopes } from "@/components/wrap/charts/message-types-chart"
+import { WordCloudChart } from "@/components/wrap/charts/word-cloud-chart"
 import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import { ComparisonKpiCard } from "@/components/wrap/comparison-kpi-card"
 import { chatDisplay } from "@/components/wrap/chat-display"
@@ -102,6 +103,18 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
             ? (display.subtitle ?? display.title)
             : chat.chatName
         }
+      />
+
+      <WordCloudChart
+        keywords={a.keywords}
+        mode="all"
+        title={isSavedMessages ? "Saved Messages word cloud" : "Word cloud"}
+        description={
+          isSavedMessages
+            ? "Words you saved most often"
+            : "Most used words in this chat"
+        }
+        exportName={`chat-${chat.chatId}-word-cloud`}
       />
 
       {!isSavedMessages ? (

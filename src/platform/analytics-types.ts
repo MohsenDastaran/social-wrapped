@@ -198,7 +198,7 @@ export type AnalyticsResult = {
   circadian: CircadianStats
   heatmap: HeatmapStats
   activityOverTime: ActivityTimeSeries
-  /** Per-chat keyword index for Keyword Battle (empty on account-level). */
+  /** Per-chat keyword index for Keyword Battle / word cloud. Account-level keeps your words only. */
   keywords?: KeywordStats
   /** Edited messages (Telegram `edited` field). */
   editTypo?: EditTypoStats

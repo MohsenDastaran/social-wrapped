@@ -1,5 +1,6 @@
 import { ActivityOverTimeChart } from "@/components/wrap/charts/activity-over-time-chart"
 import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
+import { WordCloudChart } from "@/components/wrap/charts/word-cloud-chart"
 import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import { TopEmojisCard } from "@/components/wrap/top-emojis-card"
 import { fmt, SENT_RECEIVED_PIE } from "@/components/wrap/chart-theme"
@@ -121,6 +122,14 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
         types={a.contentMix?.types ?? []}
         totalVoiceDurationSecs={a.contentMix?.totalVoiceDurationSecs ?? 0}
         exportName="main-message-types"
+      />
+
+      <WordCloudChart
+        keywords={a.keywords}
+        mode="you"
+        title="Your word cloud"
+        description="Words you use most across all chats"
+        exportName="main-word-cloud"
       />
 
       <TopEmojisCard emojis={a.emojis.topOverall} exportName="main-emojis" />
