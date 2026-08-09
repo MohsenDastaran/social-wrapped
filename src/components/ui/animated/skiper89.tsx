@@ -13,8 +13,14 @@ type ScrollProgressIndicatorProps = {
   className?: string
 }
 
+const SVG_SIZE = 40
+const STROKE_WIDTH = 2
+const SVG_CENTER = SVG_SIZE / 2
+const SVG_RADIUS = SVG_CENTER - STROKE_WIDTH - 1
+const CIRCUMFERENCE = 2 * Math.PI * SVG_RADIUS
+
 /**
- * Fixed, draggable circular scroll-progress control (Skiper 89).
+ * Fixed circular scroll-progress indicator (Skiper 89).
  * Tracks document scroll — place once on long analytics / wrap pages.
  */
 export function ScrollProgressIndicator({
@@ -29,64 +35,61 @@ export function ScrollProgressIndicator({
   const progressAsPercent = useTransform(clampedProgress, (value) =>
     Math.round(value * 100)
   )
+  const strokeDashoffset = useTransform(
+    clampedProgress,
+    (value) => CIRCUMFERENCE * (1 - value)
+  )
 
   useMotionValueEvent(progressAsPercent, "change", (value) => {
     setProgressPercent(value)
   })
 
-  const svgRadius = 22
-  const circumference = 2 * Math.PI * svgRadius
-
   return (
-    <motion.div
-      drag
-      dragMomentum={false}
+    <div
       className={cn(
-        // Clear mobile bottom nav; sit lower on desktop
-        "fixed end-4 bottom-24 z-40 cursor-grab active:cursor-grabbing md:bottom-6",
+        // Clear mobile bottom nav; sit lower on desktop. Non-interactive.
+        "pointer-events-none fixed end-3 bottom-24 z-40 md:end-4 md:bottom-6",
         className
       )}
       aria-hidden
     >
-      <div className="relative flex size-16 items-center justify-center rounded-2xl border border-foreground/10 bg-background/70 backdrop-blur">
+      <div className="relative flex size-11 items-center justify-center rounded-xl border border-foreground/10 bg-background/80 shadow-sm backdrop-blur md:size-12 md:rounded-2xl">
         <svg
-          className="absolute inset-1 size-14"
-          viewBox="0 0 56 56"
+          className="absolute inset-0 size-full"
+          viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}
           role="presentation"
         >
           <circle
-            cx="28"
-            cy="28"
-            r={svgRadius}
+            cx={SVG_CENTER}
+            cy={SVG_CENTER}
+            r={SVG_RADIUS}
             stroke="currentColor"
-            strokeWidth="2"
-            className="opacity-30"
+            strokeWidth={STROKE_WIDTH}
+            className="opacity-25"
             fill="none"
           />
-          <motion.circle
-            cx="28"
-            cy="28"
-            r={svgRadius}
-            stroke="currentColor"
-            strokeWidth="2"
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray={`${circumference}`}
-            style={{
-              pathLength: clampedProgress,
-              rotate: -90,
-              transformOrigin: "50% 50%",
-            }}
-          />
+          <g transform={`rotate(-90 ${SVG_CENTER} ${SVG_CENTER})`}>
+            <motion.circle
+              cx={SVG_CENTER}
+              cy={SVG_CENTER}
+              r={SVG_RADIUS}
+              stroke="currentColor"
+              strokeWidth={STROKE_WIDTH}
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray={CIRCUMFERENCE}
+              style={{ strokeDashoffset }}
+            />
+          </g>
         </svg>
         <NumberFlow
           value={progressPercent}
           suffix="%"
           plugins={[continuous]}
-          className="relative z-10 text-[0.7rem] font-medium tabular-nums tracking-tight text-foreground"
+          className="relative z-10 text-[0.58rem] font-semibold tabular-nums tracking-tight text-foreground md:text-[0.65rem]"
         />
       </div>
-    </motion.div>
+    </div>
   )
 }
 
