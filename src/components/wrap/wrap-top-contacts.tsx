@@ -5,6 +5,7 @@ import { useDomExport } from "@/hooks/use-dom-export"
 import type { ChatResult, WrapAnalytics } from "@/platform/analytics-types"
 import { cn } from "@/lib/utils"
 import {
+  Bookmark,
   ChevronRight,
   Clock3,
   Download,
@@ -58,23 +59,38 @@ export function WrapTopContacts({
   description = "People and groups you message most. Tap one to open their stats.",
 }: WrapTopContactsProps) {
   const selfName = analytics.displayName
-  const topContacts = analytics.topContacts?.length
-    ? analytics.topContacts
-    : analytics.chats.filter((c) => !c.isGroup).slice(0, 20)
-  const recent = analytics.recentContacts ?? []
-  const faded = analytics.fadedContacts ?? []
+  const savedMessages =
+    analytics.savedMessages ??
+    analytics.chats.find(
+      (c) =>
+        c.isSavedMessages ||
+        /^saved messages$/i.test(c.chatName.trim())
+    ) ??
+    null
+  const isNotSaved = (c: ChatResult) =>
+    !c.isSavedMessages && !/^saved messages$/i.test(c.chatName.trim())
+  const topContacts = (
+    analytics.topContacts?.length
+      ? analytics.topContacts
+      : analytics.chats.filter((c) => !c.isGroup).slice(0, 20)
+  ).filter(isNotSaved)
+  const recent = (analytics.recentContacts ?? []).filter(isNotSaved)
+  const faded = (analytics.fadedContacts ?? []).filter(isNotSaved)
   const groups = analytics.topGroups ?? []
-  const ghosters = analytics.topGhosters?.length
-    ? analytics.topGhosters
-    : [...analytics.chats]
-        .filter((c) => !c.isGroup && contactGhostScore(c, selfName) > 0)
-        .sort(
-          (a, b) =>
-            contactGhostScore(b, selfName) - contactGhostScore(a, selfName)
-        )
-        .slice(0, 5)
+  const ghosters = (
+    analytics.topGhosters?.length
+      ? analytics.topGhosters
+      : [...analytics.chats]
+          .filter((c) => !c.isGroup && contactGhostScore(c, selfName) > 0)
+          .sort(
+            (a, b) =>
+              contactGhostScore(b, selfName) - contactGhostScore(a, selfName)
+          )
+          .slice(0, 5)
+  ).filter(isNotSaved)
 
   if (
+    !savedMessages &&
     topContacts.length === 0 &&
     recent.length === 0 &&
     faded.length === 0 &&
@@ -92,6 +108,10 @@ export function WrapTopContacts({
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </header>
+
+      {savedMessages ? (
+        <SavedMessagesCard chat={savedMessages} onSelect={onSelect} />
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <InsightListCard
@@ -134,6 +154,52 @@ export function WrapTopContacts({
         <TopContactsList chats={topContacts} onSelect={onSelect} />
       ) : null}
     </section>
+  )
+}
+
+function SavedMessagesCard({
+  chat,
+  onSelect,
+}: {
+  chat: ChatResult
+  onSelect: (chatId: number) => void
+}) {
+  const { ref, exporting, exportError, exportPng } =
+    useDomExport<HTMLDivElement>(CARD_EXPORT)
+  const total = chat.analytics.totalMessages
+
+  return (
+    <div
+      ref={ref}
+      className="flex items-center gap-2 overflow-hidden rounded-xl bg-card px-3 py-2.5 ring-1 ring-foreground/10 sm:px-4"
+    >
+      <button
+        type="button"
+        onClick={() => onSelect(chat.chatId)}
+        className="flex min-w-0 flex-1 items-center gap-3 text-start transition-colors hover:opacity-90"
+      >
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-700 ring-1 ring-sky-500/25 dark:text-sky-300">
+          <Bookmark className="size-4" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold tracking-tight">Saved Messages</p>
+          <p className="mt-0.5 text-[0.7rem] text-muted-foreground">
+            Notes to yourself · {fmt(total)}{" "}
+            {total === 1 ? "message" : "messages"} analysed
+          </p>
+        </div>
+        <ChevronRight
+          className="size-4 shrink-0 text-muted-foreground"
+          aria-hidden
+        />
+      </button>
+      <IconExportButton
+        title="Saved Messages"
+        exporting={exporting}
+        exportError={exportError}
+        onExport={() => void exportPng("saved-messages.png")}
+      />
+    </div>
   )
 }
 

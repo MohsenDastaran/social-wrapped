@@ -214,6 +214,8 @@ export type ChatResult = {
   isGroup?: boolean
   /** Deleted peer or missing name — show deleted-account UI. */
   isDeleted?: boolean
+  /** Telegram Saved Messages (notes to self). */
+  isSavedMessages?: boolean
 }
 
 export type WrapAnalytics = {
@@ -236,6 +238,8 @@ export type WrapAnalytics = {
   topGroups?: ChatResult[]
   /** Top 5 personal contacts by ghosting (they left you hanging ≥ 24h). */
   topGhosters?: ChatResult[]
+  /** Telegram Saved Messages chat, when present. */
+  savedMessages?: ChatResult | null
 }
 
 /** Outbound / graph insights from an Instagram Meta download (not inbound likes). */

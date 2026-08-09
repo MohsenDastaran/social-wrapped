@@ -58,18 +58,21 @@ type CompactAnalytics = Omit<
   | "fadedContacts"
   | "topGroups"
   | "topGhosters"
+  | "savedMessages"
 > & {
   topContactIds?: number[]
   recentContactIds?: number[]
   fadedContactIds?: number[]
   topGroupIds?: number[]
   topGhosterIds?: number[]
+  savedMessagesId?: number
   /** Legacy full objects — expanded then dropped on next save. */
   topContacts?: ChatResult[]
   recentContacts?: ChatResult[]
   fadedContacts?: ChatResult[]
   topGroups?: ChatResult[]
   topGhosters?: ChatResult[]
+  savedMessages?: ChatResult | null
 }
 
 type StoredWrap = {
@@ -229,6 +232,7 @@ function analyticsFromLegacyStats(stats: TelegramExportStats): WrapAnalytics {
     fadedContacts: [],
     topGroups: [],
     topGhosters: [],
+    savedMessages: null,
   }
 }
 
@@ -246,6 +250,7 @@ function normalizeChat(c: ChatResult): ChatResult {
     ...c,
     isGroup: c.isGroup ?? false,
     isDeleted: c.isDeleted ?? false,
+    isSavedMessages: c.isSavedMessages ?? false,
     analytics: {
       ...c.analytics,
       activityOverTime:
@@ -312,6 +317,24 @@ function expandAnalytics(raw: CompactAnalytics | WrapAnalytics): WrapAnalytics {
     }
   }
 
+  const legacySaved = raw.savedMessages
+    ? normalizeChat(raw.savedMessages)
+    : null
+  if (legacySaved && !byId.has(legacySaved.chatId)) {
+    byId.set(legacySaved.chatId, legacySaved)
+    chats.push(legacySaved)
+  }
+
+  const savedFromId =
+    compact.savedMessagesId != null
+      ? (byId.get(compact.savedMessagesId) ?? null)
+      : null
+  const savedMessages =
+    savedFromId ??
+    legacySaved ??
+    chats.find((c) => c.isSavedMessages) ??
+    null
+
   return {
     displayName: raw.displayName,
     username: raw.username,
@@ -363,6 +386,7 @@ function expandAnalytics(raw: CompactAnalytics | WrapAnalytics): WrapAnalytics {
       byId,
       raw.topGhosters
     ),
+    savedMessages,
   }
 }
 
@@ -373,6 +397,7 @@ function compactAnalytics(analytics: WrapAnalytics): CompactAnalytics {
     fadedContacts,
     topGroups,
     topGhosters,
+    savedMessages,
     ...rest
   } = analytics
 
@@ -393,6 +418,9 @@ function compactAnalytics(analytics: WrapAnalytics): CompactAnalytics {
       }
     }
   }
+  if (savedMessages && !byId.has(savedMessages.chatId)) {
+    byId.set(savedMessages.chatId, normalizeChat(savedMessages))
+  }
 
   return {
     ...rest,
@@ -402,6 +430,9 @@ function compactAnalytics(analytics: WrapAnalytics): CompactAnalytics {
     fadedContactIds: chatIds(fadedContacts),
     topGroupIds: chatIds(topGroups),
     topGhosterIds: chatIds(topGhosters),
+    ...(savedMessages
+      ? { savedMessagesId: savedMessages.chatId }
+      : {}),
   }
 }
 

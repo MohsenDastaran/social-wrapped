@@ -28,6 +28,7 @@ type WrapChatAnalyticsProps = {
 export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
   const a = chat.analytics
   const display = chatDisplay(chat)
+  const isSavedMessages = display.isSavedMessages
   const emojiScopes = buildEmojiScopes(
     a.emojis,
     selfName,
@@ -89,7 +90,11 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
     <section className="flex flex-col gap-4">
       <ActivityOverTimeChart
         series={a.activityOverTime}
-        title={`Messages with ${display.title}`}
+        title={
+          isSavedMessages
+            ? "Saved Messages activity"
+            : `Messages with ${display.title}`
+        }
         exportName={`chat-${chat.chatId}-activity-over-time`}
         sentLabel="You"
         receivedLabel={
@@ -99,136 +104,144 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
         }
       />
 
-      <KeywordBattleChart
-        keywords={a.keywords}
-        exportName={`chat-${chat.chatId}-keyword-battle`}
-        youLabel="You"
-        themLabel={
-          display.isDeleted
-            ? (display.subtitle ?? "Them")
-            : truncate(chat.chatName || display.title, 14)
-        }
-      />
+      {!isSavedMessages ? (
+        <>
+          <KeywordBattleChart
+            keywords={a.keywords}
+            exportName={`chat-${chat.chatId}-keyword-battle`}
+            youLabel="You"
+            themLabel={
+              display.isDeleted
+                ? (display.subtitle ?? "Them")
+                : truncate(chat.chatName || display.title, 14)
+            }
+          />
 
-      <GhostingChart
-        ghosting={a.ghosting}
-        exportName={`chat-${chat.chatId}-ghosting`}
-        selfName={selfName}
-        youLabel="You"
-        themLabel={
-          display.isDeleted
-            ? (display.subtitle ?? "Them")
-            : truncate(chat.chatName || display.title, 14)
-        }
-      />
+          <GhostingChart
+            ghosting={a.ghosting}
+            exportName={`chat-${chat.chatId}-ghosting`}
+            selfName={selfName}
+            youLabel="You"
+            themLabel={
+              display.isDeleted
+                ? (display.subtitle ?? "Them")
+                : truncate(chat.chatName || display.title, 14)
+            }
+          />
+        </>
+      ) : null}
 
       <MessageTypesChart
         types={a.contentMix?.types ?? []}
         totalVoiceDurationSecs={a.contentMix?.totalVoiceDurationSecs ?? 0}
         exportName={`chat-${chat.chatId}-message-types`}
-        scopes={messageTypesScopes}
+        scopes={isSavedMessages ? undefined : messageTypesScopes}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <ComparisonKpiCard
-          title="Response time"
-          description="Avg & median reply delay"
-          exportName={`chat-${chat.chatId}-response`}
-          exportLines={a.responseTime.participants.map(
-            (p) => `${p.name} ${fmtResponseTime(p.avgSecs)}`
-          )}
-          rows={responseRows}
-          metrics={[
-            {
-              key: "avgMin",
-              label: "Average",
-              accent: "teal",
-              format: (m) => (m < 1 ? "<1m" : `${m}m`),
-            },
-            {
-              key: "medianMin",
-              label: "Median",
-              accent: "amber",
-              format: (m) => (m < 1 ? "<1m" : `${m}m`),
-            },
-          ]}
-          highlightKey="avgMin"
-          lowerIsBetter
-          highlightLabel="Fastest"
-        />
+      {!isSavedMessages ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <ComparisonKpiCard
+            title="Response time"
+            description="Avg & median reply delay"
+            exportName={`chat-${chat.chatId}-response`}
+            exportLines={a.responseTime.participants.map(
+              (p) => `${p.name} ${fmtResponseTime(p.avgSecs)}`
+            )}
+            rows={responseRows}
+            metrics={[
+              {
+                key: "avgMin",
+                label: "Average",
+                accent: "teal",
+                format: (m) => (m < 1 ? "<1m" : `${m}m`),
+              },
+              {
+                key: "medianMin",
+                label: "Median",
+                accent: "amber",
+                format: (m) => (m < 1 ? "<1m" : `${m}m`),
+              },
+            ]}
+            highlightKey="avgMin"
+            lowerIsBetter
+            highlightLabel="Fastest"
+          />
 
-        <ComparisonKpiCard
-          title="Message length"
-          description="Average characters per message"
-          exportName={`chat-${chat.chatId}-length`}
-          rows={lengthRows}
-          metrics={[
-            {
-              key: "avgChars",
-              label: "Avg chars",
-              accent: "violet",
-              format: (n) => fmt(n),
-            },
-          ]}
-          highlightLabel="Longer"
-        />
+          <ComparisonKpiCard
+            title="Message length"
+            description="Average characters per message"
+            exportName={`chat-${chat.chatId}-length`}
+            rows={lengthRows}
+            metrics={[
+              {
+                key: "avgChars",
+                label: "Avg chars",
+                accent: "violet",
+                format: (n) => fmt(n),
+              },
+            ]}
+            highlightLabel="Longer"
+          />
 
-        <ComparisonKpiCard
-          title="Who starts / closes"
-          description="After 6h+ of silence"
-          exportName={`chat-${chat.chatId}-initiator`}
-          rows={initiatorRows}
-          metrics={[
-            { key: "starts", label: "Starts", accent: "teal" },
-            { key: "closes", label: "Closes", accent: "amber" },
-          ]}
-          highlightKey="starts"
-          highlightLabel="Opener"
-        />
+          <ComparisonKpiCard
+            title="Who starts / closes"
+            description="After 6h+ of silence"
+            exportName={`chat-${chat.chatId}-initiator`}
+            rows={initiatorRows}
+            metrics={[
+              { key: "starts", label: "Starts", accent: "teal" },
+              { key: "closes", label: "Closes", accent: "amber" },
+            ]}
+            highlightKey="starts"
+            highlightLabel="Opener"
+          />
 
-        <ComparisonKpiCard
-          title="Late night (1–5 AM)"
-          description={`${fmt(a.lateNight.totalLateNight)} messages`}
-          exportName={`chat-${chat.chatId}-late-night`}
-          rows={lateNightRows}
-          metrics={[
-            {
-              key: "count",
-              label: "Messages",
-              accent: "indigo",
-            },
-          ]}
-          highlightLabel="Night owl"
-        />
+          <ComparisonKpiCard
+            title="Late night (1–5 AM)"
+            description={`${fmt(a.lateNight.totalLateNight)} messages`}
+            exportName={`chat-${chat.chatId}-late-night`}
+            rows={lateNightRows}
+            metrics={[
+              {
+                key: "count",
+                label: "Messages",
+                accent: "indigo",
+              },
+            ]}
+            highlightLabel="Night owl"
+          />
 
-        <ComparisonKpiCard
-          title="Edited messages"
-          description={`${fmt(a.editTypo?.totalEdits ?? 0)} messages edited after sending`}
-          exportName={`chat-${chat.chatId}-edits`}
-          exportLines={(a.editTypo?.participants ?? []).map(
-            (p) => `${p.name} ${p.edits} edits`
-          )}
-          rows={editTypoRows}
-          metrics={[
-            { key: "edits", label: "Edits", accent: "violet" },
-          ]}
-          highlightKey="edits"
-          highlightLabel="Editor"
-        />
-      </div>
+          <ComparisonKpiCard
+            title="Edited messages"
+            description={`${fmt(a.editTypo?.totalEdits ?? 0)} messages edited after sending`}
+            exportName={`chat-${chat.chatId}-edits`}
+            exportLines={(a.editTypo?.participants ?? []).map(
+              (p) => `${p.name} ${p.edits} edits`
+            )}
+            rows={editTypoRows}
+            metrics={[
+              { key: "edits", label: "Edits", accent: "violet" },
+            ]}
+            highlightKey="edits"
+            highlightLabel="Editor"
+          />
+        </div>
+      ) : null}
 
       <TopEmojisCard
         emojis={a.emojis.topOverall}
         exportName={`chat-${chat.chatId}-emojis`}
         description="Most used in this chat"
         limit={10}
-        scopes={emojiScopes}
+        scopes={isSavedMessages ? undefined : emojiScopes}
       />
 
-      <CircadianRhythmCard
-        participants={a.circadian.participants}
-        exportName={`chat-${chat.chatId}-circadian`}
-      />
+      {!isSavedMessages ? (
+        <CircadianRhythmCard
+          participants={a.circadian.participants}
+          exportName={`chat-${chat.chatId}-circadian`}
+        />
+      ) : null}
 
       {a.heatmap.days.length > 0 && (
         <CalendarHeatmap

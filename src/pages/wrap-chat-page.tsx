@@ -58,6 +58,7 @@ export function WrapChatPage() {
 
   const display = chatDisplay(chat)
   const a = chat.analytics
+  const isSavedMessages = display.isSavedMessages
 
   return (
     <div className="-mt-4 flex w-full max-w-4xl flex-col items-stretch gap-6 text-start sm:-mt-6 sm:gap-8 md:max-w-4xl lg:max-w-5xl">
@@ -105,26 +106,37 @@ export function WrapChatPage() {
         ) : null}
       </header>
 
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <WrapKpi
-          label="Sent"
-          value={fmt(a.sentMessages)}
-          icon={ArrowUpRight}
-          accent="violet"
-        />
-        <WrapKpi
-          label="Received"
-          value={fmt(a.receivedMessages)}
-          icon={ArrowDownLeft}
-          accent="sky"
-        />
-        <WrapKpi
-          label="Total"
-          value={fmt(a.totalMessages)}
-          icon={Hash}
-          accent="emerald"
-        />
-      </div>
+      {isSavedMessages ? (
+        <div className="grid grid-cols-1 gap-2 sm:max-w-xs sm:gap-3">
+          <WrapKpi
+            label="Total messages"
+            value={fmt(a.totalMessages)}
+            icon={Hash}
+            accent="emerald"
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <WrapKpi
+            label="Sent"
+            value={fmt(a.sentMessages)}
+            icon={ArrowUpRight}
+            accent="violet"
+          />
+          <WrapKpi
+            label="Received"
+            value={fmt(a.receivedMessages)}
+            icon={ArrowDownLeft}
+            accent="sky"
+          />
+          <WrapKpi
+            label="Total"
+            value={fmt(a.totalMessages)}
+            icon={Hash}
+            accent="emerald"
+          />
+        </div>
+      )}
 
       <WrapChatAnalytics
         chat={chat}
