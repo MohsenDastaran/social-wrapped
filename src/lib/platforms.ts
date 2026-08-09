@@ -11,6 +11,7 @@ export const PLATFORM_ENABLED = {
   spotify: true,
   youtube: true,
   linkedin: true,
+  "apple-music": true,
 } as const satisfies Record<PlatformLogoId, boolean>
 
 export type PlatformId = keyof typeof PLATFORM_ENABLED
@@ -212,6 +213,29 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
       "Upload your Spotify Account Data ZIP, or StreamingHistory / Streaming_History JSON file(s). We analyze listening history on your device.",
     acceptedFiles: [".zip", ".json"],
     accept: ".zip,.json,application/zip,application/json",
+  },
+  {
+    id: "apple-music",
+    name: "Apple Music",
+    accentClass: "border-rose-500/50",
+    gradientClass:
+      "from-rose-500/25 via-pink-400/10 to-transparent dark:from-rose-400/20 dark:via-pink-500/5",
+    summary: "Export your Music library as Library.xml.",
+    exportPath: "Music app → File → Library → Export Library…",
+    formats: "XML",
+    extractable:
+      "Library tracks, play counts, skips, genres, albums, playlists, loved tracks, and library growth.",
+    steps: [
+      "Open the Music app on your Mac.",
+      "Go to File → Library → Export Library…",
+      "Save Library.xml to your Downloads folder.",
+      "Import the XML file here — everything stays on your device.",
+    ],
+    importTitle: "Import Apple Music data",
+    importDescription:
+      "Upload your Music app Library.xml export. We analyze play counts, library stats, and listening patterns on your device.",
+    acceptedFiles: [".xml"],
+    accept: ".xml,application/xml,text/xml",
   },
   {
     id: "youtube",

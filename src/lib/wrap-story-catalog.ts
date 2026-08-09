@@ -11,8 +11,9 @@ import type {
 import type { LinkedInInsights } from "@/platform/linkedin-types"
 import {
   formatListeningMs,
-  type SpotifyInsights,
-} from "@/platform/spotify-types"
+  type AppleMusicInsights,
+} from "@/platform/apple-music-types"
+import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
 import type { XInsights } from "@/platform/x-types"
 
@@ -31,6 +32,7 @@ export type StoryCatalogInput = {
   xInsights?: XInsights | null
   tiktokInsights?: TikTokInsights | null
   spotifyInsights?: SpotifyInsights | null
+  appleMusicInsights?: AppleMusicInsights | null
 }
 
 const MESSAGING_VIDEO_IDS = [
@@ -77,6 +79,14 @@ const TIKTOK_VIDEO_IDS = [
 const SPOTIFY_VIDEO_IDS = [
   "sp-listen",
   "sp-tops",
+  "heatmap",
+  "activity",
+  "sent-received",
+] as const
+
+const APPLE_MUSIC_VIDEO_IDS = [
+  "am-listen",
+  "am-tops",
   "heatmap",
   "activity",
   "sent-received",
@@ -313,6 +323,15 @@ export function buildPlatformStoryCatalog(
     }
   }
 
+  if (input.platformId === "apple-music" && input.appleMusicInsights) {
+    const am = buildAppleMusicStorySpecs(input.appleMusicInsights)
+    const storySpecs = [...am, ...messaging]
+    return {
+      storySpecs,
+      videoSlideIds: pickVideoIds(APPLE_MUSIC_VIDEO_IDS, storySpecs),
+    }
+  }
+
   return {
     storySpecs: messaging,
     videoSlideIds: pickVideoIds(MESSAGING_VIDEO_IDS, messaging),
@@ -353,6 +372,47 @@ export function buildSpotifyStorySpecs(
         { label: "Artist", value: topArtist.name.slice(0, 18) },
         { label: "Plays", value: fmt(topArtist.count) },
         { label: "Tracks", value: fmt(insights.uniqueTrackCount) },
+      ],
+    })
+  }
+
+  return specs
+}
+
+/** Apple Music library slides (gated on data). */
+export function buildAppleMusicStorySpecs(
+  insights: AppleMusicInsights
+): WrapStorySpec[] {
+  const specs: WrapStorySpec[] = []
+
+  if (insights.playCount > 0) {
+    specs.push({
+      id: "am-listen",
+      exportName: "apple-music-listen-kpis",
+      heading: "Your listening",
+      subtext: `${fmt(insights.playCount)} plays · ${formatListeningMs(insights.totalMsPlayed)}`,
+      kpis: [
+        { label: "Plays", value: fmt(insights.playCount) },
+        {
+          label: "Time",
+          value: formatListeningMs(insights.totalMsPlayed),
+        },
+        { label: "Artists", value: fmt(insights.uniqueArtistCount) },
+      ],
+    })
+  }
+
+  const topArtist = insights.topArtists?.[0]
+  if (topArtist) {
+    specs.push({
+      id: "am-tops",
+      exportName: "apple-music-library-kpis",
+      heading: "Your #1 artist",
+      subtext: `${topArtist.name} · ${fmt(topArtist.count)} plays`,
+      kpis: [
+        { label: "Artist", value: topArtist.name.slice(0, 18) },
+        { label: "Plays", value: fmt(topArtist.count) },
+        { label: "Library", value: fmt(insights.libraryTrackCount) },
       ],
     })
   }

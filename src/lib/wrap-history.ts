@@ -8,6 +8,7 @@ import type {
 } from "@/platform/analytics-types"
 import type { GoogleInsights } from "@/platform/google-types"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
+import type { AppleMusicInsights } from "@/platform/apple-music-types"
 import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
 import type { XInsights } from "@/platform/x-types"
@@ -43,6 +44,8 @@ export type WrapRecord = {
   tiktokInsights?: TikTokInsights
   /** Spotify listening history insights. */
   spotifyInsights?: SpotifyInsights
+  /** Apple Music library insights. */
+  appleMusicInsights?: AppleMusicInsights
   /** True when an archive ZIP blob is stored for Official X HTML. */
   hasArchiveBlob?: boolean
 }
@@ -88,6 +91,7 @@ type StoredWrap = {
   xInsights?: XInsights
   tiktokInsights?: TikTokInsights
   spotifyInsights?: SpotifyInsights
+  appleMusicInsights?: AppleMusicInsights
   hasArchiveBlob?: boolean
 }
 
@@ -104,6 +108,7 @@ type LegacyStoredWrap = Partial<WrapRecord> & {
   xInsights?: XInsights
   tiktokInsights?: TikTokInsights
   spotifyInsights?: SpotifyInsights
+  appleMusicInsights?: AppleMusicInsights
   hasArchiveBlob?: boolean
 }
 
@@ -465,6 +470,9 @@ function normalizeWrap(raw: LegacyStoredWrap): WrapRecord | null {
     ...(raw.xInsights ? { xInsights: raw.xInsights } : {}),
     ...(raw.tiktokInsights ? { tiktokInsights: raw.tiktokInsights } : {}),
     ...(raw.spotifyInsights ? { spotifyInsights: raw.spotifyInsights } : {}),
+    ...(raw.appleMusicInsights
+      ? { appleMusicInsights: raw.appleMusicInsights }
+      : {}),
     ...(raw.hasArchiveBlob ? { hasArchiveBlob: true } : {}),
   }
 }
@@ -485,6 +493,9 @@ function toStored(wrap: WrapRecord): StoredWrap {
     ...(wrap.xInsights ? { xInsights: wrap.xInsights } : {}),
     ...(wrap.tiktokInsights ? { tiktokInsights: wrap.tiktokInsights } : {}),
     ...(wrap.spotifyInsights ? { spotifyInsights: wrap.spotifyInsights } : {}),
+    ...(wrap.appleMusicInsights
+      ? { appleMusicInsights: wrap.appleMusicInsights }
+      : {}),
     ...(wrap.hasArchiveBlob ? { hasArchiveBlob: true } : {}),
   }
 }
@@ -622,6 +633,7 @@ export async function saveWrap(input: {
   xInsights?: XInsights
   tiktokInsights?: TikTokInsights
   spotifyInsights?: SpotifyInsights
+  appleMusicInsights?: AppleMusicInsights
   /** Optional archive ZIP for Official X HTML (stored separately). */
   archiveBlob?: Blob
 }): Promise<WrapRecord> {
@@ -654,6 +666,9 @@ export async function saveWrap(input: {
     ...(input.xInsights ? { xInsights: input.xInsights } : {}),
     ...(input.tiktokInsights ? { tiktokInsights: input.tiktokInsights } : {}),
     ...(input.spotifyInsights ? { spotifyInsights: input.spotifyInsights } : {}),
+    ...(input.appleMusicInsights
+      ? { appleMusicInsights: input.appleMusicInsights }
+      : {}),
     ...(input.archiveBlob ? { hasArchiveBlob: true } : {}),
   }
 

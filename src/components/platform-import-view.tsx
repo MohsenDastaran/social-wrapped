@@ -139,7 +139,7 @@ export function PlatformImportView({
       total: totalSize,
     })
     try {
-      const { analytics, instagramSocial, googleInsights, linkedinInsights, xInsights, tiktokInsights, spotifyInsights } =
+      const { analytics, instagramSocial, googleInsights, linkedinInsights, xInsights, tiktokInsights, spotifyInsights, appleMusicInsights } =
         await importPlatformFiles(
           platform,
           files,
@@ -166,6 +166,7 @@ export function PlatformImportView({
         xInsights,
         tiktokInsights,
         spotifyInsights,
+        appleMusicInsights,
         archiveBlob:
           platform.id === "x" && files[0] ? files[0] : undefined,
       })

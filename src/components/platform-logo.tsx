@@ -9,6 +9,7 @@ export type PlatformLogoId =
   | "instagram"
   | "tiktok"
   | "spotify"
+  | "apple-music"
   | "youtube"
   | "linkedin"
 

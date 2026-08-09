@@ -13,6 +13,9 @@ import { LinkedInCareerInsights } from "@/components/wrap/linkedin-career"
 import { LinkedInEngagement } from "@/components/wrap/linkedin-engagement"
 import { LinkedInNetworkInsights } from "@/components/wrap/linkedin-network"
 import { OfficialXHtml } from "@/components/wrap/official-x-html"
+import { AppleMusicEngagement } from "@/components/wrap/apple-music-engagement"
+import { AppleMusicLibraryInsights } from "@/components/wrap/apple-music-library"
+import { AppleMusicListeningInsights } from "@/components/wrap/apple-music-listening"
 import { SpotifyEngagement } from "@/components/wrap/spotify-engagement"
 import { SpotifyListeningInsights } from "@/components/wrap/spotify-listening"
 import { TikTokActivityInsights } from "@/components/wrap/tiktok-activity"
@@ -27,6 +30,7 @@ import { normalizeInstagramSocial } from "@/lib/instagram-social"
 import { getPlatform } from "@/lib/platforms"
 import { normalizeGoogleInsights } from "@/platform/google-types"
 import { normalizeLinkedInInsights } from "@/platform/linkedin-types"
+import { normalizeAppleMusicInsights } from "@/platform/apple-music-types"
 import { normalizeSpotifyInsights } from "@/platform/spotify-types"
 import { normalizeTikTokInsights } from "@/platform/tiktok-types"
 import { normalizeXInsights } from "@/platform/x-types"
@@ -95,7 +99,9 @@ export function WrapPage() {
           ? true
           : wrap.platformId === "spotify" && wrap.spotifyInsights
             ? true
-            : wrap.analytics.chats.length > 0 ||
+            : wrap.platformId === "apple-music" && wrap.appleMusicInsights
+              ? true
+              : wrap.analytics.chats.length > 0 ||
               wrap.analytics.account.heatmap.days.length > 0 ||
               wrap.analytics.account.emojis.topOverall.length > 0
   const igSocial =
@@ -115,6 +121,10 @@ export function WrapPage() {
   const spotifyInsights =
     wrap.platformId === "spotify"
       ? normalizeSpotifyInsights(wrap.spotifyInsights)
+      : null
+  const appleMusicInsights =
+    wrap.platformId === "apple-music"
+      ? normalizeAppleMusicInsights(wrap.appleMusicInsights)
       : null
 
   return (
@@ -172,6 +182,7 @@ export function WrapPage() {
           xInsights={xInsights}
           tiktokInsights={tiktokInsights}
           spotifyInsights={spotifyInsights}
+          appleMusicInsights={appleMusicInsights}
         />
       ) : null}
 
@@ -212,6 +223,12 @@ export function WrapPage() {
           </header>
           <WrapMainAnalytics analytics={wrap.analytics} />
           <LinkedInEngagement data={liInsights} />
+        </>
+      ) : appleMusicInsights ? (
+        <>
+          <AppleMusicListeningInsights data={appleMusicInsights} />
+          <AppleMusicEngagement data={appleMusicInsights} />
+          <AppleMusicLibraryInsights data={appleMusicInsights} />
         </>
       ) : spotifyInsights ? (
         <>
