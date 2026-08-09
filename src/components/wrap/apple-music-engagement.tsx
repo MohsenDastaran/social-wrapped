@@ -49,30 +49,34 @@ export function AppleMusicEngagement({ data }: AppleMusicEngagementProps) {
       </header>
 
       {hasRanks ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2 lg:gap-5">
           {artists.length > 0 ? (
-            <TopListeningRanksCard
-              title="Top artists"
-              description="Who owned your library"
-              exportName="apple-music-top-artists"
-              items={artists}
-              icon={Music2}
-              accent="rose"
-              limit={12}
-            />
+            <div className="flex min-h-0 flex-col">
+              <TopListeningRanksCard
+                title="Top artists"
+                description="Who owned your library"
+                exportName="apple-music-top-artists"
+                items={artists}
+                icon={Music2}
+                accent="rose"
+                limit={12}
+              />
+            </div>
           ) : null}
 
           {tracks.length > 0 ? (
-            <TopListeningRanksCard
-              title="Top tracks"
-              description="Songs you kept coming back to"
-              exportName="apple-music-top-tracks"
-              items={tracks}
-              icon={Disc3}
-              accent="teal"
-              limit={12}
-              splitArtistTrack
-            />
+            <div className="flex min-h-0 flex-col">
+              <TopListeningRanksCard
+                title="Top tracks"
+                description="Songs you kept coming back to"
+                exportName="apple-music-top-tracks"
+                items={tracks}
+                icon={Disc3}
+                accent="teal"
+                limit={12}
+                splitArtistTrack
+              />
+            </div>
           ) : null}
         </div>
       ) : null}

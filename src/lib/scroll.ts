@@ -11,3 +11,6 @@ export const listScrollClass = cn("h-72", scrollYClass)
 
 /** Cap-height list scroll (LinkedIn / Instagram social panels). */
 export const listScrollMaxClass = cn("max-h-72", scrollYClass)
+
+/** Fills leftover height in equal-height card pairs (ranked lists). */
+export const listScrollFillClass = cn("min-h-0 flex-1", scrollYClass)

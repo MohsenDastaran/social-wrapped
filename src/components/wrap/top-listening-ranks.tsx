@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react"
 import { fmt } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { formatListeningMs } from "@/platform/apple-music-types"
-import { listScrollMaxClass } from "@/lib/scroll"
+import { listScrollFillClass } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
 
 export type ListeningRankItem = {
@@ -113,6 +113,7 @@ export function TopListeningRanksCard({
       exportName={exportName}
       exportSize="default"
       layout="flow"
+      className="min-h-0 flex-1"
       storyCaptureWidth={560}
       exportLines={exportLines}
       headerExtra={
@@ -127,20 +128,22 @@ export function TopListeningRanksCard({
         </span>
       }
     >
-      <div className="flex flex-col gap-5 p-4 pt-2 sm:p-5 sm:pt-2">
-        <Podium
-          items={podium}
-          peak={peak}
-          totalPlays={totalPlays}
-          accent={accent}
-          splitArtistTrack={splitArtistTrack}
-        />
+      <div className="flex min-h-0 flex-1 flex-col gap-5 p-4 pt-2 sm:p-5 sm:pt-2">
+        <div className="shrink-0">
+          <Podium
+            items={podium}
+            peak={peak}
+            totalPlays={totalPlays}
+            accent={accent}
+            splitArtistTrack={splitArtistTrack}
+          />
+        </div>
 
         {rest.length > 0 ? (
           <ol
             className={cn(
               "flex list-none flex-col gap-1 border-t border-border/50 pt-3",
-              listScrollMaxClass
+              listScrollFillClass
             )}
           >
             {rest.map((item, index) => {
@@ -149,7 +152,7 @@ export function TopListeningRanksCard({
                 ? splitTrackLabel(item.name)
                 : { primary: item.name }
               return (
-                <li key={`${item.name}-${rank}`}>
+                <li key={`${item.name}-${rank}`} className="shrink-0">
                   <RankRow
                     rank={rank}
                     labels={labels}

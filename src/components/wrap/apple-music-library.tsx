@@ -43,30 +43,34 @@ export function AppleMusicLibraryInsights({
       </header>
 
       {hasRanks ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2 lg:gap-5">
           {genres.length > 0 ? (
-            <TopListeningRanksCard
-              title="Top genres"
-              description="Where your play counts land"
-              exportName="apple-music-top-genres"
-              items={genres}
-              icon={Library}
-              accent="rose"
-              limit={12}
-            />
+            <div className="flex min-h-0 flex-col">
+              <TopListeningRanksCard
+                title="Top genres"
+                description="Where your play counts land"
+                exportName="apple-music-top-genres"
+                items={genres}
+                icon={Library}
+                accent="rose"
+                limit={12}
+              />
+            </div>
           ) : null}
 
           {albums.length > 0 ? (
-            <TopListeningRanksCard
-              title="Top albums"
-              description="Albums you returned to most"
-              exportName="apple-music-top-albums"
-              items={albums}
-              icon={Disc3}
-              accent="teal"
-              limit={12}
-              splitArtistTrack
-            />
+            <div className="flex min-h-0 flex-col">
+              <TopListeningRanksCard
+                title="Top albums"
+                description="Albums you returned to most"
+                exportName="apple-music-top-albums"
+                items={albums}
+                icon={Disc3}
+                accent="teal"
+                limit={12}
+                splitArtistTrack
+              />
+            </div>
           ) : null}
         </div>
       ) : null}

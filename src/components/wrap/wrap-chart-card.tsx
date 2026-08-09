@@ -142,11 +142,11 @@ export function WrapChartCard({
         ? { "data-export-story-width": String(storyCaptureWidth) }
         : {})}
       className={cn(
-        "relative flex flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10",
+        "relative flex min-h-0 flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10",
         className
       )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-2 px-3 pt-3 sm:gap-3 sm:px-4 sm:pt-4">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-2 px-3 pt-3 sm:gap-3 sm:px-4 sm:pt-4">
         <div className="min-w-0 flex-1 basis-[min(100%,12rem)] text-start">
           <h3 className="font-heading text-sm font-semibold tracking-tight">
             {title}
@@ -187,7 +187,7 @@ export function WrapChartCard({
       {layout === "flow" ? (
         <div
           data-export-region="chart"
-          className={cn("w-full", chartClassName)}
+          className={cn("flex min-h-0 w-full flex-1 flex-col", chartClassName)}
         >
           {children}
         </div>
