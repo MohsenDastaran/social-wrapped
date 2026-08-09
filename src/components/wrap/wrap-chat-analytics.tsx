@@ -107,7 +107,14 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
 
       <WordCloudChart
         keywords={a.keywords}
-        mode="all"
+        youLabel={selfName}
+        themLabel={
+          display.isDeleted
+            ? (display.subtitle ?? "Contact")
+            : display.title
+        }
+        enableScopeToggle={!isSavedMessages}
+        mode={isSavedMessages ? "you" : "all"}
         title={isSavedMessages ? "Saved Messages word cloud" : "Word cloud"}
         description={
           isSavedMessages

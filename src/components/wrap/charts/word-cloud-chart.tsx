@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   AnimatedWordRenderer,
   WordCloud,
@@ -15,8 +15,21 @@ export type WordCloudCountMode = "all" | "you" | "them"
 type WordCloudChartProps = {
   keywords: KeywordStats | undefined
   exportName: string
-  /** Which side of the keyword index to visualize. @default "all" */
+  /**
+   * Fixed mode when no All / You / Contact toggle is shown.
+   * Ignored when the scope toggle is active.
+   * @default "all"
+   */
   mode?: WordCloudCountMode
+  /** Label for the “you” scope (e.g. account display name). */
+  youLabel?: string
+  /** Label for the contact scope (e.g. chat name). */
+  themLabel?: string
+  /**
+   * Show All / You / Contact toggle when both sides have words.
+   * @default true when both labels are provided
+   */
+  enableScopeToggle?: boolean
   title?: string
   description?: string
   /** Max words laid out in the cloud. @default 72 */
@@ -27,46 +40,153 @@ type WordCloudChartProps = {
 const DEFAULT_LIMIT = 72
 const MIN_WORD_LEN = 3
 
+type WordScope = {
+  id: WordCloudCountMode
+  label: string
+  words: Word[]
+}
+
 /**
  * Reusable keyword word cloud for wrap analytics (account or per-chat).
- * Uses the same `KeywordStats` index as Keyword Battle.
+ * Optional All / User / Contact toggle (same pattern as Top emojis).
  */
 export function WordCloudChart({
   keywords,
   exportName,
   mode = "all",
+  youLabel,
+  themLabel,
+  enableScopeToggle,
   title = "Word cloud",
   description,
   limit = DEFAULT_LIMIT,
   className,
 }: WordCloudChartProps) {
-  const words = useMemo(
-    () => keywordsToWords(keywords?.counts ?? {}, mode, limit),
-    [keywords, mode, limit]
+  const counts = keywords?.counts ?? {}
+
+  const scopes = useMemo(() => {
+    const allWords = keywordsToWords(counts, "all", limit)
+    const youWords = keywordsToWords(counts, "you", limit)
+    const themWords = keywordsToWords(counts, "them", limit)
+
+    const wantToggle =
+      enableScopeToggle ?? Boolean(youLabel && themLabel)
+
+    if (!wantToggle) {
+      const fixed =
+        mode === "you" ? youWords : mode === "them" ? themWords : allWords
+      const label =
+        mode === "you"
+          ? (youLabel ?? "You")
+          : mode === "them"
+            ? (themLabel ?? "Contact")
+            : "All"
+      return fixed.length > 0
+        ? ([{ id: mode, label, words: fixed }] satisfies WordScope[])
+        : []
+    }
+
+    const next: WordScope[] = [
+      { id: "all", label: "All", words: allWords },
+      { id: "you", label: truncateLabel(youLabel || "You"), words: youWords },
+      {
+        id: "them",
+        label: truncateLabel(themLabel || "Contact"),
+        words: themWords,
+      },
+    ]
+    return next.filter((s) => s.words.length > 0)
+  }, [counts, limit, mode, youLabel, themLabel, enableScopeToggle])
+
+  const showToggle = scopes.length > 1
+  const [scopeId, setScopeId] = useState<WordCloudCountMode>(
+    () => scopes[0]?.id ?? mode
   )
 
-  if (words.length === 0) return null
+  const activeScope =
+    scopes.find((s) => s.id === scopeId) ?? scopes[0] ?? null
 
+  // Keep selection valid when keywords / labels change.
+  useEffect(() => {
+    if (!scopes.some((s) => s.id === scopeId) && scopes[0]) {
+      setScopeId(scopes[0].id)
+    }
+  }, [scopes, scopeId])
+
+  if (!activeScope) return null
+
+  const words = activeScope.words
   const totalMentions = words.reduce((sum, w) => sum + w.value, 0)
+  const scopeSuffix = showToggle ? `-${activeScope.id}` : ""
   const resolvedDescription =
     description ??
     `${fmt(words.length)} words · ${fmt(totalMentions)} mentions${
-      mode === "you" ? " from you" : mode === "them" ? " from them" : ""
+      activeScope.id === "you"
+        ? ` from ${activeScope.label}`
+        : activeScope.id === "them"
+          ? ` from ${activeScope.label}`
+          : ""
     }`
 
   return (
     <WrapChartCard
       title={title}
       description={resolvedDescription}
-      exportName={exportName}
+      exportName={`${exportName}${scopeSuffix}`}
       exportSize="default"
       layout="flow"
       captureMode="dom"
       className={className}
       chartClassName="h-64 sm:h-72"
+      headerExtra={
+        showToggle ? (
+          <div
+            className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted p-0.5"
+            role="group"
+            aria-label="Word cloud scope"
+            data-export-ignore
+          >
+            {scopes.map((scope) => (
+              <ScopeButton
+                key={scope.id}
+                active={scope.id === activeScope.id}
+                onClick={() => setScopeId(scope.id)}
+              >
+                {scope.label}
+              </ScopeButton>
+            ))}
+          </div>
+        ) : null
+      }
     >
-      <WordCloudCanvas words={words} />
+      <WordCloudCanvas key={activeScope.id} words={words} />
     </WrapChartCard>
+  )
+}
+
+function ScopeButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "shrink-0 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs",
+        active
+          ? "bg-background text-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground"
+      )}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -165,6 +285,11 @@ function scaleFontSize(
   if (maxValue <= minValue) return (minPx + maxPx) / 2
   const t = Math.sqrt((value - minValue) / (maxValue - minValue))
   return minPx + t * (maxPx - minPx)
+}
+
+function truncateLabel(s: string, n = 14): string {
+  const t = s.trim()
+  return t.length > n ? `${t.slice(0, n - 1)}…` : t
 }
 
 function readPair(entry: unknown): [number, number] {
