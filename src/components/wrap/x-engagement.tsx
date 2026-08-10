@@ -9,11 +9,10 @@ import {
 } from "@/components/wrap/charts/word-cloud-chart"
 import { fmt } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
-import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import type { XInsights } from "@/platform/x-types"
 import { listScrollMaxClass } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
-import { AtSign, Heart, MessagesSquare } from "lucide-react"
+import { AtSign } from "lucide-react"
 
 type XEngagementProps = {
   data: XInsights
@@ -23,7 +22,7 @@ function padHourly(raw?: number[] | null): number[] {
   return Array.from({ length: 24 }, (_, i) => Number(raw?.[i] ?? 0) || 0)
 }
 
-/** Likes, tweet heatmaps, mentions, DM counts. */
+/** Tweet heatmaps, hourly timing, mentions, and yearly totals. */
 export function XEngagement({ data }: XEngagementProps) {
   const heatmap = data.tweetHeatmap ?? []
   const hourly = padHourly(data.tweetHourly)
@@ -43,36 +42,9 @@ export function XEngagement({ data }: XEngagementProps) {
           Engagement
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Likes, tweet timing, mentions, and direct messages from this archive.
+          Tweet timing, mentions, and activity from this archive.
         </p>
       </header>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-        <WrapKpi
-          label="Likes"
-          value={fmt(data.likeCount)}
-          icon={Heart}
-          accent="amber"
-        />
-        <WrapKpi
-          label="DM threads"
-          value={fmt(data.dmThreadCount)}
-          icon={MessagesSquare}
-          accent="sky"
-        />
-        <WrapKpi
-          label="DM messages"
-          value={fmt(data.dmMessageCount)}
-          icon={MessagesSquare}
-          accent="teal"
-        />
-        <WrapKpi
-          label="Group DMs"
-          value={fmt(data.groupDmThreadCount)}
-          icon={MessagesSquare}
-          accent="violet"
-        />
-      </div>
 
       {heatmap.length > 0 ? (
         <CalendarHeatmap

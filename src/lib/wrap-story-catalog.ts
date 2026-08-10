@@ -63,8 +63,7 @@ const LINKEDIN_VIDEO_IDS = [
 ] as const
 
 const X_VIDEO_IDS = [
-  "x-network",
-  "x-tweets",
+  "x-overview",
   "x-tweet-heatmap",
   "x-tweet-hours",
   "x-tweet-word-cloud",
@@ -200,31 +199,21 @@ export function buildLinkedInStorySpecs(
 export function buildXStorySpecs(insights: XInsights): WrapStorySpec[] {
   const specs: WrapStorySpec[] = []
 
-  if (insights.followerCount > 0 || insights.followingCount > 0) {
-    specs.push({
-      id: "x-network",
-      exportName: "x-network-kpis",
-      heading: "Your network",
-      subtext: `${fmt(insights.followerCount)} followers · ${fmt(insights.followingCount)} following`,
-      kpis: [
-        { label: "Followers", value: fmt(insights.followerCount) },
-        { label: "Following", value: fmt(insights.followingCount) },
-        { label: "Likes", value: fmt(insights.likeCount) },
-      ],
-    })
-  }
+  const hasOverview =
+    insights.followerCount > 0 ||
+    insights.followingCount > 0 ||
+    insights.tweetCount > 0 ||
+    insights.likeCount > 0 ||
+    insights.dmThreadCount > 0 ||
+    insights.dmMessageCount > 0
 
-  if (insights.tweetCount > 0) {
+  if (hasOverview) {
     specs.push({
-      id: "x-tweets",
-      exportName: "x-tweet-kpis",
-      heading: "Your posts",
-      subtext: `${fmt(insights.tweetCount)} tweets · ${fmt(insights.likeCount)} likes`,
-      kpis: [
-        { label: "Tweets", value: fmt(insights.tweetCount) },
-        { label: "Originals", value: fmt(insights.originalCount) },
-        { label: "Replies", value: fmt(insights.replyCount) },
-      ],
+      id: "x-overview",
+      exportName: "x-overview-kpis",
+      heading: "Your year on X",
+      subtext: `${fmt(insights.followerCount)} followers · ${fmt(insights.tweetCount)} tweets · ${fmt(insights.likeCount)} likes`,
+      // KPIs live in the captured card — no duplicate strip at the bottom.
     })
   }
 
