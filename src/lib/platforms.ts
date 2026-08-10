@@ -53,7 +53,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     summary:
       "Export chats from Telegram Desktop as JSON, then import them locally.",
     exportPath: "Telegram Desktop → Settings → Advanced → Export Telegram Data",
-    formats: "JSON, HTML",
+    formats: "JSON",
     extractable:
       "Complete message history for DMs, groups, and channels — including media metadata, stickers, reactions, polls, and timestamps.",
     steps: [
@@ -267,8 +267,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     accentClass: "border-sky-600/50",
     gradientClass:
       "from-sky-600/25 via-blue-500/10 to-transparent dark:from-sky-500/20 dark:via-blue-600/5",
-    summary:
-      "Request a full archive ZIP from Settings → Data privacy.",
+    summary: "Request a full archive ZIP from Settings → Data privacy.",
     exportPath: "Settings → Data privacy → Get a copy of your data",
     formats: "CSV (ZIP)",
     extractable:
