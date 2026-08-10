@@ -4,6 +4,7 @@ import {
   buildMessagingStorySpecs,
   type WrapStorySpec,
 } from "@/lib/wrap-stories"
+import { keywordsToWords } from "@/components/wrap/charts/word-cloud-chart"
 import type {
   InstagramSocialInsights,
   WrapAnalytics,
@@ -63,6 +64,7 @@ const LINKEDIN_VIDEO_IDS = [
 const X_VIDEO_IDS = [
   "x-network",
   "x-tweets",
+  "x-tweet-word-cloud",
   "heatmap",
   "activity",
   "sent-received",
@@ -214,6 +216,17 @@ export function buildXStorySpecs(insights: XInsights): WrapStorySpec[] {
         { label: "Originals", value: fmt(insights.originalCount) },
         { label: "Replies", value: fmt(insights.replyCount) },
       ],
+    })
+  }
+
+  const topTweetWords = keywordsToWords(insights.keywords?.counts ?? {}, "you", 1)
+  if (topTweetWords.length > 0) {
+    const top = topTweetWords[0]!
+    specs.push({
+      id: "x-tweet-word-cloud",
+      exportName: "x-tweet-word-cloud",
+      heading: "Tweet word cloud",
+      subtext: `Led by “${top.text}” × ${fmt(top.value)} — the words you reach for in posts.`,
     })
   }
 

@@ -34,7 +34,13 @@ import { normalizeAppleMusicInsights } from "@/platform/apple-music-types"
 import { normalizeSpotifyInsights } from "@/platform/spotify-types"
 import { normalizeTikTokInsights } from "@/platform/tiktok-types"
 import { normalizeXInsights } from "@/platform/x-types"
-import { getWrap, wrapChatPath, wrapEntryPath, wrapGoogleProductPath, type WrapRecord } from "@/lib/wrap-history"
+import {
+  getWrap,
+  wrapChatPath,
+  wrapEntryPath,
+  wrapGoogleProductPath,
+  type WrapRecord,
+} from "@/lib/wrap-history"
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat(undefined, {
@@ -102,8 +108,8 @@ export function WrapPage() {
             : wrap.platformId === "apple-music" && wrap.appleMusicInsights
               ? true
               : wrap.analytics.chats.length > 0 ||
-              wrap.analytics.account.heatmap.days.length > 0 ||
-              wrap.analytics.account.emojis.topOverall.length > 0
+                wrap.analytics.account.heatmap.days.length > 0 ||
+                wrap.analytics.account.emojis.topOverall.length > 0
   const igSocial =
     wrap.platformId === "instagram"
       ? normalizeInstagramSocial(wrap.instagramSocial)
@@ -264,9 +270,9 @@ export function WrapPage() {
           {wrap.analytics.chats.length > 0 ? (
             <>
               <header className="text-start">
-                <h2 className="font-heading text-xl font-semibold tracking-tight">
+                <h1 className="font-heading text-2xl font-bold tracking-tight">
                   X messaging analysis
-                </h2>
+                </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Direct messages from this X data archive.
                 </p>

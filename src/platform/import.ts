@@ -8,7 +8,7 @@ import type { LinkedInInsights } from "@/platform/linkedin-types"
 import type { AppleMusicInsights } from "@/platform/apple-music-types"
 import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
-import type { XInsights } from "@/platform/x-types"
+import { normalizeXInsights, type XInsights } from "@/platform/x-types"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
 
 export type { WrapAnalytics, InstagramSocialInsights } from "@/platform/analytics-types"
@@ -907,7 +907,9 @@ function parseXAnalyzeJson(analyticsJson: string): ImportResult {
 
   return {
     analytics: normalizeAnalytics(payload.analytics),
-    xInsights: payload.xInsights,
+    xInsights: payload.xInsights
+      ? normalizeXInsights(payload.xInsights)
+      : undefined,
   }
 }
 

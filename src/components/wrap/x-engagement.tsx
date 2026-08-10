@@ -3,6 +3,10 @@ import {
   CircadianPolarChart,
   peakHourLabel,
 } from "@/components/wrap/charts/circadian-polar-chart"
+import {
+  keywordsToWords,
+  WordCloudChart,
+} from "@/components/wrap/charts/word-cloud-chart"
 import { fmt } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
@@ -29,6 +33,8 @@ export function XEngagement({ data }: XEngagementProps) {
 
   const peak = hasHourly ? peakHourLabel(hourly) : null
   const tweetTotal = hourly.reduce((a, b) => a + b, 0)
+  const hasTweetWords =
+    keywordsToWords(data.keywords?.counts ?? {}, "you", 1).length > 0
 
   return (
     <section className="flex flex-col gap-5 text-start">
@@ -92,6 +98,21 @@ export function XEngagement({ data }: XEngagementProps) {
             className="h-full w-full p-2"
           />
         </WrapChartCard>
+      ) : null}
+
+      {hasTweetWords ? (
+        <WordCloudChart
+          keywords={data.keywords}
+          mode="you"
+          title="Tweet word cloud"
+          description="Words you use most in your posts (retweets excluded)"
+          exportName="x-tweet-word-cloud"
+        />
+      ) : data.tweetCount > 0 ? (
+        <p className="rounded-xl bg-muted/40 px-4 py-3 text-sm text-muted-foreground ring-1 ring-border/60">
+          Tweet word cloud needs a fresh import. Re-import your X archive to
+          unlock it.
+        </p>
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

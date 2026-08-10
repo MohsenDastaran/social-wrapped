@@ -1,4 +1,4 @@
-import type { HeatmapDay } from "@/platform/analytics-types"
+import type { HeatmapDay, KeywordStats } from "@/platform/analytics-types"
 
 export type XCounted = {
   name: string
@@ -38,6 +38,8 @@ export type XInsights = {
   groupDmThreadCount: number
   communityTweetCount: number
   hasOfficialHtml: boolean
+  /** Word frequencies from your tweets (retweets excluded). */
+  keywords?: KeywordStats
 }
 
 export function emptyXInsights(): XInsights {
@@ -61,6 +63,7 @@ export function emptyXInsights(): XInsights {
     groupDmThreadCount: 0,
     communityTweetCount: 0,
     hasOfficialHtml: false,
+    keywords: { counts: {} },
   }
 }
 
@@ -82,5 +85,6 @@ export function normalizeXInsights(
     tweetHourly,
     tweetsByYear: raw.tweetsByYear ?? base.tweetsByYear,
     topMentions: raw.topMentions ?? base.topMentions,
+    keywords: raw.keywords ?? base.keywords,
   }
 }
