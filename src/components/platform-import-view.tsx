@@ -1,8 +1,15 @@
-import { useId, useRef, useState, type ChangeEvent, type DragEvent } from "react"
+import {
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+} from "react"
 import { ArrowLeft, CircleHelp, FileUp, Upload, X } from "lucide-react"
 import { Link, useNavigate } from "react-router"
 
 import { AppLoader } from "@/components/app-loader"
+import LightRays from "@/components/LightRays"
 import { PlatformImportHelpDialog } from "@/components/platform-import-help-dialog"
 import { PlatformLogo } from "@/components/platform-logo"
 import { WhatsAppIdentityPicker } from "@/components/whatsapp-identity-picker"
@@ -11,10 +18,7 @@ import { type PlatformConfig } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
 import { saveWrap, wrapEntryPath } from "@/lib/wrap-history"
 import { formatInvokeError } from "@/platform/api"
-import {
-  importPlatformFiles,
-  type ImportProgress,
-} from "@/platform/import"
+import { importPlatformFiles, type ImportProgress } from "@/platform/import"
 
 export type PlatformImportViewProps = {
   platform: PlatformConfig
@@ -139,18 +143,26 @@ export function PlatformImportView({
       total: totalSize,
     })
     try {
-      const { analytics, instagramSocial, googleInsights, linkedinInsights, xInsights, tiktokInsights, spotifyInsights, appleMusicInsights } =
-        await importPlatformFiles(
-          platform,
-          files,
-          setProgress,
-          platform.id === "whatsapp" ||
-            platform.id === "instagram" ||
-            platform.id === "linkedin" ||
-            platform.id === "tiktok"
-            ? promptIdentity
-            : undefined
-        )
+      const {
+        analytics,
+        instagramSocial,
+        googleInsights,
+        linkedinInsights,
+        xInsights,
+        tiktokInsights,
+        spotifyInsights,
+        appleMusicInsights,
+      } = await importPlatformFiles(
+        platform,
+        files,
+        setProgress,
+        platform.id === "whatsapp" ||
+          platform.id === "instagram" ||
+          platform.id === "linkedin" ||
+          platform.id === "tiktok"
+          ? promptIdentity
+          : undefined
+      )
       const wrap = await saveWrap({
         platformId: platform.id,
         fileName:
@@ -167,8 +179,7 @@ export function PlatformImportView({
         tiktokInsights,
         spotifyInsights,
         appleMusicInsights,
-        archiveBlob:
-          platform.id === "x" && files[0] ? files[0] : undefined,
+        archiveBlob: platform.id === "x" && files[0] ? files[0] : undefined,
       })
       navigate(wrapEntryPath(wrap), { replace: true })
     } catch (err) {
@@ -200,263 +211,288 @@ export function PlatformImportView({
                 ? "Building your Spotify wrap"
                 : "Reading your Spotify listening history"
               : platform.id === "x"
-            ? progress?.phase === "computing"
-              ? "Building your X wrap"
-              : "Reading your X archive ZIP (tweets + DMs)"
-            : platform.id === "google" || platform.id === "youtube"
-              ? progress?.phase === "computing"
-                ? "Building your Google wrap"
-                : `Reading Takeout ZIP${files.length > 1 ? "s" : ""} on your device`
-              : progress?.phase === "computing"
-                ? "Building your wrap from chats and messages"
-                : "Parsing JSON on your device"
+                ? progress?.phase === "computing"
+                  ? "Building your X wrap"
+                  : "Reading your X archive ZIP (tweets + DMs)"
+                : platform.id === "google" || platform.id === "youtube"
+                  ? progress?.phase === "computing"
+                    ? "Building your Google wrap"
+                    : `Reading Takeout ZIP${files.length > 1 ? "s" : ""} on your device`
+                  : progress?.phase === "computing"
+                    ? "Building your wrap from chats and messages"
+                    : "Parsing JSON on your device"
 
   const totalSelected = files.reduce((s, f) => s + f.size, 0)
+  const hasSelectedFiles = files.length > 0
 
   return (
-    <div
-      className={cn(
-        "flex w-full max-w-lg flex-col items-stretch text-start",
-        className
-      )}
-    >
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <Button
-          variant="ghost"
-          size="default"
-          className="text-muted-foreground"
-          render={<Link to="/" />}
-          nativeButton={false}
+    <>
+      {hasSelectedFiles ? (
+        <div
+          className="pointer-events-none fixed inset-0 z-1 overflow-hidden"
+          aria-hidden
         >
-          <ArrowLeft data-icon="inline-start" />
-          Back
-        </Button>
-        <PlatformImportHelpDialog
-          platform={platform}
-          trigger={
-            <Button
-              variant="outline"
-              size="default"
-              className="rounded-full border-primary/50 bg-primary/15 text-primary shadow-md shadow-primary/45 ring-1 ring-primary/30 transition-shadow hover:border-primary/65 hover:bg-primary/25 hover:shadow-lg hover:shadow-primary/55"
-            >
-              <CircleHelp data-icon="inline-start" />
-              Need help?
-            </Button>
-          }
-        />
-      </div>
+          <LightRays
+            raysOrigin="bottom-center"
+            raysColor="#ffffff"
+            raysSpeed={1}
+            lightSpread={1}
+            rayLength={2}
+            pulsating={false}
+            fadeDistance={1}
+            saturation={1}
+            followMouse={false}
+            mouseInfluence={0.1}
+            noiseAmount={0}
+            distortion={0}
+          />
+        </div>
+      ) : null}
 
-      <header className="mb-8 flex flex-col items-center text-center">
-        <span
+      <div
+        className={cn(
+          "relative z-10 flex w-full max-w-lg flex-col items-stretch text-start",
+          className
+        )}
+      >
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <Button
+            variant="ghost"
+            size="default"
+            className="text-muted-foreground"
+            render={<Link to="/" />}
+            nativeButton={false}
+          >
+            <ArrowLeft data-icon="inline-start" />
+            Back
+          </Button>
+          <PlatformImportHelpDialog
+            platform={platform}
+            trigger={
+              <Button
+                variant="outline"
+                size="default"
+                className="rounded-full border-primary/50 bg-primary/15 text-primary shadow-md ring-1 shadow-primary/45 ring-primary/30 transition-shadow hover:border-primary/65 hover:bg-primary/25 hover:shadow-lg hover:shadow-primary/55"
+              >
+                <CircleHelp data-icon="inline-start" />
+                Need help?
+              </Button>
+            }
+          />
+        </div>
+
+        <header className="mb-8 flex flex-col items-center text-center">
+          <span
+            className={cn(
+              "mb-4 flex size-20 items-center justify-center rounded-[1.35rem] shadow-sm ring-1 ring-inset",
+              "bg-linear-to-br from-background to-muted/80",
+              platform.accentClass
+            )}
+          >
+            <PlatformLogo
+              id={platform.id}
+              title={platform.name}
+              className="size-11 drop-shadow-sm"
+            />
+          </span>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
+            {title}
+          </h1>
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+            {description}
+          </p>
+          <p className="mt-3 text-xs font-medium text-muted-foreground">
+            Accepted: {acceptedFiles.join(", ")}
+            {multi
+              ? platform.id === "spotify"
+                ? " · multiple JSON files OK"
+                : " · multiple ZIPs OK"
+              : null}
+          </p>
+        </header>
+
+        <input
+          ref={inputRef}
+          id={inputId}
+          type="file"
+          accept={accept}
+          multiple={multi}
+          className="sr-only"
+          onChange={onInputChange}
+        />
+
+        <label
+          htmlFor={inputId}
+          onDragEnter={(event) => {
+            event.preventDefault()
+            setDragging(true)
+          }}
+          onDragOver={(event) => {
+            event.preventDefault()
+            setDragging(true)
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
           className={cn(
-            "mb-4 flex size-20 items-center justify-center rounded-[1.35rem] shadow-sm ring-1 ring-inset",
-            "bg-linear-to-br from-background to-muted/80",
-            platform.accentClass
+            "flex cursor-pointer flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-10 text-center transition-colors",
+            dragging
+              ? "border-primary bg-primary/10"
+              : "border-border bg-muted/30 hover:border-foreground/30 hover:bg-muted/50"
           )}
         >
-          <PlatformLogo
-            id={platform.id}
-            title={platform.name}
-            className="size-11 drop-shadow-sm"
-          />
-        </span>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
-          {title}
-        </h1>
-        <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
-          {description}
-        </p>
-        <p className="mt-3 text-xs font-medium text-muted-foreground">
-          Accepted: {acceptedFiles.join(", ")}
-          {multi
-            ? platform.id === "spotify"
-              ? " · multiple JSON files OK"
-              : " · multiple ZIPs OK"
-            : null}
-        </p>
-      </header>
-
-      <input
-        ref={inputRef}
-        id={inputId}
-        type="file"
-        accept={accept}
-        multiple={multi}
-        className="sr-only"
-        onChange={onInputChange}
-      />
-
-      <label
-        htmlFor={inputId}
-        onDragEnter={(event) => {
-          event.preventDefault()
-          setDragging(true)
-        }}
-        onDragOver={(event) => {
-          event.preventDefault()
-          setDragging(true)
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={onDrop}
-        className={cn(
-          "flex cursor-pointer flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-10 text-center transition-colors",
-          dragging
-            ? "border-primary bg-primary/10"
-            : "border-border bg-muted/30 hover:border-foreground/30 hover:bg-muted/50"
-        )}
-      >
-        <span className="flex size-12 items-center justify-center rounded-full bg-background ring-1 ring-foreground/10">
-          <Upload className="size-5 text-primary" aria-hidden />
-        </span>
-        <div>
-          <p className="font-heading text-base font-semibold tracking-tight">
-            {multi ? "Drop Takeout ZIP parts here" : "Drop your export here"}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            or click to browse — files stay on your device
-          </p>
-        </div>
-      </label>
-
-      {error ? (
-        <p className="mt-3 text-sm text-destructive" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      {files.length > 0 ? (
-        <div className="mt-4 flex flex-col gap-2">
-          {files.map((file) => (
-            <div
-              key={`${file.name}:${file.size}`}
-              className="flex items-start gap-3 rounded-xl bg-card px-4 py-3 ring-1 ring-foreground/10"
-            >
-              <FileUp
-                className="mt-0.5 size-4 shrink-0 text-primary"
-                aria-hidden
-              />
-              <div className="min-w-0 flex-1 text-start">
-                <p className="truncate text-sm font-medium">{file.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatBytes(file.size)}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                disabled={loading}
-                aria-label={`Remove ${file.name}`}
-                onClick={() => {
-                  setFiles((prev) =>
-                    prev.filter(
-                      (f) => !(f.name === file.name && f.size === file.size)
-                    )
-                  )
-                  setError("")
-                  if (inputRef.current) inputRef.current.value = ""
-                }}
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-          ))}
-          {multi && files.length > 1 ? (
-            <p className="text-xs text-muted-foreground">
-              {files.length} files · {formatBytes(totalSelected)} total
+          <span className="flex size-12 items-center justify-center rounded-full bg-background ring-1 ring-foreground/10">
+            <Upload className="size-5 text-primary" aria-hidden />
+          </span>
+          <div>
+            <p className="font-heading text-base font-semibold tracking-tight">
+              {multi ? "Drop Takeout ZIP parts here" : "Drop your export here"}
             </p>
-          ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            size="default"
-            disabled={loading}
-            onClick={() => {
-              setFiles([])
-              setError("")
-              if (inputRef.current) inputRef.current.value = ""
-            }}
-          >
-            Clear all
-          </Button>
-        </div>
-      ) : null}
-
-      <Button
-        type="button"
-        size="lg"
-        className="mt-6 w-full"
-        disabled={!files.length || loading}
-        onClick={() => void handleAnalyze()}
-      >
-        {progress ? (
-          <>
-            <AppLoader
-              size="sm"
-              label={
-                progress.phase === "computing"
-                  ? "Computing stats"
-                  : identityPrompt
-                    ? "Waiting for you"
-                    : "Reading export"
-              }
-              className="shrink-0"
-            />
-            <span className="tabular-nums">
-              {identityPrompt
-                ? "Choose your name…"
-                : progress.phase === "computing"
-                  ? "Computing stats…"
-                  : "Reading export…"}{" "}
-              {!identityPrompt ? `${progress.overallPercent}%` : null}
-            </span>
-          </>
-        ) : (
-          "Analyze export"
-        )}
-      </Button>
-
-      {progress && !identityPrompt ? (
-        <div className="mt-3" aria-hidden>
-          <div className="mb-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span>
-              {progress.phase === "computing"
-                ? "Phase 2 of 2 — Computing stats"
-                : "Phase 1 of 2 — Reading export"}
-            </span>
-            <span className="tabular-nums">{progress.percent}%</span>
+            <p className="mt-1 text-sm text-muted-foreground">
+              or click to browse — files stay on your device
+            </p>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-[width] duration-150 ease-out"
-              style={{ width: `${progress.percent}%` }}
-            />
-          </div>
-          <p className="mt-1.5 text-center text-xs text-muted-foreground">
-            {progressHint}
+        </label>
+
+        {error ? (
+          <p className="mt-3 text-sm text-destructive" role="alert">
+            {error}
           </p>
-        </div>
-      ) : null}
+        ) : null}
 
-      {identityPrompt ? (
-        <WhatsAppIdentityPicker
-          key={identityPrompt.senders.join("\0")}
-          open
-          chatName={identityPrompt.chatName}
-          senders={identityPrompt.senders}
-          onConfirm={(meName) => {
-            const prompt = identityPrompt
-            setIdentityPrompt(null)
-            prompt.resolve(meName)
-          }}
-          onCancel={() => {
-            const prompt = identityPrompt
-            setIdentityPrompt(null)
-            setProgress(null)
-            prompt.reject(new Error("Identity selection was cancelled."))
-          }}
-        />
-      ) : null}
-    </div>
+        {files.length > 0 ? (
+          <div className="mt-4 flex flex-col gap-2">
+            {files.map((file) => (
+              <div
+                key={`${file.name}:${file.size}`}
+                className="flex items-start gap-3 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 shadow-[0_10px_28px_-18px] shadow-primary/40 ring-1 ring-primary/20 dark:border-primary/30 dark:bg-primary/12 dark:shadow-primary/25"
+              >
+                <FileUp
+                  className="mt-0.5 size-4 shrink-0 text-primary"
+                  aria-hidden
+                />
+                <div className="min-w-0 flex-1 text-start">
+                  <p className="truncate text-sm font-medium">{file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatBytes(file.size)}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={loading}
+                  aria-label={`Remove ${file.name}`}
+                  onClick={() => {
+                    setFiles((prev) =>
+                      prev.filter(
+                        (f) => !(f.name === file.name && f.size === file.size)
+                      )
+                    )
+                    setError("")
+                    if (inputRef.current) inputRef.current.value = ""
+                  }}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            ))}
+            {multi && files.length > 1 ? (
+              <p className="text-xs text-muted-foreground">
+                {files.length} files · {formatBytes(totalSelected)} total
+              </p>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="default"
+              disabled={loading}
+              onClick={() => {
+                setFiles([])
+                setError("")
+                if (inputRef.current) inputRef.current.value = ""
+              }}
+            >
+              Clear all
+            </Button>
+          </div>
+        ) : null}
+
+        <Button
+          type="button"
+          size="lg"
+          className="mt-6 w-full"
+          disabled={!files.length || loading}
+          onClick={() => void handleAnalyze()}
+        >
+          {progress ? (
+            <>
+              <AppLoader
+                size="sm"
+                label={
+                  progress.phase === "computing"
+                    ? "Computing stats"
+                    : identityPrompt
+                      ? "Waiting for you"
+                      : "Reading export"
+                }
+                className="shrink-0"
+              />
+              <span className="tabular-nums">
+                {identityPrompt
+                  ? "Choose your name…"
+                  : progress.phase === "computing"
+                    ? "Computing stats…"
+                    : "Reading export…"}{" "}
+                {!identityPrompt ? `${progress.overallPercent}%` : null}
+              </span>
+            </>
+          ) : (
+            "Analyze export"
+          )}
+        </Button>
+
+        {progress && !identityPrompt ? (
+          <div className="mt-3" aria-hidden>
+            <div className="mb-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>
+                {progress.phase === "computing"
+                  ? "Phase 2 of 2 — Computing stats"
+                  : "Phase 1 of 2 — Reading export"}
+              </span>
+              <span className="tabular-nums">{progress.percent}%</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-150 ease-out"
+                style={{ width: `${progress.percent}%` }}
+              />
+            </div>
+            <p className="mt-1.5 text-center text-xs text-muted-foreground">
+              {progressHint}
+            </p>
+          </div>
+        ) : null}
+
+        {identityPrompt ? (
+          <WhatsAppIdentityPicker
+            key={identityPrompt.senders.join("\0")}
+            open
+            chatName={identityPrompt.chatName}
+            senders={identityPrompt.senders}
+            onConfirm={(meName) => {
+              const prompt = identityPrompt
+              setIdentityPrompt(null)
+              prompt.resolve(meName)
+            }}
+            onCancel={() => {
+              const prompt = identityPrompt
+              setIdentityPrompt(null)
+              setProgress(null)
+              prompt.reject(new Error("Identity selection was cancelled."))
+            }}
+          />
+        ) : null}
+      </div>
+    </>
   )
 }
