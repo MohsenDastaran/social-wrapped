@@ -69,8 +69,7 @@ export function WordCloudChart({
     const youWords = keywordsToWords(counts, "you", limit)
     const themWords = keywordsToWords(counts, "them", limit)
 
-    const wantToggle =
-      enableScopeToggle ?? Boolean(youLabel && themLabel)
+    const wantToggle = enableScopeToggle ?? Boolean(youLabel && themLabel)
 
     if (!wantToggle) {
       const fixed =
@@ -103,8 +102,7 @@ export function WordCloudChart({
     () => scopes[0]?.id ?? mode
   )
 
-  const activeScope =
-    scopes.find((s) => s.id === scopeId) ?? scopes[0] ?? null
+  const activeScope = scopes.find((s) => s.id === scopeId) ?? scopes[0] ?? null
 
   // Keep selection valid when keywords / labels change.
   useEffect(() => {
@@ -225,7 +223,7 @@ function WordCloudCanvas({ words }: { words: Word[] }) {
   return (
     <div
       ref={hostRef}
-      className="h-full min-h-0 w-full overflow-hidden px-2 pb-2 pt-1"
+      className="h-full min-h-0 w-full overflow-hidden px-2 pt-1 pb-2"
     >
       {size.width > 0 && size.height > 0 ? (
         <WordCloud
@@ -263,7 +261,10 @@ function WordCloudCanvas({ words }: { words: Word[] }) {
 }
 
 /** Scale word sizes to the host so wide desktop cards stay filled, not sparse. */
-function fontRangeForSize(width: number, height: number): {
+function fontRangeForSize(
+  width: number,
+  height: number
+): {
   minPx: number
   maxPx: number
 } {
@@ -348,10 +349,7 @@ function readPair(entry: unknown): [number, number] {
   }
   if (typeof entry === "object") {
     const o = entry as Record<string, unknown>
-    return [
-      Number(o[0] ?? o.you ?? 0) || 0,
-      Number(o[1] ?? o.them ?? 0) || 0,
-    ]
+    return [Number(o[0] ?? o.you ?? 0) || 0, Number(o[1] ?? o.them ?? 0) || 0]
   }
   return [0, 0]
 }
@@ -365,15 +363,12 @@ export function keywordsToWords(
   return Object.entries(counts)
     .map(([text, pair]) => {
       const [you, them] = readPair(pair)
-      const value =
-        mode === "you" ? you : mode === "them" ? them : you + them
+      const value = mode === "you" ? you : mode === "them" ? them : you + them
       return { text, value }
     })
     .filter(
       (w) =>
-        w.value > 0 &&
-        w.text.length >= MIN_WORD_LEN &&
-        !/^\d+$/.test(w.text)
+        w.value > 0 && w.text.length >= MIN_WORD_LEN && !/^\d+$/.test(w.text)
     )
     .sort((a, b) => b.value - a.value || a.text.localeCompare(b.text))
     .slice(0, limit)

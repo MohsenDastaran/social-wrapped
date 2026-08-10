@@ -47,8 +47,9 @@ export function ScrollProgressIndicator({
   return (
     <div
       className={cn(
+        // Always physical bottom-right (not logical `end` — RTL would flip it).
         // Clear mobile bottom nav; sit lower on desktop. Non-interactive.
-        "pointer-events-none fixed end-3 bottom-24 z-40 md:end-4 md:bottom-6",
+        "pointer-events-none fixed inset-e-3 bottom-5 z-40 md:right-4 md:bottom-6",
         className
       )}
       aria-hidden
@@ -86,7 +87,7 @@ export function ScrollProgressIndicator({
           value={progressPercent}
           suffix="%"
           plugins={[continuous]}
-          className="relative z-10 text-[0.58rem] font-semibold tabular-nums tracking-tight text-foreground md:text-[0.65rem]"
+          className="relative z-10 text-[0.58rem] font-semibold tracking-tight text-foreground tabular-nums md:text-[0.65rem]"
         />
       </div>
     </div>
