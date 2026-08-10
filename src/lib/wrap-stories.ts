@@ -595,7 +595,7 @@ export async function generateWrapStories(
     })
 
     try {
-      if (spec.id === "heatmap") {
+      if (spec.id === "heatmap" || spec.id === "x-tweet-heatmap") {
         const composed = await captureHeatmapStory(
           card,
           spec,

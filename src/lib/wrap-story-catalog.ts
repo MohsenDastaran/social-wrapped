@@ -65,15 +65,19 @@ const LINKEDIN_VIDEO_IDS = [
 const X_VIDEO_IDS = [
   "x-network",
   "x-tweets",
+  "x-tweet-heatmap",
   "x-tweet-hours",
   "x-tweet-word-cloud",
-  "heatmap",
   "activity",
   "sent-received",
 ] as const
 
 /** Messaging slides that X tweet charts replace. */
-const X_MESSAGING_STORY_EXCLUDE = new Set(["circadian", "word-cloud"])
+const X_MESSAGING_STORY_EXCLUDE = new Set([
+  "heatmap",
+  "circadian",
+  "word-cloud",
+])
 
 const TIKTOK_VIDEO_IDS = [
   "tt-activity",
@@ -221,6 +225,17 @@ export function buildXStorySpecs(insights: XInsights): WrapStorySpec[] {
         { label: "Originals", value: fmt(insights.originalCount) },
         { label: "Replies", value: fmt(insights.replyCount) },
       ],
+    })
+  }
+
+  const tweetHeatmap = insights.tweetHeatmap ?? []
+  if (tweetHeatmap.length > 0) {
+    const total = tweetHeatmap.reduce((sum, d) => sum + d.count, 0)
+    specs.push({
+      id: "x-tweet-heatmap",
+      exportName: "x-tweet-heatmap",
+      heading: "Tweet activity",
+      subtext: `${fmt(total)} tweets on the calendar.`,
     })
   }
 

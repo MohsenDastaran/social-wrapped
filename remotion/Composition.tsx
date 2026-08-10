@@ -62,6 +62,7 @@ const MAX_CHARTS = 5
 /** Deep-dive chart order (after early activity / sent-received beats). */
 const DEEP_DIVE_ORDER = [
   "heatmap",
+  "x-tweet-heatmap",
   "circadian",
   "x-tweet-hours",
   "word-cloud",
@@ -303,7 +304,10 @@ export function slidesIncludeEmojis(slides: VideoChartSlide[]): boolean {
 export function slidesIncludeHeatmap(slides: VideoChartSlide[]): boolean {
   return slides
     .slice(0, MAX_CHARTS)
-    .some((s) => s.id === "heatmap" && Boolean(s.src))
+    .some(
+      (s) =>
+        (s.id === "heatmap" || s.id === "x-tweet-heatmap") && Boolean(s.src)
+    )
 }
 
 /** Must be TransitionSeries.Transition itself — wrappers fail Remotion's child-type check. */
@@ -526,7 +530,7 @@ function chartSequenceNodes(
       </TransitionSeries.Sequence>,
     ]
 
-    if (slide.id === "heatmap") {
+    if (slide.id === "heatmap" || slide.id === "x-tweet-heatmap") {
       return [
         <TransitionSeries.Transition
           key="whip-heatmap-sticker"
