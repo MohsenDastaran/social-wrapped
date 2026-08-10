@@ -134,10 +134,11 @@ export function WordCloudChart({
       description={resolvedDescription}
       exportName={`${exportName}${scopeSuffix}`}
       exportSize="default"
-      layout="flow"
+      layout="chart"
       captureMode="dom"
       className={className}
-      chartClassName="h-64 sm:h-72"
+      // Fixed host (chart layout) so the SVG cannot grow the card via min-content.
+      chartClassName="h-56 sm:h-64"
       headerExtra={
         showToggle ? (
           <div
@@ -200,10 +201,10 @@ function WordCloudCanvas({ words }: { words: Word[] }) {
     if (!el) return
 
     const update = () => {
-      const rect = el.getBoundingClientRect()
+      // Content box only — padding must not inflate the d3-cloud layout size.
       setSize({
-        width: Math.max(0, Math.floor(rect.width)),
-        height: Math.max(0, Math.floor(rect.height)),
+        width: Math.max(0, el.clientWidth),
+        height: Math.max(0, el.clientHeight),
       })
     }
 
@@ -215,9 +216,13 @@ function WordCloudCanvas({ words }: { words: Word[] }) {
 
   const maxValue = words[0]?.value ?? 1
   const minValue = words[words.length - 1]?.value ?? 1
+  const { minPx, maxPx } = fontRangeForSize(size.width, size.height)
 
   return (
-    <div ref={hostRef} className={cn("h-full w-full px-2 pb-2 pt-1")}>
+    <div
+      ref={hostRef}
+      className="h-full min-h-0 w-full overflow-hidden px-2 pb-2 pt-1"
+    >
       {size.width > 0 && size.height > 0 ? (
         <WordCloud
           words={words}
@@ -225,14 +230,20 @@ function WordCloudCanvas({ words }: { words: Word[] }) {
           height={size.height}
           font="Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif"
           fontWeight={600}
-          padding={2}
-          spiral="archimedean"
+          padding={1}
+          spiral="rectangular"
           rotate={() => 0}
           fontSize={(word) =>
-            scaleFontSize(word.value, minValue, maxValue, 12, 42)
+            scaleFontSize(word.value, minValue, maxValue, minPx, maxPx)
           }
           fill={(_, index) => colors[index % colors.length]!}
           enableTooltip
+          svgProps={{
+            width: "100%",
+            height: "100%",
+            preserveAspectRatio: "xMidYMid meet",
+            className: "block h-full w-full overflow-hidden",
+          }}
           renderWord={(data, ref) => (
             <AnimatedWordRenderer data={data} ref={ref} animationDelay={12} />
           )}
@@ -240,6 +251,20 @@ function WordCloudCanvas({ words }: { words: Word[] }) {
       ) : null}
     </div>
   )
+}
+
+/** Scale word sizes to the host so wide desktop cards stay filled, not sparse. */
+function fontRangeForSize(width: number, height: number): {
+  minPx: number
+  maxPx: number
+} {
+  if (width <= 0 || height <= 0) return { minPx: 11, maxPx: 36 }
+  const shortSide = Math.min(width, height)
+  const maxPx = Math.round(
+    Math.min(52, Math.max(28, shortSide * 0.2 + width * 0.012))
+  )
+  const minPx = Math.round(Math.max(10, maxPx * 0.28))
+  return { minPx, maxPx }
 }
 
 function useChartColors(): string[] {
