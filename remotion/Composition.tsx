@@ -60,10 +60,11 @@ const SCENE_LOGOS = 330 // ~5.5s
 const MAX_CHARTS = 5
 
 /** Deep-dive chart order (after early activity / sent-received beats). */
-const DEEP_DIVE_ORDER = ["heatmap", "circadian", "emojis"] as const
+const DEEP_DIVE_ORDER = ["heatmap", "circadian", "word-cloud", "emojis"] as const
 /** Teaser sticker scenes (60fps). */
 const SCENE_HEATMAP_STICKER = 220 // ~3.7s
 const SCENE_CLOCK_STICKER = 240 // ~4s
+const SCENE_WORD_CLOUD_STICKER = 240 // ~4s
 const SCENE_EMOJI_STICKER = 240 // ~4s
 const SCENE_PLATFORMS_STICKER = 300 // ~5s
 const STICKER_STEP = 6
@@ -273,6 +274,10 @@ export function slidesIncludeClock(slides: VideoChartSlide[]): boolean {
   return slides.slice(0, MAX_CHARTS).some((s) => s.id === "circadian" && s.src)
 }
 
+export function slidesIncludeWordCloud(slides: VideoChartSlide[]): boolean {
+  return slides.slice(0, MAX_CHARTS).some((s) => s.id === "word-cloud" && s.src)
+}
+
 export function slidesIncludeEmojis(slides: VideoChartSlide[]): boolean {
   return slides.slice(0, MAX_CHARTS).some((s) => s.id === "emojis" && s.src)
 }
@@ -374,6 +379,53 @@ function ClockStickerIntro() {
             style={{ ...stickerLabelStyle, fontSize: 26, color: "#0f766e" }}
           >
             Your daily rhythm, hour by hour
+          </span>
+        </PaperSticker>
+      </AbsoluteFill>
+    </SceneShell>
+  )
+}
+
+/** Paper sticker tease right before “Your word cloud”. */
+function WordCloudStickerIntro() {
+  return (
+    <SceneShell>
+      <AbsoluteFill
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 28,
+          padding: "0 72px",
+        }}
+      >
+        <PaperSticker
+          at={12}
+          seed="word-cloud-tease-main"
+          step={STICKER_STEP}
+          background={PAPER}
+          borderColor="rgba(4,21,18,0.35)"
+          padding="26px 34px"
+          maxTilt={2.2}
+        >
+          <span style={{ ...stickerLabelStyle, fontSize: 44, maxWidth: 760 }}>
+            The words you type on repeat
+          </span>
+        </PaperSticker>
+        <PaperSticker
+          at={36}
+          seed="word-cloud-tease-sub"
+          step={STICKER_STEP}
+          background="#ecfdf5"
+          borderColor="rgba(13,148,136,0.45)"
+          padding="14px 22px"
+          maxTilt={1.6}
+        >
+          <span
+            style={{ ...stickerLabelStyle, fontSize: 26, color: "#0f766e" }}
+          >
+            Your vocabulary, sized by how often
           </span>
         </PaperSticker>
       </AbsoluteFill>
@@ -490,6 +542,23 @@ function chartSequenceNodes(
       ]
     }
 
+    if (slide.id === "word-cloud") {
+      return [
+        <TransitionSeries.Transition
+          key="whip-word-cloud-sticker"
+          timing={whipTiming}
+          presentation={whipPresentation}
+        />,
+        <TransitionSeries.Sequence
+          key="word-cloud-sticker"
+          durationInFrames={SCENE_WORD_CLOUD_STICKER}
+        >
+          <WordCloudStickerIntro />
+        </TransitionSeries.Sequence>,
+        ...chartNodes,
+      ]
+    }
+
     if (slide.id === "emojis") {
       return [
         <TransitionSeries.Transition
@@ -520,6 +589,7 @@ export function videoDurationFrames(
   options?: {
     includeHeatmapSticker?: boolean
     includeClockSticker?: boolean
+    includeWordCloudSticker?: boolean
     includeEmojiSticker?: boolean
   }
 ): number {
@@ -528,6 +598,10 @@ export function videoDurationFrames(
   const heatmapWhip = options?.includeHeatmapSticker ? 1 : 0
   const clock = options?.includeClockSticker ? SCENE_CLOCK_STICKER : 0
   const clockWhip = options?.includeClockSticker ? 1 : 0
+  const wordCloud = options?.includeWordCloudSticker
+    ? SCENE_WORD_CLOUD_STICKER
+    : 0
+  const wordCloudWhip = options?.includeWordCloudSticker ? 1 : 0
   const emoji = options?.includeEmojiSticker ? SCENE_EMOJI_STICKER : 0
   const emojiWhip = options?.includeEmojiSticker ? 1 : 0
   // Platforms sticker always precedes the logos outro.
@@ -542,10 +616,18 @@ export function videoDurationFrames(
     charts * SCENE_CHART +
     heatmap +
     clock +
+    wordCloud +
     emoji +
     platforms +
     SCENE_LOGOS -
-    WHIP * (1 + charts + heatmapWhip + clockWhip + emojiWhip + platformsWhip)
+    WHIP *
+      (1 +
+        charts +
+        heatmapWhip +
+        clockWhip +
+        wordCloudWhip +
+        emojiWhip +
+        platformsWhip)
   )
 }
 

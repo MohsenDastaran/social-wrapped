@@ -136,6 +136,8 @@ export function WordCloudChart({
       exportSize="default"
       layout="chart"
       captureMode="dom"
+      // Keep live layout width — narrow park reflows the cloud differently.
+      preserveStoryWidth
       className={className}
       // Fixed host (chart layout) so the SVG cannot grow the card via min-content.
       chartClassName="h-56 sm:h-64"
@@ -194,6 +196,7 @@ function ScopeButton({
 function WordCloudCanvas({ words }: { words: Word[] }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
+  const [capturing, setCapturing] = useState(false)
   const colors = useChartColors()
 
   useEffect(() => {
@@ -206,6 +209,7 @@ function WordCloudCanvas({ words }: { words: Word[] }) {
         width: Math.max(0, el.clientWidth),
         height: Math.max(0, el.clientHeight),
       })
+      setCapturing(Boolean(el.closest('[data-story-capturing="true"]')))
     }
 
     update()
@@ -237,7 +241,7 @@ function WordCloudCanvas({ words }: { words: Word[] }) {
             scaleFontSize(word.value, minValue, maxValue, minPx, maxPx)
           }
           fill={(_, index) => colors[index % colors.length]!}
-          enableTooltip
+          enableTooltip={!capturing}
           svgProps={{
             width: "100%",
             height: "100%",
@@ -245,7 +249,12 @@ function WordCloudCanvas({ words }: { words: Word[] }) {
             className: "block h-full w-full overflow-hidden",
           }}
           renderWord={(data, ref) => (
-            <AnimatedWordRenderer data={data} ref={ref} animationDelay={12} />
+            <AnimatedWordRenderer
+              data={data}
+              ref={ref}
+              // Snapshots need every word visible — skip the fade/scale-in.
+              animationDelay={capturing ? 0 : 12}
+            />
           )}
         />
       ) : null}
@@ -290,6 +299,7 @@ function readChartColors(): string[] {
   const fromTheme = [1, 2, 3, 4, 5]
     .map((n) => style.getPropertyValue(`--chart-${n}`).trim())
     .filter(Boolean)
+    .map(resolveCssColor)
   if (fromTheme.length > 0) return fromTheme
   return [
     "oklch(0.7 0.14 165)",
@@ -297,7 +307,21 @@ function readChartColors(): string[] {
     "oklch(0.65 0.14 145)",
     "oklch(0.55 0.1 230)",
     "oklch(0.5 0.1 165)",
-  ]
+  ].map(resolveCssColor)
+}
+
+/** Resolve theme tokens (oklch, etc.) to rgb() for reliable SVG / export paint. */
+function resolveCssColor(color: string): string {
+  if (!color) return color
+  if (color.startsWith("#") || color.startsWith("rgb")) return color
+  const probe = document.createElement("span")
+  probe.style.color = color
+  probe.style.position = "absolute"
+  probe.style.visibility = "hidden"
+  document.body.appendChild(probe)
+  const resolved = getComputedStyle(probe).color
+  probe.remove()
+  return resolved || color
 }
 
 function scaleFontSize(

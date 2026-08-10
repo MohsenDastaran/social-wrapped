@@ -1,5 +1,6 @@
 import { fmt } from "@/components/wrap/chart-theme"
 import { peakHourLabel } from "@/components/wrap/charts/circadian-polar-chart"
+import { keywordsToWords } from "@/components/wrap/charts/word-cloud-chart"
 import {
   elementToPngBlob,
   type DomExportOptions,
@@ -136,6 +137,18 @@ export function buildMessagingStorySpecs(
     })
   }
 
+  // Account word cloud uses “you” counts (same as Main Analytics).
+  const topWords = keywordsToWords(a.keywords?.counts ?? {}, "you", 1)
+  if (topWords.length > 0) {
+    const top = topWords[0]!
+    specs.push({
+      id: "word-cloud",
+      exportName: "main-word-cloud",
+      heading: "Your word cloud",
+      subtext: `Led by “${top.text}” × ${fmt(top.value)} — the words you reach for most.`,
+    })
+  }
+
   if (a.heatmap.days.length > 0) {
     const years = heatmapYearsFromDays(a.heatmap.days)
       .slice(0, MAX_HEATMAP_STORY_YEARS)
@@ -197,13 +210,18 @@ function exportOptionsFromCard(el: HTMLElement): DomExportOptions {
   // Stories park the card at a portrait-friendly width — don't expand back out
   // to the on-screen desktop width (that makes pies tiny in 9:16).
   const storyLocked = el.dataset.storyCapturing === "true"
+  const preserveWidth = el.dataset.exportPreserveWidth === "true"
   const storyWidth = Number(el.dataset.exportStoryWidth)
   const storyMin =
     Number.isFinite(storyWidth) && storyWidth > 0 ? storyWidth : minWidth
 
   return {
     captureMode: mode === "dom" || mode === "chart" ? mode : "chart",
-    minWidth: storyLocked ? storyMin : minWidth,
+    minWidth: preserveWidth
+      ? Math.max(el.offsetWidth, 1)
+      : storyLocked
+        ? storyMin
+        : minWidth,
     pixelRatio: Number(el.dataset.exportPixelRatio) || 3,
   }
 }
@@ -677,10 +695,17 @@ function beginInFlowCaptureCover(
   // the card's export min width (compact=480) instead of full desktop ~1000px.
   // Tailwind viewport breakpoints would keep a desktop 6-col layout even when
   // the card is parked narrow — those cards use @container queries instead.
+  // `data-export-preserve-width` keeps the live on-screen width (word cloud).
+  const preserveWidth = card.dataset.exportPreserveWidth === "true"
   const storyWidth = Number(card.dataset.exportStoryWidth)
   const exportMin = Number(card.dataset.exportMinWidth)
-  const captureWidth =
-    Number.isFinite(storyWidth) && storyWidth > 0
+  const captureWidth = preserveWidth
+    ? Math.max(
+        card.offsetWidth,
+        Number.isFinite(exportMin) && exportMin > 0 ? exportMin : 0,
+        1
+      )
+    : Number.isFinite(storyWidth) && storyWidth > 0
       ? storyWidth
       : Number.isFinite(exportMin) && exportMin > 0
         ? exportMin
@@ -862,11 +887,19 @@ async function captureElementPng(
 ): Promise<Blob> {
   const hasCharts =
     findEchartsIn(target).length > 0 || findEchartsIn(card).length > 0
-  await delay(hasCharts ? 240 : DOM_CAPTURE_SETTLE_MS)
+  // Word cloud re-layouts after park-resize; give d3-cloud time before snapshot.
+  const isWordCloud = (card.dataset.exportName ?? "").includes("word-cloud")
+  const preDelay = isWordCloud ? 420 : hasCharts ? 240 : DOM_CAPTURE_SETTLE_MS
+  const settleMs = isWordCloud
+    ? 520
+    : hasCharts
+      ? CHART_CAPTURE_SETTLE_MS
+      : DOM_CAPTURE_SETTLE_MS
+  await delay(preDelay)
 
   return elementToPngBlob(target, {
     freezeCharts: true,
-    settleMs: hasCharts ? CHART_CAPTURE_SETTLE_MS : DOM_CAPTURE_SETTLE_MS,
+    settleMs,
     ...options,
   })
 }

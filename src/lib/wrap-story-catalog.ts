@@ -40,7 +40,7 @@ const MESSAGING_VIDEO_IDS = [
   "sent-received",
   "heatmap",
   "circadian",
-  "emojis",
+  "word-cloud",
 ] as const
 
 const INSTAGRAM_VIDEO_IDS = [

@@ -26,6 +26,7 @@ import {
   slidesIncludeClock,
   slidesIncludeEmojis,
   slidesIncludeHeatmap,
+  slidesIncludeWordCloud,
   videoDurationFrames,
   type SocialWrappedVideoProps,
   type VideoChartSlide,
@@ -147,6 +148,7 @@ export function WrapShareVideo({
   const durationInFrames = videoDurationFrames(videoSlides.length, {
     includeHeatmapSticker: slidesIncludeHeatmap(videoSlides),
     includeClockSticker: slidesIncludeClock(videoSlides),
+    includeWordCloudSticker: slidesIncludeWordCloud(videoSlides),
     includeEmojiSticker: slidesIncludeEmojis(videoSlides),
   })
   const playerKey = `${durationInFrames}-${chartSrcKey}-${videoSlides.map((s) => s.src.length).join("-")}`

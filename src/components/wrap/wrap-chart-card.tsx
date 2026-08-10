@@ -40,6 +40,11 @@ export type WrapChartCardProps = {
    */
   storyCaptureWidth?: number
   /**
+   * Keep the live on-screen card width while crafting stories (word cloud packing
+   * depends on width — parking narrow makes a different layout).
+   */
+  preserveStoryWidth?: boolean
+  /**
    * `chart` — absolute host for ECharts (needs fixed height via `chartClassName`).
    * `flow` — normal document flow for non-chart content (emoji grids, lists).
    * @default "chart"
@@ -113,6 +118,7 @@ export function WrapChartCard({
   exportName,
   exportSize = "default",
   storyCaptureWidth,
+  preserveStoryWidth = false,
   layout = "chart",
   captureMode,
   headerExtra,
@@ -141,6 +147,7 @@ export function WrapChartCard({
       {...(storyCaptureWidth
         ? { "data-export-story-width": String(storyCaptureWidth) }
         : {})}
+      {...(preserveStoryWidth ? { "data-export-preserve-width": "true" } : {})}
       className={cn(
         "relative flex min-h-0 flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10",
         className

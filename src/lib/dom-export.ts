@@ -486,6 +486,7 @@ async function renderElementComposite(
   if (captureMode === "dom") {
     paintDomSurfaces(ctx, element, root)
     await paintSvgIcons(ctx, element, root)
+    paintSvgTextElements(ctx, element, root)
     paintTextOverlays(ctx, element, root)
   } else {
     // Chart snapshots first (under legends).
@@ -675,6 +676,14 @@ async function paintSvgIcons(
       if (!clone.getAttribute("height")) {
         clone.setAttribute("height", String(Math.max(r.height, 1)))
       }
+      // Word labels are painted via paintSvgTextElements (page fonts + resolved
+      // fills). Strip them here so we don't double-draw or lose oklch/web fonts.
+      for (const text of clone.querySelectorAll("text")) {
+        text.remove()
+      }
+      if (!clone.querySelector("path, circle, rect, line, polyline, polygon, use, image")) {
+        return
+      }
       let xml = new XMLSerializer().serializeToString(clone)
       if (color) {
         xml = xml.replaceAll("currentColor", color)
@@ -691,6 +700,48 @@ async function paintSvgIcons(
       )
     })
   )
+}
+
+/**
+ * Paint SVG `<text>` from the live DOM (word clouds, etc.).
+ * Uses computed fonts/fills so the export matches on-screen rendering — unlike
+ * serializing the SVG to a data-URL image (which drops oklch + web fonts).
+ */
+function paintSvgTextElements(
+  ctx: CanvasRenderingContext2D,
+  element: HTMLElement,
+  root: DOMRect
+) {
+  for (const textEl of element.querySelectorAll("svg text")) {
+    if (textEl.closest("[data-export-ignore]")) continue
+    const content = textEl.textContent?.replace(/\s+/g, " ").trim() ?? ""
+    if (!content) continue
+
+    const cs = getComputedStyle(textEl)
+    // SVG elements aren't HTMLElement — reuse the same visibility checks.
+    if (cs.visibility === "hidden" || cs.display === "none") continue
+    const alpha = Number.parseFloat(cs.opacity || "1")
+    if (!Number.isFinite(alpha) || alpha < 0.05) continue
+
+    const r = textEl.getBoundingClientRect()
+    if (r.width < 1 || r.height < 1) continue
+
+    const fillRaw = cs.fill && cs.fill !== "none" ? cs.fill : cs.color
+    const fill = cssColorToRgb(fillRaw)
+
+    ctx.save()
+    ctx.globalAlpha = alpha
+    ctx.fillStyle = fill
+    ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    ctx.fillText(
+      content,
+      r.left - root.left + r.width / 2,
+      r.top - root.top + r.height / 2
+    )
+    ctx.restore()
+  }
 }
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
@@ -755,7 +806,13 @@ function paintTextOverlays(
   while (node) {
     const parent = node.parentElement
     const text = node.textContent?.replace(/\s+/g, " ").trim() ?? ""
-    if (parent && text && !parent.closest("[data-export-ignore]")) {
+    // SVG labels (word cloud) are handled by paintSvgTextElements.
+    if (
+      parent &&
+      text &&
+      !parent.closest("svg") &&
+      !parent.closest("[data-export-ignore]")
+    ) {
       const cs = getComputedStyle(parent)
       if (!isHidden(parent, cs)) {
         const range = document.createRange()

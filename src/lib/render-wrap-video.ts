@@ -11,6 +11,7 @@ import {
   slidesIncludeClock,
   slidesIncludeEmojis,
   slidesIncludeHeatmap,
+  slidesIncludeWordCloud,
   videoDurationFrames,
   type SocialWrappedVideoProps,
   type VideoChartSlide,
@@ -138,6 +139,7 @@ async function renderOnce(
   const durationInFrames = videoDurationFrames(slides.length, {
     includeHeatmapSticker: slidesIncludeHeatmap(slides),
     includeClockSticker: slidesIncludeClock(slides),
+    includeWordCloudSticker: slidesIncludeWordCloud(slides),
     includeEmojiSticker: slidesIncludeEmojis(slides),
   })
 
