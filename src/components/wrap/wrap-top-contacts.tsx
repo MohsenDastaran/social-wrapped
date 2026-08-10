@@ -43,10 +43,7 @@ function namesMatch(a: string, b: string): boolean {
 }
 
 /** How often this contact left messages unanswered ≥ 24h (not you). */
-export function contactGhostScore(
-  chat: ChatResult,
-  selfName: string
-): number {
+export function contactGhostScore(chat: ChatResult, selfName: string): number {
   return (chat.analytics.ghosting?.participants ?? [])
     .filter((p) => !namesMatch(p.name, selfName))
     .reduce((sum, p) => sum + p.count, 0)
@@ -62,9 +59,7 @@ export function WrapTopContacts({
   const savedMessages =
     analytics.savedMessages ??
     analytics.chats.find(
-      (c) =>
-        c.isSavedMessages ||
-        /^saved messages$/i.test(c.chatName.trim())
+      (c) => c.isSavedMessages || /^saved messages$/i.test(c.chatName.trim())
     ) ??
     null
   const isNotSaved = (c: ChatResult) =>
@@ -193,12 +188,12 @@ function SavedMessagesCard({
           aria-hidden
         />
       </button>
-      <IconExportButton
+      {/* <IconExportButton
         title="Saved Messages"
         exporting={exporting}
         exportError={exportError}
         onExport={() => void exportPng("saved-messages.png")}
-      />
+      /> */}
     </div>
   )
 }
@@ -229,11 +224,7 @@ function IconExportButton({
         aria-label={`Export ${title}`}
         className="shrink-0"
       >
-        {exporting ? (
-          <Loader2 className="animate-spin" />
-        ) : (
-          <Download />
-        )}
+        {exporting ? <Loader2 className="animate-spin" /> : <Download />}
       </Button>
       {exportError ? (
         <p
@@ -369,7 +360,7 @@ function TopContactsList({
   return (
     <div
       ref={ref}
-      className="overflow-hidden rounded-xl bg-card shadow-[0_16px_48px_-20px] shadow-foreground/45 ring-1 ring-foreground/15 dark:shadow-foreground/25"
+      className="overflow-hidden rounded-xl bg-card shadow-[0_16px_48px_-20px] ring-1 shadow-foreground/45 ring-foreground/15 dark:shadow-foreground/25"
     >
       <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-4 py-2.5">
         <Users className="size-3.5 text-muted-foreground" aria-hidden />
