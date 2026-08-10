@@ -104,7 +104,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
       "from-zinc-500/20 via-zinc-400/10 to-transparent dark:from-zinc-300/15 dark:via-zinc-500/5",
     summary: "Request your full archive ZIP from account settings.",
     exportPath: "Account Settings → Download an archive of your data",
-    formats: "JS + HTML (ZIP)",
+    formats: "ZIP",
     extractable:
       "Tweets, DMs, likes, followers, following, blocks, and the official archive HTML viewer.",
     steps: [

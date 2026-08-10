@@ -26,6 +26,16 @@ export const PLATFORM_IMPORT_DOCS: Partial<
     officialExportUrl: "https://core.telegram.org/import-export",
     officialExportLabel: "Telegram export documentation",
   },
+  x: {
+    title: "Download your X data archive",
+    paragraphs: [
+      "X lets you request a copy of your account data — tweets, DMs, likes, followers, and more — as a ZIP archive.",
+      "Open Download your data in X settings, confirm your request, then hit Download archive when the file is ready (you’ll get an email when it’s prepared).",
+      "Save the ZIP to your device and do not unzip it. Import that complete archive in Social Wrapped.",
+    ],
+    officialExportUrl: "https://x.com/settings/download_your_data",
+    officialExportLabel: "Open X to download your data",
+  },
 }
 
 export function getPlatformImportDoc(
