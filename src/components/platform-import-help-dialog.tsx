@@ -113,7 +113,7 @@ export function PlatformImportHelpDialog({
               <Button
                 variant="outline"
                 size="default"
-                className="mt-4 mb-4 w-full justify-center sm:w-auto"
+                className="mb-4 w-full justify-center sm:w-auto"
                 nativeButton={false}
                 render={
                   <a

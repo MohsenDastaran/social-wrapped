@@ -364,7 +364,7 @@ export function PlatformImportView({
             {files.map((file) => (
               <div
                 key={`${file.name}:${file.size}`}
-                className="flex items-start gap-3 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 shadow-[0_10px_28px_-18px] shadow-primary/40 ring-1 ring-primary/20 dark:border-primary/30 dark:bg-primary/12 dark:shadow-primary/25"
+                className="flex items-start gap-3 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 shadow-[0_10px_28px_-18px] ring-1 shadow-primary/40 ring-primary/20 dark:border-primary/30 dark:bg-primary/12 dark:shadow-primary/25"
               >
                 <FileUp
                   className="mt-0.5 size-4 shrink-0 text-primary"
@@ -447,7 +447,7 @@ export function PlatformImportView({
               </span>
             </>
           ) : (
-            "Analyze export"
+            "Analyze files"
           )}
         </Button>
 
