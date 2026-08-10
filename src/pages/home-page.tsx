@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ArrowUpRight, ShieldCheck, XIcon } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Link } from "react-router"
@@ -72,6 +72,16 @@ export function HomePage() {
     )
   }, [query])
 
+  useEffect(() => {
+    if (window.location.hash !== "#platforms") return
+    const el = document.getElementById("platforms")
+    if (!el) return
+    const frameId = requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" })
+    })
+    return () => cancelAnimationFrame(frameId)
+  }, [])
+
   function dismissTrustAlert() {
     writeTrustAlertState({
       ...readTrustAlertState(),
@@ -98,121 +108,127 @@ export function HomePage() {
     <div className="flex w-full max-w-4xl flex-col items-stretch text-start">
       <Hero />
 
-      {showTrustAlert ? (
-        <Alert
-          variant="default"
-          className="relative mb-6 grid-cols-1 gap-0 overflow-hidden rounded-2xl border-primary/25 bg-primary/6 px-3 py-2.5 shadow-[0_10px_28px_-24px] shadow-foreground/40 ring-1 ring-primary/10"
-        >
-          <div
-            className="pointer-events-none absolute -inset-e-8 -top-10 size-28 rounded-full bg-primary/15 blur-2xl"
-            aria-hidden
-          />
-          <div className="relative flex items-start gap-3">
-            <span
-              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/30"
+      <section
+        id="platforms"
+        className="scroll-mt-6"
+        aria-label="Choose a platform"
+      >
+        {showTrustAlert ? (
+          <Alert
+            variant="default"
+            className="relative mb-6 grid-cols-1 gap-0 overflow-hidden rounded-2xl border-primary/25 bg-primary/6 px-3 py-2.5 shadow-[0_10px_28px_-24px] shadow-foreground/40 ring-1 ring-primary/10"
+          >
+            <div
+              className="pointer-events-none absolute -inset-e-8 -top-10 size-28 rounded-full bg-primary/15 blur-2xl"
               aria-hidden
-            >
-              <ShieldCheck className="size-4" strokeWidth={2.25} />
-            </span>
+            />
+            <div className="relative flex items-start gap-3">
+              <span
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/30"
+                aria-hidden
+              >
+                <ShieldCheck className="size-4" strokeWidth={2.25} />
+              </span>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-              <div className="min-w-0 flex-1">
-                <AlertTitle className="font-heading col-start-auto min-h-0 text-[0.95rem] leading-tight tracking-tight">
-                  Don&apos;t you trust us?
-                </AlertTitle>
-                <AlertDescription className="col-start-auto mt-0.5 text-xs leading-snug text-muted-foreground">
-                  No accounts, no uploads — analysis stays on this device.
-                </AlertDescription>
+              <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <div className="min-w-0 flex-1">
+                  <AlertTitle className="font-heading col-start-auto min-h-0 text-[0.95rem] leading-tight tracking-tight">
+                    Don&apos;t you trust us?
+                  </AlertTitle>
+                  <AlertDescription className="col-start-auto mt-0.5 text-xs leading-snug text-muted-foreground">
+                    No accounts, no uploads — analysis stays on this device.
+                  </AlertDescription>
+                </div>
+
+                <Button
+                  size="sm"
+                  className="w-fit shrink-0 rounded-full"
+                  render={
+                    <Link to="/privacy" onClick={handlePrivacyClick} />
+                  }
+                  nativeButton={false}
+                >
+                  Peek at Privacy
+                  <ArrowUpRight data-icon="inline-end" />
+                </Button>
               </div>
 
               <Button
-                size="sm"
-                className="w-fit shrink-0 rounded-full"
-                render={
-                  <Link to="/privacy" onClick={handlePrivacyClick} />
-                }
-                nativeButton={false}
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="size-9 shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label="Dismiss"
+                onClick={dismissTrustAlert}
               >
-                Peek at Privacy
-                <ArrowUpRight data-icon="inline-end" />
+                <XIcon />
               </Button>
             </div>
+          </Alert>
+        ) : null}
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="size-9 shrink-0 text-muted-foreground hover:text-foreground"
-              aria-label="Dismiss"
-              onClick={dismissTrustAlert}
-            >
-              <XIcon />
-            </Button>
-          </div>
-        </Alert>
-      ) : null}
-
-      <section
-        className="mb-6 flex flex-col gap-4"
-        aria-label="Platform search"
-      >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <PlatformSearchInput
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onClear={() => setQuery("")}
-            placeholder="Find a platform or file type…"
-            className="sm:max-w-md"
-          />
-          <p
-            className="inline-flex shrink-0 items-baseline gap-2 self-start rounded-full bg-primary/10 px-3 py-1.5 ring-1 ring-primary/25 sm:self-auto"
-            aria-live="polite"
-          >
-            <span className="font-heading text-xl font-semibold tabular-nums leading-none tracking-tight text-primary">
-              {filteredPlatforms.length}
-            </span>
-            <span className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-foreground/75">
-              {filteredPlatforms.length === 1 ? "platform" : "platforms"}
-            </span>
-          </p>
-        </div>
-      </section>
-
-      <motion.ul layout className="grid list-none gap-4 p-0 sm:grid-cols-2">
-        <AnimatePresence mode="popLayout" initial={false}>
-          {filteredPlatforms.map((platform, index) => (
-            <motion.li
-              key={platform.id}
-              layout={!reduceMotion}
-              initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={
-                reduceMotion
-                  ? { opacity: 0 }
-                  : { opacity: 0, y: -10, scale: 0.96 }
-              }
-              transition={{
-                duration: 0.32,
-                delay: reduceMotion ? 0 : Math.min(index * 0.045, 0.25),
-                ease: [0.22, 1, 0.36, 1],
-              }}
-            >
-              <PlatformImportCard platform={platform} featured />
-            </motion.li>
-          ))}
-        </AnimatePresence>
-      </motion.ul>
-
-      {filteredPlatforms.length === 0 ? (
-        <motion.p
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-10 text-center text-sm leading-relaxed text-muted-foreground"
+        <section
+          className="mb-6 flex flex-col gap-4"
+          aria-label="Platform search"
         >
-          Nothing matched “{query.trim()}”. Try a platform name or a file type
-          such as JSON, ZIP, or CSV.
-        </motion.p>
-      ) : null}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <PlatformSearchInput
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onClear={() => setQuery("")}
+              placeholder="Find a platform or file type…"
+              className="sm:max-w-md"
+            />
+            <p
+              className="inline-flex shrink-0 items-baseline gap-2 self-start rounded-full bg-primary/10 px-3 py-1.5 ring-1 ring-primary/25 sm:self-auto"
+              aria-live="polite"
+            >
+              <span className="font-heading text-xl font-semibold tabular-nums leading-none tracking-tight text-primary">
+                {filteredPlatforms.length}
+              </span>
+              <span className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-foreground/75">
+                {filteredPlatforms.length === 1 ? "platform" : "platforms"}
+              </span>
+            </p>
+          </div>
+        </section>
+
+        <motion.ul layout className="grid list-none gap-4 p-0 sm:grid-cols-2">
+          <AnimatePresence mode="popLayout" initial={false}>
+            {filteredPlatforms.map((platform, index) => (
+              <motion.li
+                key={platform.id}
+                layout={!reduceMotion}
+                initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={
+                  reduceMotion
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: -10, scale: 0.96 }
+                }
+                transition={{
+                  duration: 0.32,
+                  delay: reduceMotion ? 0 : Math.min(index * 0.045, 0.25),
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
+                <PlatformImportCard platform={platform} featured />
+              </motion.li>
+            ))}
+          </AnimatePresence>
+        </motion.ul>
+
+        {filteredPlatforms.length === 0 ? (
+          <motion.p
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-10 text-center text-sm leading-relaxed text-muted-foreground"
+          >
+            Nothing matched “{query.trim()}”. Try a platform name or a file type
+            such as JSON, ZIP, or CSV.
+          </motion.p>
+        ) : null}
+      </section>
     </div>
   )
 }

@@ -2,12 +2,18 @@
 
 import { motion } from "framer-motion"
 import NumberFlow, { continuous } from "@number-flow/react"
-import { ArrowUpRight } from "lucide-react"
 import { useEffect, useState } from "react"
-import { Link } from "react-router"
 
 import { AnimatedLines } from "@/components/animated-lines"
 import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
+import { ArrowDown, ArrowUpRight } from "lucide-react"
+
+function scrollToPlatforms() {
+  const el = document.getElementById("platforms")
+  if (!el) return
+  el.scrollIntoView({ behavior: "smooth", block: "start" })
+  history.replaceState(null, "", "#platforms")
+}
 
 /** Home hero — theme-aware primary/sky backdrop + CTA into wrap history. */
 export function Hero() {
@@ -46,12 +52,12 @@ export function Hero() {
         }}
       >
         <div className="pointer-events-none absolute -inset-s-16 -top-20 size-56 rounded-full bg-sky-400/25 blur-3xl dark:bg-sky-400/20" />
-        <div className="pointer-events-none absolute -bottom-28 -inset-e-12 size-60 rounded-full bg-primary/30 blur-3xl dark:bg-primary/40" />
+        <div className="pointer-events-none absolute -inset-e-12 -bottom-28 size-60 rounded-full bg-primary/30 blur-3xl dark:bg-primary/40" />
         <AnimatedLines />
 
         <div className="relative z-10 flex flex-col items-center text-center">
           <motion.p
-            className="mb-2 text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-primary sm:text-xs"
+            className="mb-2 text-[0.7rem] font-semibold tracking-[0.2em] text-primary uppercase sm:text-xs"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
@@ -60,7 +66,7 @@ export function Hero() {
           </motion.p>
 
           <motion.h1
-            className="font-heading max-w-xl text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl md:text-4xl"
+            className="max-w-xl font-heading text-2xl leading-tight font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.05, ease: "easeOut" }}
@@ -84,16 +90,21 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.25, ease: "easeOut" }}
           >
-            <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
-              <Link
-                to="/history"
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              transition={{ duration: 0.2 }}
+            >
+              <a
+                href="#platforms"
+                onClick={(event) => {
+                  event.preventDefault()
+                  scrollToPlatforms()
+                }}
                 className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm ring-1 ring-primary/30"
               >
-                Open history
-                <span className="flex size-6 items-center justify-center rounded-full bg-primary-foreground text-primary">
-                  <ArrowUpRight className="size-3.5" />
-                </span>
-              </Link>
+                Browse Platforms
+                <ArrowDown className="size-3.5" />
+              </a>
             </motion.div>
           </motion.div>
         </div>
