@@ -40,6 +40,45 @@ export function PrivacyPage() {
       </header>
 
       <div className="space-y-8 text-start">
+        <section className="rounded-2xl border border-primary/25 bg-primary/8 px-4 py-5 ring-1 ring-primary/15 sm:px-6 sm:py-6">
+          <SectionHeading>Don&apos;t trust any app with your data</SectionHeading>
+          <p className="mb-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            That includes this one. If something wants your chats, photos, or
+            exports, skepticism is the right default — privacy policies are easy
+            to write and much harder to enforce.
+          </p>
+          <p className="mb-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            We don&apos;t ask you to take our word for it. Social Wrapped is
+            built so you can{" "}
+            <span className="font-medium text-foreground">prove</span> the safety
+            claims yourself:
+          </p>
+          <ul className="list-disc space-y-2 ps-5 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            <li>
+              <span className="font-medium text-foreground">Open source:</span>{" "}
+              the public app shell is on GitHub — read how files are loaded,
+              routed, and stored before anything touches the analyzer.
+            </li>
+            <li>
+              <span className="font-medium text-foreground">
+                Network activity:
+              </span>{" "}
+              open DevTools, watch the Network tab while you import, and confirm
+              your archive isn&apos;t uploaded for &ldquo;insights.&rdquo;
+            </li>
+            <li>
+              <span className="font-medium text-foreground">Offline proof:</span>{" "}
+              turn on airplane mode (or cut Wi‑Fi) and run the same import —
+              if it still works, your data never needed our servers.
+            </li>
+            <li>
+              <span className="font-medium text-foreground">Local by design:</span>{" "}
+              parsing, scoring, and saved wraps stay in your browser on this
+              device — not on infrastructure we control.
+            </li>
+          </ul>
+        </section>
+
         <section>
           <SectionHeading>No accounts for analysis</SectionHeading>
           <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
