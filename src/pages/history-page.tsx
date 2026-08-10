@@ -21,9 +21,9 @@ import { getPlatform } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
 import {
   deleteWrap,
-  listWraps,
+  listWrapSummaries,
   wrapEntryPath,
-  type WrapRecord,
+  type WrapSummary,
 } from "@/lib/wrap-history"
 
 function formatDate(iso: string): string {
@@ -47,37 +47,33 @@ function formatBytes(size: number): string {
   return `${(size / 1024).toFixed(1)} KB`
 }
 
-function wrapMetaLine(wrap: WrapRecord): string {
+function wrapMetaLine(wrap: WrapSummary): string {
   const date = formatDate(wrap.createdAt)
   const messages = wrap.stats.totalMessages
   if (messages > 0) {
     return `${formatCount(messages)} messages · ${date}`
   }
-  const bytes = wrap.stats.fileSizeBytes || wrap.analytics.fileSizeBytes || 0
+  const bytes = wrap.stats.fileSizeBytes || 0
   if (bytes > 0) {
     return `${formatBytes(bytes)} · ${date}`
   }
   return date
 }
 
-function wrapTitle(wrap: WrapRecord): string {
+function wrapTitle(wrap: WrapSummary): string {
   if (wrap.platformId === "whatsapp") {
-    return (
-      wrap.analytics.chats[0]?.chatName ||
-      wrap.stats.aboutPreview ||
-      wrap.stats.displayName
-    )
+    return wrap.chatName || wrap.stats.aboutPreview || wrap.stats.displayName
   }
   return wrap.stats.displayName
 }
 
 export function HistoryPage() {
-  const [wraps, setWraps] = useState<WrapRecord[] | null>(null)
+  const [wraps, setWraps] = useState<WrapSummary[] | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    void listWraps().then((next) => {
+    void listWrapSummaries().then((next) => {
       if (!cancelled) setWraps(next)
     })
     return () => {
@@ -85,7 +81,7 @@ export function HistoryPage() {
     }
   }, [])
 
-  async function confirmDelete(wrap: WrapRecord) {
+  async function confirmDelete(wrap: WrapSummary) {
     setDeletingId(wrap.id)
     try {
       await deleteWrap(wrap.id)
@@ -98,10 +94,10 @@ export function HistoryPage() {
   if (wraps === null) {
     return (
       <AppLoader
-        size="md"
+        size="lg"
         fullscreen={false}
         label="Loading history"
-        className="flex min-h-[40vh] w-full"
+        className="flex min-h-[min(70vh,36rem)] w-full flex-1"
       />
     )
   }

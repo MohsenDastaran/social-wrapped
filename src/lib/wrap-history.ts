@@ -51,6 +51,22 @@ export type WrapRecord = {
 }
 
 /**
+ * Lightweight history-list row — avoids expanding full analytics (chats,
+ * keywords, insights) so the History page stays responsive.
+ */
+export type WrapSummary = {
+  id: string
+  platformId: PlatformId
+  fileName: string
+  createdAt: string
+  stats: TelegramExportStats
+  /** First chat name when present (WhatsApp titles). */
+  chatName?: string
+  /** First chat id when present (WhatsApp deep links). */
+  chatId?: number
+}
+
+/**
  * On-disk shape: insight lists are stored as chat IDs only so each ChatResult
  * is persisted once inside `analytics.chats` (avoids ~4× duplication).
  */
@@ -575,6 +591,62 @@ export async function listWraps(): Promise<WrapRecord[]> {
   )
 }
 
+function statsFromStored(raw: LegacyStoredWrap): TelegramExportStats | null {
+  if (raw.stats) return raw.stats
+  const a = raw.analytics
+  if (!a?.account) return null
+  return {
+    displayName: a.displayName,
+    username: a.username,
+    aboutPreview: a.aboutPreview,
+    fileSizeBytes: a.fileSizeBytes,
+    chatCount: a.chatCount,
+    totalMessages: a.account.totalMessages,
+    sentMessages: a.account.sentMessages,
+    receivedMessages: a.account.receivedMessages,
+    sampleMessages: a.sampleMessages ?? [],
+  }
+}
+
+function summarizeWrap(raw: LegacyStoredWrap): WrapSummary | null {
+  if (!raw.id || !raw.platformId || !raw.fileName || !raw.createdAt) {
+    return null
+  }
+  const stats = statsFromStored(raw)
+  if (!stats) return null
+
+  const firstChat = raw.analytics?.chats?.[0]
+  return {
+    id: raw.id,
+    platformId: raw.platformId,
+    fileName: raw.fileName,
+    createdAt: raw.createdAt,
+    stats,
+    ...(firstChat?.chatName ? { chatName: firstChat.chatName } : {}),
+    ...(firstChat?.chatId != null ? { chatId: firstChat.chatId } : {}),
+  }
+}
+
+/**
+ * History / picker list — reads stored rows without expanding full analytics.
+ * Prefer this over `listWraps` when you only need titles, dates, and sizes.
+ */
+export async function listWrapSummaries(): Promise<WrapSummary[]> {
+  const db = await ensureReady()
+  const tx = db.transaction(WRAPS_STORE, "readonly")
+  const rows = await idbReq(tx.objectStore(WRAPS_STORE).getAll())
+  await idbTxDone(tx)
+
+  const summaries: WrapSummary[] = []
+  for (const row of rows as LegacyStoredWrap[]) {
+    const summary = summarizeWrap(row)
+    if (summary) summaries.push(summary)
+  }
+  return summaries.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+}
+
 export async function getWrap(id: string): Promise<WrapRecord | undefined> {
   const cached = memoryCache.get(id)
   if (cached) return cached
@@ -614,10 +686,15 @@ export function wrapGoogleProductPath(
  * WhatsApp exports are a single chat, so open the chat analytics page directly.
  */
 export function wrapEntryPath(
-  wrap: Pick<WrapRecord, "id" | "platformId" | "analytics">
+  wrap:
+    | Pick<WrapRecord, "id" | "platformId" | "analytics">
+    | Pick<WrapSummary, "id" | "platformId" | "chatId">
 ): string {
   if (wrap.platformId === "whatsapp") {
-    const chatId = wrap.analytics.chats[0]?.chatId ?? 1
+    const chatId =
+      "analytics" in wrap
+        ? (wrap.analytics.chats[0]?.chatId ?? 1)
+        : (wrap.chatId ?? 1)
     return wrapChatPath(wrap.id, chatId)
   }
   return wrapPath(wrap.id)
