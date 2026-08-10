@@ -389,13 +389,16 @@ function paintKpiStrip(
   return cellH
 }
 
+/** Extra scale for word-cloud chart area in 9:16 frames (chart body is sparse). */
+const STORY_WORD_CLOUD_ZOOM = 1.14
+
 /**
  * Paint a card PNG into a branded 9:16 story frame with heading + subtext
  * baked into the pixels (so downloads match the on-screen story).
  */
 export async function composeStoryFrame(
   cardBlob: Blob,
-  spec: Pick<WrapStorySpec, "heading" | "subtext" | "kpis">
+  spec: Pick<WrapStorySpec, "id" | "heading" | "subtext" | "kpis">
 ): Promise<Blob> {
   const cardImg = await loadImageFromBlob(cardBlob)
   const canvas = document.createElement("canvas")
@@ -453,7 +456,9 @@ export async function composeStoryFrame(
   const cardBottom = captionTop - 28
   const maxCardW = STORY_W - padX * 2
   const maxCardH = Math.max(cardBottom - contentTop, 240)
-  const scale = Math.min(maxCardW / cardImg.width, maxCardH / cardImg.height)
+  const fitScale = Math.min(maxCardW / cardImg.width, maxCardH / cardImg.height)
+  const zoom = spec.id === "word-cloud" ? STORY_WORD_CLOUD_ZOOM : 1
+  const scale = fitScale * zoom
   const drawW = cardImg.width * scale
   const drawH = cardImg.height * scale
   const drawX = (STORY_W - drawW) / 2

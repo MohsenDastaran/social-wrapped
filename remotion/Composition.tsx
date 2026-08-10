@@ -146,7 +146,7 @@ function SceneShell({ children }: { children: React.ReactNode }) {
   )
 }
 
-function ChartBeat({ src }: VideoChartSlide) {
+function ChartBeat({ src }: Pick<VideoChartSlide, "src">) {
   const frame = useCurrentFrame()
   const opacity = interpolate(
     frame,
