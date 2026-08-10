@@ -1,10 +1,11 @@
 import { fmt } from "@/components/wrap/chart-theme"
+import { peakHourLabel } from "@/components/wrap/charts/circadian-polar-chart"
+import { keywordsToWords } from "@/components/wrap/charts/word-cloud-chart"
 import type { PlatformId } from "@/lib/platforms"
 import {
   buildMessagingStorySpecs,
   type WrapStorySpec,
 } from "@/lib/wrap-stories"
-import { keywordsToWords } from "@/components/wrap/charts/word-cloud-chart"
 import type {
   InstagramSocialInsights,
   WrapAnalytics,
@@ -64,11 +65,15 @@ const LINKEDIN_VIDEO_IDS = [
 const X_VIDEO_IDS = [
   "x-network",
   "x-tweets",
+  "x-tweet-hours",
   "x-tweet-word-cloud",
   "heatmap",
   "activity",
   "sent-received",
 ] as const
+
+/** Messaging slides that X tweet charts replace. */
+const X_MESSAGING_STORY_EXCLUDE = new Set(["circadian", "word-cloud"])
 
 const TIKTOK_VIDEO_IDS = [
   "tt-activity",
@@ -219,7 +224,26 @@ export function buildXStorySpecs(insights: XInsights): WrapStorySpec[] {
     })
   }
 
-  const topTweetWords = keywordsToWords(insights.keywords?.counts ?? {}, "you", 1)
+  const tweetHourly = Array.from(
+    { length: 24 },
+    (_, i) => Number(insights.tweetHourly?.[i] ?? 0) || 0
+  )
+  if (tweetHourly.some((n) => n > 0)) {
+    const peak = peakHourLabel(tweetHourly)
+    const total = tweetHourly.reduce((a, b) => a + b, 0)
+    specs.push({
+      id: "x-tweet-hours",
+      exportName: "x-tweet-hours",
+      heading: "When you tweet",
+      subtext: `Peak ${peak} · ${fmt(total)} tweets (UTC)`,
+    })
+  }
+
+  const topTweetWords = keywordsToWords(
+    insights.keywords?.counts ?? {},
+    "you",
+    1
+  )
   if (topTweetWords.length > 0) {
     const top = topTweetWords[0]!
     specs.push({
@@ -311,7 +335,10 @@ export function buildPlatformStoryCatalog(
 
   if (input.platformId === "x" && input.xInsights) {
     const x = buildXStorySpecs(input.xInsights)
-    const storySpecs = [...x, ...messaging]
+    const messagingForX = messaging.filter(
+      (s) => !X_MESSAGING_STORY_EXCLUDE.has(s.id)
+    )
+    const storySpecs = [...x, ...messagingForX]
     return {
       storySpecs,
       videoSlideIds: pickVideoIds(X_VIDEO_IDS, storySpecs),

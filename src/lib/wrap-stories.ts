@@ -457,7 +457,10 @@ export async function composeStoryFrame(
   const maxCardW = STORY_W - padX * 2
   const maxCardH = Math.max(cardBottom - contentTop, 240)
   const fitScale = Math.min(maxCardW / cardImg.width, maxCardH / cardImg.height)
-  const zoom = spec.id === "word-cloud" ? STORY_WORD_CLOUD_ZOOM : 1
+  const zoom =
+    spec.id === "word-cloud" || spec.id === "x-tweet-word-cloud"
+      ? STORY_WORD_CLOUD_ZOOM
+      : 1
   const scale = fitScale * zoom
   const drawW = cardImg.width * scale
   const drawH = cardImg.height * scale

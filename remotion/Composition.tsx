@@ -60,7 +60,14 @@ const SCENE_LOGOS = 330 // ~5.5s
 const MAX_CHARTS = 5
 
 /** Deep-dive chart order (after early activity / sent-received beats). */
-const DEEP_DIVE_ORDER = ["heatmap", "circadian", "word-cloud", "emojis"] as const
+const DEEP_DIVE_ORDER = [
+  "heatmap",
+  "circadian",
+  "x-tweet-hours",
+  "word-cloud",
+  "x-tweet-word-cloud",
+  "emojis",
+] as const
 /** Teaser sticker scenes (60fps). */
 const SCENE_HEATMAP_STICKER = 220 // ~3.7s
 const SCENE_CLOCK_STICKER = 240 // ~4s
@@ -271,11 +278,22 @@ function PanChartBeat({ src, heading }: VideoChartSlide) {
 }
 
 export function slidesIncludeClock(slides: VideoChartSlide[]): boolean {
-  return slides.slice(0, MAX_CHARTS).some((s) => s.id === "circadian" && s.src)
+  return slides
+    .slice(0, MAX_CHARTS)
+    .some(
+      (s) =>
+        (s.id === "circadian" || s.id === "x-tweet-hours") && Boolean(s.src)
+    )
 }
 
 export function slidesIncludeWordCloud(slides: VideoChartSlide[]): boolean {
-  return slides.slice(0, MAX_CHARTS).some((s) => s.id === "word-cloud" && s.src)
+  return slides
+    .slice(0, MAX_CHARTS)
+    .some(
+      (s) =>
+        (s.id === "word-cloud" || s.id === "x-tweet-word-cloud") &&
+        Boolean(s.src)
+    )
 }
 
 export function slidesIncludeEmojis(slides: VideoChartSlide[]): boolean {
@@ -525,7 +543,7 @@ function chartSequenceNodes(
       ]
     }
 
-    if (slide.id === "circadian") {
+    if (slide.id === "circadian" || slide.id === "x-tweet-hours") {
       return [
         <TransitionSeries.Transition
           key="whip-clock-sticker"
@@ -542,7 +560,7 @@ function chartSequenceNodes(
       ]
     }
 
-    if (slide.id === "word-cloud") {
+    if (slide.id === "word-cloud" || slide.id === "x-tweet-word-cloud") {
       return [
         <TransitionSeries.Transition
           key="whip-word-cloud-sticker"

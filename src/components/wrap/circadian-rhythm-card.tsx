@@ -62,7 +62,7 @@ export function CircadianRhythmCard({
 
   return (
     <WrapChartCard
-      title="Activity by hour"
+      title="Messaging by hour"
       description={
         sleepHint
           ? `Peak ${peak} · ${sleepHint}`

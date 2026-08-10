@@ -65,7 +65,7 @@ type CalendarHeatmapProps = {
 
 export function CalendarHeatmap({
   days,
-  title = "Activity heatmap",
+  title = "Messaging heatmap",
   description,
   exportName,
   className,
@@ -159,10 +159,7 @@ function YearSelect({
   onChange: (year: number) => void
 }) {
   // Chronological order for − / + (years prop is newest-first for the menu).
-  const ascending = useMemo(
-    () => [...years].sort((a, b) => a - b),
-    [years]
-  )
+  const ascending = useMemo(() => [...years].sort((a, b) => a - b), [years])
   const index = ascending.indexOf(value)
   const older = index > 0 ? ascending[index - 1] : undefined
   const newer =
