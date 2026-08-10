@@ -237,7 +237,7 @@ export function PlatformImportView({
             <Button
               variant="outline"
               size="default"
-              className="rounded-full text-primary"
+              className="rounded-full border-primary/50 bg-primary/15 text-primary shadow-md shadow-primary/45 ring-1 ring-primary/30 transition-shadow hover:border-primary/65 hover:bg-primary/25 hover:shadow-lg hover:shadow-primary/55"
             >
               <CircleHelp data-icon="inline-start" />
               Need help?
