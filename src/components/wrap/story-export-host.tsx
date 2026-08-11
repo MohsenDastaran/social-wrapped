@@ -36,7 +36,7 @@ export function StoryExportHost({
         className
       )}
     >
-      <div data-export-region="chart" className="min-w-0 p-3 sm:p-4">
+      <div data-export-region="chart" className="min-w-0 overflow-visible p-3.5 sm:p-4">
         {children}
       </div>
     </div>

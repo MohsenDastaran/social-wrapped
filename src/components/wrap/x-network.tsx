@@ -32,14 +32,14 @@ type OverviewSection = {
 
 function OverviewStatCell({ label, value, icon: Icon, accent }: OverviewStat) {
   return (
-    <div className="min-w-0 rounded-xl bg-muted/35 px-3 py-2.5 ring-1 ring-foreground/5">
+    <div className="min-w-0 overflow-visible rounded-xl bg-muted/35 px-3 py-3 ring-1 ring-foreground/5">
       <div className="flex items-center gap-1.5">
         <Icon aria-hidden className={cn("size-3.5 shrink-0", accent)} />
         <p className="min-w-0 truncate text-[0.65rem] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
           {label}
         </p>
       </div>
-      <p className="mt-1 font-heading text-xl font-semibold tracking-tight text-foreground tabular-nums leading-none sm:text-2xl">
+      <p className="mt-1.5 font-heading text-xl font-semibold tracking-tight text-foreground tabular-nums leading-tight sm:text-2xl">
         {value}
       </p>
     </div>
