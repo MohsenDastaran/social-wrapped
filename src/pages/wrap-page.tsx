@@ -23,6 +23,9 @@ import { TikTokActivityInsights } from "@/components/wrap/tiktok-activity"
 import { TikTokEngagement } from "@/components/wrap/tiktok-engagement"
 import { XEngagement } from "@/components/wrap/x-engagement"
 import { XNetworkInsights } from "@/components/wrap/x-network"
+import { WhatsAppAccountInsights } from "@/components/wrap/whatsapp-account"
+import { WhatsAppConnectionsInsights } from "@/components/wrap/whatsapp-connections"
+import { WhatsAppPrivacyInsights } from "@/components/wrap/whatsapp-privacy"
 import { WrapMainAnalytics } from "@/components/wrap/wrap-main-analytics"
 import { WrapShareMedia } from "@/components/wrap/wrap-share-media"
 import { WrapTopContacts } from "@/components/wrap/wrap-top-contacts"
@@ -35,6 +38,7 @@ import { normalizeAppleMusicInsights } from "@/platform/apple-music-types"
 import { normalizeSpotifyInsights } from "@/platform/spotify-types"
 import { normalizeTikTokInsights } from "@/platform/tiktok-types"
 import { normalizeXInsights } from "@/platform/x-types"
+import { normalizeWhatsAppInsights } from "@/platform/whatsapp-types"
 import {
   getWrap,
   wrapChatPath,
@@ -86,8 +90,8 @@ export function WrapPage() {
     return <Navigate to="/history" replace />
   }
 
-  // WhatsApp is a single chat export — account wrap isn't useful.
-  if (wrap.platformId === "whatsapp") {
+  // WhatsApp chat exports skip the account wrap; account reports stay here.
+  if (wrap.platformId === "whatsapp" && !wrap.whatsappInsights) {
     return <Navigate to={wrapEntryPath(wrap)} replace />
   }
 
@@ -102,15 +106,17 @@ export function WrapPage() {
       ? true
       : wrap.platformId === "x" && wrap.xInsights
         ? true
-        : wrap.platformId === "tiktok" && wrap.tiktokInsights
+        : wrap.platformId === "whatsapp" && wrap.whatsappInsights
           ? true
-          : wrap.platformId === "spotify" && wrap.spotifyInsights
+          : wrap.platformId === "tiktok" && wrap.tiktokInsights
             ? true
-            : wrap.platformId === "apple-music" && wrap.appleMusicInsights
+            : wrap.platformId === "spotify" && wrap.spotifyInsights
               ? true
-              : wrap.analytics.chats.length > 0 ||
-                wrap.analytics.account.heatmap.days.length > 0 ||
-                wrap.analytics.account.emojis.topOverall.length > 0
+              : wrap.platformId === "apple-music" && wrap.appleMusicInsights
+                ? true
+                : wrap.analytics.chats.length > 0 ||
+                  wrap.analytics.account.heatmap.days.length > 0 ||
+                  wrap.analytics.account.emojis.topOverall.length > 0
   const igSocial =
     wrap.platformId === "instagram"
       ? normalizeInstagramSocial(wrap.instagramSocial)
@@ -121,6 +127,10 @@ export function WrapPage() {
       : null
   const xInsights =
     wrap.platformId === "x" ? normalizeXInsights(wrap.xInsights) : null
+  const whatsappInsights =
+    wrap.platformId === "whatsapp" && wrap.whatsappInsights
+      ? normalizeWhatsAppInsights(wrap.whatsappInsights)
+      : null
   const tiktokInsights =
     wrap.platformId === "tiktok"
       ? normalizeTikTokInsights(wrap.tiktokInsights)
@@ -187,6 +197,7 @@ export function WrapPage() {
           instagramSocial={igSocial}
           linkedinInsights={liInsights}
           xInsights={xInsights}
+          whatsappInsights={whatsappInsights}
           tiktokInsights={tiktokInsights}
           spotifyInsights={spotifyInsights}
           appleMusicInsights={appleMusicInsights}
@@ -260,6 +271,12 @@ export function WrapPage() {
               <WrapMainAnalytics analytics={wrap.analytics} />
             </>
           ) : null}
+        </>
+      ) : whatsappInsights ? (
+        <>
+          <WhatsAppAccountInsights data={whatsappInsights} />
+          <WhatsAppConnectionsInsights data={whatsappInsights} />
+          <WhatsAppPrivacyInsights data={whatsappInsights} />
         </>
       ) : xInsights ? (
         <>

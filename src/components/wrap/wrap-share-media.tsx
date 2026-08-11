@@ -31,6 +31,7 @@ import type { AppleMusicInsights } from "@/platform/apple-music-types"
 import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
 import type { XInsights } from "@/platform/x-types"
+import type { WhatsAppInsights } from "@/platform/whatsapp-types"
 import { cn } from "@/lib/utils"
 import type { VideoChartSlide } from "@sw-remotion/Composition"
 
@@ -44,6 +45,7 @@ type WrapShareMediaProps = {
   instagramSocial?: InstagramSocialInsights | null
   linkedinInsights?: LinkedInInsights | null
   xInsights?: XInsights | null
+  whatsappInsights?: WhatsAppInsights | null
   tiktokInsights?: TikTokInsights | null
   spotifyInsights?: SpotifyInsights | null
   appleMusicInsights?: AppleMusicInsights | null
@@ -93,6 +95,7 @@ export function WrapShareMedia({
   instagramSocial = null,
   linkedinInsights = null,
   xInsights = null,
+  whatsappInsights = null,
   tiktokInsights = null,
   spotifyInsights = null,
   appleMusicInsights = null,
@@ -106,6 +109,7 @@ export function WrapShareMedia({
         instagramSocial,
         linkedinInsights,
         xInsights,
+        whatsappInsights,
         tiktokInsights,
         spotifyInsights,
         appleMusicInsights,
@@ -117,6 +121,7 @@ export function WrapShareMedia({
       instagramSocial,
       linkedinInsights,
       xInsights,
+      whatsappInsights,
       tiktokInsights,
       spotifyInsights,
       appleMusicInsights,

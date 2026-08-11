@@ -12,6 +12,7 @@ import type { AppleMusicInsights } from "@/platform/apple-music-types"
 import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
 import type { XInsights } from "@/platform/x-types"
+import type { WhatsAppInsights } from "@/platform/whatsapp-types"
 import { getAppSettings } from "@/lib/app-settings"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
 import { analyticsToStats, type TelegramExportStats } from "@/platform/import"
@@ -40,6 +41,8 @@ export type WrapRecord = {
   linkedinInsights?: LinkedInInsights
   /** X (Twitter) tweets / likes / network insights. */
   xInsights?: XInsights
+  /** WhatsApp Account Information report insights. */
+  whatsappInsights?: WhatsAppInsights
   /** TikTok watch / likes / comments / DM insights. */
   tiktokInsights?: TikTokInsights
   /** Spotify listening history insights. */
@@ -105,6 +108,7 @@ type StoredWrap = {
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
   xInsights?: XInsights
+  whatsappInsights?: WhatsAppInsights
   tiktokInsights?: TikTokInsights
   spotifyInsights?: SpotifyInsights
   appleMusicInsights?: AppleMusicInsights
@@ -122,6 +126,7 @@ type LegacyStoredWrap = Partial<WrapRecord> & {
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
   xInsights?: XInsights
+  whatsappInsights?: WhatsAppInsights
   tiktokInsights?: TikTokInsights
   spotifyInsights?: SpotifyInsights
   appleMusicInsights?: AppleMusicInsights
@@ -484,6 +489,7 @@ function normalizeWrap(raw: LegacyStoredWrap): WrapRecord | null {
     ...(raw.googleInsights ? { googleInsights: raw.googleInsights } : {}),
     ...(raw.linkedinInsights ? { linkedinInsights: raw.linkedinInsights } : {}),
     ...(raw.xInsights ? { xInsights: raw.xInsights } : {}),
+    ...(raw.whatsappInsights ? { whatsappInsights: raw.whatsappInsights } : {}),
     ...(raw.tiktokInsights ? { tiktokInsights: raw.tiktokInsights } : {}),
     ...(raw.spotifyInsights ? { spotifyInsights: raw.spotifyInsights } : {}),
     ...(raw.appleMusicInsights
@@ -507,6 +513,7 @@ function toStored(wrap: WrapRecord): StoredWrap {
       ? { linkedinInsights: wrap.linkedinInsights }
       : {}),
     ...(wrap.xInsights ? { xInsights: wrap.xInsights } : {}),
+    ...(wrap.whatsappInsights ? { whatsappInsights: wrap.whatsappInsights } : {}),
     ...(wrap.tiktokInsights ? { tiktokInsights: wrap.tiktokInsights } : {}),
     ...(wrap.spotifyInsights ? { spotifyInsights: wrap.spotifyInsights } : {}),
     ...(wrap.appleMusicInsights
@@ -683,19 +690,25 @@ export function wrapGoogleProductPath(
 
 /**
  * Landing route after import / from History.
- * WhatsApp exports are a single chat, so open the chat analytics page directly.
+ * WhatsApp chat exports open the chat page; account reports stay on `/wrap/:id`.
  */
 export function wrapEntryPath(
   wrap:
-    | Pick<WrapRecord, "id" | "platformId" | "analytics">
+    | Pick<WrapRecord, "id" | "platformId" | "analytics" | "whatsappInsights">
     | Pick<WrapSummary, "id" | "platformId" | "chatId">
 ): string {
   if (wrap.platformId === "whatsapp") {
-    const chatId =
-      "analytics" in wrap
-        ? (wrap.analytics.chats[0]?.chatId ?? 1)
-        : (wrap.chatId ?? 1)
-    return wrapChatPath(wrap.id, chatId)
+    if ("analytics" in wrap) {
+      if (wrap.whatsappInsights || wrap.analytics.chats.length === 0) {
+        return wrapPath(wrap.id)
+      }
+      const chatId = wrap.analytics.chats[0]?.chatId
+      if (chatId != null) return wrapChatPath(wrap.id, chatId)
+      return wrapPath(wrap.id)
+    }
+    // WrapSummary: account wraps have no chatId.
+    if (wrap.chatId == null) return wrapPath(wrap.id)
+    return wrapChatPath(wrap.id, wrap.chatId)
   }
   return wrapPath(wrap.id)
 }
@@ -708,6 +721,7 @@ export async function saveWrap(input: {
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
   xInsights?: XInsights
+  whatsappInsights?: WhatsAppInsights
   tiktokInsights?: TikTokInsights
   spotifyInsights?: SpotifyInsights
   appleMusicInsights?: AppleMusicInsights
@@ -741,6 +755,9 @@ export async function saveWrap(input: {
       ? { linkedinInsights: input.linkedinInsights }
       : {}),
     ...(input.xInsights ? { xInsights: input.xInsights } : {}),
+    ...(input.whatsappInsights
+      ? { whatsappInsights: input.whatsappInsights }
+      : {}),
     ...(input.tiktokInsights ? { tiktokInsights: input.tiktokInsights } : {}),
     ...(input.spotifyInsights ? { spotifyInsights: input.spotifyInsights } : {}),
     ...(input.appleMusicInsights

@@ -77,24 +77,26 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     accentClass: "border-emerald-500/50",
     gradientClass:
       "from-emerald-500/25 via-emerald-400/10 to-transparent dark:from-emerald-400/20 dark:via-emerald-500/5",
-    summary: "Export a chat as a .txt file (with optional media attachments).",
-    exportPath: "Chat → ⋮ / Settings → Export Chat",
-    formats: ".txt (+ optional media)",
+    summary:
+      "Import an Account information report ZIP, or export a single chat as .txt.",
+    exportPath:
+      "Settings → Account → Request account info · or Chat → Export chat",
+    formats: "ZIP",
     extractable:
-      "Timestamped message logs with sender names, system events, and media references.",
+      "Account profile, contacts, groups, privacy settings, and linked devices — or a timestamped chat log with senders.",
     steps: [
-      "Open an individual or group chat.",
-      "Use Export Chat and choose whether to include media.",
-      "Save the .txt, or the ZIP if you included media.",
-      "In Social Wrapped, import that .txt or ZIP from Home → WhatsApp.",
+      "Account report: WhatsApp → Settings → Account → Request account info / Export report → download the ZIP when ready.",
+      "Or export one chat: open a chat → ⋮ / Export chat (with or without media).",
+      "Save the ZIP to your device (do not unzip the account report).",
+      "In Social Wrapped, import that file from Home → WhatsApp.",
     ],
     importHint:
-      "ZIP exports with media work — we read the chat .txt inside and ignore media binaries.",
+      "Account report ZIPs show network & privacy insights. Chat .txt / media ZIPs open messaging analytics for that chat.",
     importTitle: "Import WhatsApp data",
     importDescription:
-      "Upload a WhatsApp chat export (.txt) or a ZIP that includes media. Everything is processed on your device.",
+      "Upload an Account information report ZIP, or a chat export (.txt / ZIP with media). Everything is processed on your device.",
     acceptedFiles: [".zip"],
-    accept: ".txt,.zip,text/plain,application/zip",
+    accept: ".zip,application/zip",
   },
   {
     id: "x",

@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 // Runs the WASM WhatsApp parser off the main thread.
-// Flow: file → preview (need_identity) → identity → analyze → done.
+// Flow: file → preview → (identity for chats | analyze for account report) → done.
 
 import init, {
   analyze_whatsapp_bytes_with_progress,
@@ -31,42 +31,7 @@ async function ensureInit(): Promise<void> {
   ready = true
 }
 
-async function handleFile(file: File): Promise<void> {
-  await ensureInit()
-  pendingBytes = new Uint8Array(await file.arrayBuffer())
-  pendingFileName = file.name
-
-  const previewJson = preview_whatsapp_bytes(pendingBytes, file.name)
-  const preview = JSON.parse(previewJson) as {
-    chatName: string
-    senders: string[]
-    suggestedMe?: string | null
-  }
-
-  if (!preview.senders?.length) {
-    pendingBytes = null
-    pendingFileName = null
-    post({
-      type: "error",
-      message: "No senders found in this WhatsApp export.",
-    })
-    return
-  }
-
-  const suggested = preview.suggestedMe?.trim()
-  if (suggested && preview.senders.includes(suggested)) {
-    await handleIdentity(suggested)
-    return
-  }
-
-  post({
-    type: "need_identity",
-    chatName: preview.chatName ?? "WhatsApp Chat",
-    senders: preview.senders,
-  })
-}
-
-async function handleIdentity(meName: string): Promise<void> {
+async function runAnalyze(meName: string): Promise<void> {
   if (!pendingBytes) {
     post({
       type: "error",
@@ -98,6 +63,48 @@ async function handleIdentity(meName: string): Promise<void> {
   post({ type: "done", analyticsJson })
 }
 
+async function handleFile(file: File): Promise<void> {
+  await ensureInit()
+  pendingBytes = new Uint8Array(await file.arrayBuffer())
+  pendingFileName = file.name
+
+  const previewJson = preview_whatsapp_bytes(pendingBytes, file.name)
+  const preview = JSON.parse(previewJson) as {
+    chatName: string
+    senders: string[]
+    suggestedMe?: string | null
+    isAccountReport?: boolean
+  }
+
+  // Account Information report — no chat senders / identity picker.
+  if (preview.isAccountReport) {
+    await runAnalyze("")
+    return
+  }
+
+  if (!preview.senders?.length) {
+    pendingBytes = null
+    pendingFileName = null
+    post({
+      type: "error",
+      message: "No senders found in this WhatsApp export.",
+    })
+    return
+  }
+
+  const suggested = preview.suggestedMe?.trim()
+  if (suggested && preview.senders.includes(suggested)) {
+    await runAnalyze(suggested)
+    return
+  }
+
+  post({
+    type: "need_identity",
+    chatName: preview.chatName ?? "WhatsApp Chat",
+    senders: preview.senders,
+  })
+}
+
 self.onmessage = async (
   event: MessageEvent<WhatsAppImportWorkerRequest>
 ) => {
@@ -108,7 +115,7 @@ self.onmessage = async (
       return
     }
     if (message.type === "identity") {
-      await handleIdentity(message.meName)
+      await runAnalyze(message.meName)
       return
     }
     post({ type: "error", message: "Unknown worker request." })

@@ -18,6 +18,7 @@ import {
 import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
 import type { XInsights } from "@/platform/x-types"
+import type { WhatsAppInsights } from "@/platform/whatsapp-types"
 
 export type PlatformStoryCatalog = {
   storySpecs: WrapStorySpec[]
@@ -32,6 +33,7 @@ export type StoryCatalogInput = {
   instagramSocial?: InstagramSocialInsights | null
   linkedinInsights?: LinkedInInsights | null
   xInsights?: XInsights | null
+  whatsappInsights?: WhatsAppInsights | null
   tiktokInsights?: TikTokInsights | null
   spotifyInsights?: SpotifyInsights | null
   appleMusicInsights?: AppleMusicInsights | null
@@ -71,6 +73,11 @@ const X_VIDEO_IDS = [
   "x-tweet-word-cloud",
   "activity",
   "sent-received",
+] as const
+
+const WHATSAPP_ACCOUNT_VIDEO_IDS = [
+  "wa-overview",
+  "wa-connections",
 ] as const
 
 /** Messaging slides that X tweet charts replace. */
@@ -273,6 +280,47 @@ export function buildXStorySpecs(insights: XInsights): WrapStorySpec[] {
   return specs
 }
 
+/** WhatsApp Account Information report slides. */
+export function buildWhatsAppStorySpecs(
+  insights: WhatsAppInsights
+): WrapStorySpec[] {
+  const specs: WrapStorySpec[] = []
+
+  const hasOverview =
+    insights.contactCount > 0 ||
+    insights.groupCount > 0 ||
+    insights.blockedCount > 0 ||
+    insights.deviceCount > 0
+
+  if (hasOverview) {
+    const username = insights.profile.username?.trim()
+    const phone = insights.profile.phone?.trim()
+    specs.push({
+      id: "wa-overview",
+      exportName: "wa-overview-kpis",
+      heading: "Your WhatsApp year",
+      subtext: [
+        username ? `@${username}` : phone,
+        `${fmt(insights.contactCount)} contacts`,
+        `${fmt(insights.groupCount)} groups`,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    })
+  }
+
+  if (insights.contacts.length > 0 || insights.groups.length > 0) {
+    specs.push({
+      id: "wa-connections",
+      exportName: "wa-connections-list",
+      heading: "Your connections",
+      subtext: `${fmt(insights.contactCount)} contacts · ${fmt(insights.groupCount)} groups`,
+    })
+  }
+
+  return specs
+}
+
 /** TikTok activity slides (gated on data). */
 export function buildTikTokStorySpecs(
   insights: TikTokInsights
@@ -355,6 +403,14 @@ export function buildPlatformStoryCatalog(
     return {
       storySpecs,
       videoSlideIds: pickVideoIds(X_VIDEO_IDS, storySpecs),
+    }
+  }
+
+  if (input.platformId === "whatsapp" && input.whatsappInsights) {
+    const wa = buildWhatsAppStorySpecs(input.whatsappInsights)
+    return {
+      storySpecs: wa,
+      videoSlideIds: pickVideoIds(WHATSAPP_ACCOUNT_VIDEO_IDS, wa),
     }
   }
 

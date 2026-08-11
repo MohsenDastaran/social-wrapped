@@ -9,6 +9,10 @@ import type { AppleMusicInsights } from "@/platform/apple-music-types"
 import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
 import { normalizeXInsights, type XInsights } from "@/platform/x-types"
+import {
+  normalizeWhatsAppInsights,
+  type WhatsAppInsights,
+} from "@/platform/whatsapp-types"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
 
 export type { WrapAnalytics, InstagramSocialInsights } from "@/platform/analytics-types"
@@ -18,8 +22,9 @@ export type { AppleMusicInsights } from "@/platform/apple-music-types"
 export type { SpotifyInsights } from "@/platform/spotify-types"
 export type { TikTokInsights } from "@/platform/tiktok-types"
 export type { XInsights } from "@/platform/x-types"
+export type { WhatsAppInsights } from "@/platform/whatsapp-types"
 
-/** Result of a platform import pass (side insights for IG / Google / LinkedIn / X / TikTok / Spotify). */
+/** Result of a platform import pass (side insights for IG / Google / LinkedIn / X / TikTok / Spotify / WA account). */
 export type ImportResult = {
   analytics: WrapAnalytics
   instagramSocial?: InstagramSocialInsights
@@ -29,6 +34,7 @@ export type ImportResult = {
   tiktokInsights?: TikTokInsights
   spotifyInsights?: SpotifyInsights
   appleMusicInsights?: AppleMusicInsights
+  whatsappInsights?: WhatsAppInsights
 }
 export type {
   AnalyticsResult,
@@ -166,7 +172,9 @@ function validateFile(platform: PlatformConfig, file: File): void {
 
   if (platform.id === "whatsapp") {
     if (!lower.endsWith(".txt") && !lower.endsWith(".zip")) {
-      throw new Error("Please choose a WhatsApp chat export (.txt or .zip).")
+      throw new Error(
+        "Please choose a WhatsApp chat export (.txt or .zip) or an Account information report ZIP."
+      )
     }
     return
   }
@@ -299,17 +307,35 @@ function importTelegramFile(
   })
 }
 
+function parseWhatsAppAnalyzeJson(analyticsJson: string): ImportResult {
+  const payload = JSON.parse(analyticsJson) as {
+    analytics?: WrapAnalytics
+    whatsappInsights?: WhatsAppInsights
+  }
+
+  // Chat path historically returned bare WrapAnalytics; accept both shapes.
+  if (payload.analytics?.account) {
+    return {
+      analytics: normalizeAnalytics(payload.analytics),
+      whatsappInsights: payload.whatsappInsights
+        ? normalizeWhatsAppInsights(payload.whatsappInsights)
+        : undefined,
+    }
+  }
+
+  const bare = payload as unknown as WrapAnalytics
+  if (bare?.account) {
+    return { analytics: normalizeAnalytics(bare) }
+  }
+
+  throw new Error("WhatsApp import returned incomplete analytics.")
+}
+
 function importWhatsAppFile(
   file: File,
   onProgress?: (progress: ImportProgress) => void,
   onNeedIdentity?: NeedIdentityHandler
 ): Promise<ImportResult> {
-  if (!onNeedIdentity) {
-    return Promise.reject(
-      new Error("WhatsApp import requires choosing which sender is you.")
-    )
-  }
-
   return new Promise((resolve, reject) => {
     const worker = new Worker(
       new URL("../workers/whatsapp-import.worker.ts", import.meta.url),
@@ -325,11 +351,11 @@ function importWhatsAppFile(
       reject(error)
     }
 
-    const succeed = (analytics: WrapAnalytics) => {
+    const succeed = (result: ImportResult) => {
       if (settled) return
       settled = true
       worker.terminate()
-      resolve({ analytics: normalizeAnalytics(analytics) })
+      resolve(result)
     }
 
     worker.onmessage = (event: MessageEvent<ImportWorkerResponse>) => {
@@ -350,6 +376,14 @@ function importWhatsAppFile(
       }
 
       if (message.type === "need_identity") {
+        if (!onNeedIdentity) {
+          fail(
+            new Error(
+              "WhatsApp chat import requires choosing which sender is you."
+            )
+          )
+          return
+        }
         void onNeedIdentity(message.senders, message.chatName)
           .then((meName) => {
             if (settled) return
@@ -369,8 +403,15 @@ function importWhatsAppFile(
       }
 
       if (message.type === "done") {
-        const analytics = JSON.parse(message.analyticsJson) as WrapAnalytics
-        succeed(analytics)
+        try {
+          succeed(parseWhatsAppAnalyzeJson(message.analyticsJson))
+        } catch (error) {
+          fail(
+            error instanceof Error
+              ? error
+              : new Error("WhatsApp import returned invalid analytics.")
+          )
+        }
         return
       }
 

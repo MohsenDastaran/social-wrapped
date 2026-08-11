@@ -111,7 +111,7 @@ pub fn analyze_telegram_bytes_with_progress(
 }
 
 /// Scan a WhatsApp `.txt` / ZIP export and return preview JSON
-/// (`chatName`, `senders`, `messageCount`, `fileSizeBytes`).
+/// (`chatName`, `senders`, `messageCount`, `fileSizeBytes`, `isAccountReport?`).
 #[wasm_bindgen]
 pub fn preview_whatsapp_bytes(
     data: &[u8],
@@ -122,9 +122,11 @@ pub fn preview_whatsapp_bytes(
         .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
-/// Full WhatsApp analytics pass after the user picks their sender name.
+/// Full WhatsApp analytics pass (chat or Account Information report).
 ///
-/// Invokes `on_progress(phase, current, total)` with `"reading"` | `"computing"`.
+/// Returns JSON `{ analytics, whatsappInsights? }`. Account reports skip
+/// identity (`me_name` may be empty). Invokes `on_progress` with
+/// `"reading"` | `"computing"`.
 #[wasm_bindgen]
 pub fn analyze_whatsapp_bytes_with_progress(
     data: &[u8],
@@ -145,9 +147,7 @@ pub fn analyze_whatsapp_bytes_with_progress(
             );
         },
     )
-    .and_then(|analytics| {
-        serde_json::to_string(&analytics).map_err(app_core::CoreError::from)
-    })
+    .and_then(|result| result.to_json())
     .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
