@@ -78,23 +78,23 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     gradientClass:
       "from-emerald-500/25 via-emerald-400/10 to-transparent dark:from-emerald-400/20 dark:via-emerald-500/5",
     summary:
-      "Import an Account information report ZIP, or export a single chat as .txt.",
+      "Account report ZIP for profile & connections, or a chat export for full messaging analytics.",
     exportPath:
-      "Settings → Account → Request account info · or Chat → Export chat",
+      "Chat → Export chat or Settings → Account → Request account info",
     formats: "ZIP",
     extractable:
-      "Account profile, contacts, groups, privacy settings, and linked devices — or a timestamped chat log with senders.",
+      "Account profile, contacts, groups, privacy, and devices — or detailed per-chat messaging analytics (heatmaps, word clouds, send/receive stats).",
     steps: [
       "Account report: WhatsApp → Settings → Account → Request account info / Export report → download the ZIP when ready.",
-      "Or export one chat: open a chat → ⋮ / Export chat (with or without media).",
+      "For richer analytics, export one chat: open a chat → ⋮ / Export chat (with or without media). Chat imports include full messaging breakdowns.",
       "Save the ZIP to your device (do not unzip the account report).",
       "In Social Wrapped, import that file from Home → WhatsApp.",
     ],
     importHint:
-      "Account report ZIPs show network & privacy insights. Chat .txt / media ZIPs open messaging analytics for that chat.",
+      "Account report ZIPs show network & privacy insights. Chat exports go deeper — heatmaps, word clouds, and per-message stats for that conversation.",
     importTitle: "Import WhatsApp data",
     importDescription:
-      "Upload an Account information report ZIP, or a chat export (.txt / ZIP with media). Everything is processed on your device.",
+      "Upload an Account information report ZIP for profile & connections, or a chat export (.txt / ZIP) for detailed messaging analytics. Everything is processed on your device.",
     acceptedFiles: [".zip"],
     accept: ".zip,application/zip",
   },

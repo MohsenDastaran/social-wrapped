@@ -52,9 +52,9 @@ export const PLATFORM_IMPORT_DOCS: Partial<
   whatsapp: {
     title: "Export WhatsApp account info or a chat",
     paragraphs: [
-      "Social Wrapped supports two WhatsApp exports. Prefer the Account information report for contacts, groups, privacy, and devices. Use a chat export when you want messaging analytics for one conversation.",
+      "Social Wrapped supports two WhatsApp exports. The Account information report covers profile, contacts, groups, privacy, and devices. A chat export goes further — it unlocks detailed messaging analytics for one conversation.",
       "Account report: open WhatsApp → Settings → Account → Request account info (wording may say Export your account information or similar). Choose to receive a report, wait for the notification, then download the ZIP. Import that ZIP here without unzipping.",
-      "Chat export: open an individual or group chat → Menu (⋮) → More → Export chat. Choose whether to include media. Import the .txt, or the ZIP if you included media — Social Wrapped reads the chat text and skips media binaries.",
+      "Chat export (more detail): open an individual or group chat → Menu (⋮) → More → Export chat. Choose whether to include media. Import the ZIP if you included media. Chat imports include heatmaps, word clouds, send/receive stats, and per-message breakdowns — Social Wrapped reads the chat text and skips media binaries.",
       "Account reports do not include message history. Chat exports do not include your full contact list or privacy settings.",
     ],
     officialExportUrl: "https://faq.whatsapp.com/1180414079177245",
