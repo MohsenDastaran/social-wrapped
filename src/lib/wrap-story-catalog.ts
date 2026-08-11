@@ -333,11 +333,7 @@ export function buildTikTokStorySpecs(
       exportName: "tiktok-network-kpis",
       heading: "Your TikTok year",
       subtext: `${fmt(insights.watchCount)} watches · ${fmt(insights.likeCount)} likes`,
-      kpis: [
-        { label: "Watches", value: fmt(insights.watchCount) },
-        { label: "Likes", value: fmt(insights.likeCount) },
-        { label: "Comments", value: fmt(insights.commentCount) },
-      ],
+      // KPIs live in the captured card — no duplicate strip at the bottom.
     })
   }
 
@@ -351,11 +347,7 @@ export function buildTikTokStorySpecs(
       exportName: "tiktok-engage-kpis",
       heading: "Saved & chats",
       subtext: `${fmt(insights.favouriteVideoCount)} favorites · ${fmt(insights.dmThreadCount)} DM threads`,
-      kpis: [
-        { label: "Favorites", value: fmt(insights.favouriteVideoCount) },
-        { label: "DM threads", value: fmt(insights.dmThreadCount) },
-        { label: "DM msgs", value: fmt(insights.dmMessageCount) },
-      ],
+      // KPIs live in the captured card — no duplicate strip at the bottom.
     })
   }
 

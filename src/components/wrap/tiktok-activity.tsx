@@ -1,8 +1,16 @@
 import { fmt } from "@/components/wrap/chart-theme"
+import { OverviewKpiPanel } from "@/components/wrap/overview-kpi-panel"
 import { StoryExportHost } from "@/components/wrap/story-export-host"
-import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import type { TikTokInsights } from "@/platform/tiktok-types"
-import { Heart, MessageCircle, Play, Star, Users } from "lucide-react"
+import {
+  Heart,
+  MessageCircle,
+  MessagesSquare,
+  Play,
+  Star,
+  UserPlus,
+  Users,
+} from "lucide-react"
 
 type TikTokActivityInsightsProps = {
   data: TikTokInsights
@@ -29,62 +37,76 @@ export function TikTokActivityInsights({ data }: TikTokActivityInsightsProps) {
         </p>
       </header>
 
-      <StoryExportHost exportName="tiktok-network-kpis">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          <WrapKpi
-            label="Followers"
-            value={fmt(data.profile.followerCount)}
-            icon={Users}
-            accent="sky"
-          />
-          <WrapKpi
-            label="Following"
-            value={fmt(data.profile.followingCount)}
-            icon={Users}
-            accent="teal"
-          />
-          <WrapKpi
-            label="Watches"
-            value={fmt(data.watchCount)}
-            icon={Play}
-            accent="violet"
-          />
-          <WrapKpi
-            label="Likes"
-            value={fmt(data.likeCount)}
-            icon={Heart}
-            accent="amber"
-          />
-        </div>
+      <StoryExportHost exportName="tiktok-network-kpis" storyCaptureWidth={560}>
+        <OverviewKpiPanel
+          sections={[
+            {
+              title: "Your profile",
+              stats: [
+                {
+                  label: "Followers",
+                  value: fmt(data.profile.followerCount),
+                  icon: Users,
+                  accent: "text-sky-600 dark:text-sky-400",
+                },
+                {
+                  label: "Following",
+                  value: fmt(data.profile.followingCount),
+                  icon: UserPlus,
+                  accent: "text-teal-600 dark:text-teal-400",
+                },
+                {
+                  label: "Watches",
+                  value: fmt(data.watchCount),
+                  icon: Play,
+                  accent: "text-violet-600 dark:text-violet-400",
+                },
+                {
+                  label: "Likes",
+                  value: fmt(data.likeCount),
+                  icon: Heart,
+                  accent: "text-rose-600 dark:text-rose-400",
+                },
+              ],
+            },
+          ]}
+        />
       </StoryExportHost>
 
-      <StoryExportHost exportName="tiktok-engage-kpis">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          <WrapKpi
-            label="Favorite videos"
-            value={fmt(data.favouriteVideoCount)}
-            icon={Star}
-            accent="amber"
-          />
-          <WrapKpi
-            label="Comments"
-            value={fmt(data.commentCount)}
-            icon={MessageCircle}
-            accent="sky"
-          />
-          <WrapKpi
-            label="DM threads"
-            value={fmt(data.dmThreadCount)}
-            icon={MessageCircle}
-            accent="teal"
-          />
-          <WrapKpi
-            label="DM messages"
-            value={fmt(data.dmMessageCount)}
-            icon={MessageCircle}
-            accent="emerald"
-          />
-        </div>
+      <StoryExportHost exportName="tiktok-engage-kpis" storyCaptureWidth={560}>
+        <OverviewKpiPanel
+          sections={[
+            {
+              title: "Saved & chats",
+              stats: [
+                {
+                  label: "Favorite videos",
+                  value: fmt(data.favouriteVideoCount),
+                  icon: Star,
+                  accent: "text-amber-600 dark:text-amber-400",
+                },
+                {
+                  label: "Comments",
+                  value: fmt(data.commentCount),
+                  icon: MessageCircle,
+                  accent: "text-sky-600 dark:text-sky-400",
+                },
+                {
+                  label: "DM threads",
+                  value: fmt(data.dmThreadCount),
+                  icon: MessagesSquare,
+                  accent: "text-teal-600 dark:text-teal-400",
+                },
+                {
+                  label: "DM messages",
+                  value: fmt(data.dmMessageCount),
+                  icon: MessagesSquare,
+                  accent: "text-emerald-600 dark:text-emerald-400",
+                },
+              ],
+            },
+          ]}
+        />
       </StoryExportHost>
     </section>
   )
