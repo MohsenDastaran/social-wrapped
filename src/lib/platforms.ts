@@ -300,3 +300,8 @@ export function getPlatform(
 export function platformImportPath(id: PlatformId): string {
   return `/import/${id}`
 }
+
+/** Shared element name for home ↔ import logo morphs. */
+export function platformLogoViewTransitionName(id: PlatformId): string {
+  return `platform-logo-${id}`
+}

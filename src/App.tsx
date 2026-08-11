@@ -1,4 +1,8 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router"
+import {
+  Navigate,
+  RouterProvider,
+  createBrowserRouter,
+} from "react-router"
 
 import { AppLayout } from "@/components/app-layout"
 import { AboutPage } from "@/pages/about-page"
@@ -11,29 +15,34 @@ import { WrapChatPage } from "@/pages/wrap-chat-page"
 import { WrapGoogleProductPage } from "@/pages/wrap-google-product-page"
 import { WrapPage } from "@/pages/wrap-page"
 
+/**
+ * Data router is required for `Link viewTransition` / named shared-element
+ * morphs (`document.startViewTransition`). BrowserRouter ignores that prop.
+ */
+const router = createBrowserRouter([
+  {
+    element: <AppLayout />,
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: "import/:platformId", element: <ImportPage /> },
+      { path: "wrap/:wrapId", element: <WrapPage /> },
+      { path: "wrap/:wrapId/chat/:chatId", element: <WrapChatPage /> },
+      {
+        path: "wrap/:wrapId/google/:productId",
+        element: <WrapGoogleProductPage />,
+      },
+      { path: "docs", element: <Navigate to="/privacy" replace /> },
+      { path: "history", element: <HistoryPage /> },
+      { path: "settings", element: <SettingsPage /> },
+      { path: "privacy", element: <PrivacyPage /> },
+      { path: "about", element: <AboutPage /> },
+      { path: "*", element: <Navigate to="/" replace /> },
+    ],
+  },
+])
+
 export function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route index element={<HomePage />} />
-          <Route path="import/:platformId" element={<ImportPage />} />
-          <Route path="wrap/:wrapId" element={<WrapPage />} />
-          <Route path="wrap/:wrapId/chat/:chatId" element={<WrapChatPage />} />
-          <Route
-            path="wrap/:wrapId/google/:productId"
-            element={<WrapGoogleProductPage />}
-          />
-          <Route path="docs" element={<Navigate to="/privacy" replace />} />
-          <Route path="history" element={<HistoryPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="privacy" element={<PrivacyPage />} />
-          <Route path="about" element={<AboutPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
-  )
+  return <RouterProvider router={router} />
 }
 
 export default App

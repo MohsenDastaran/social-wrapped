@@ -14,7 +14,10 @@ import { PlatformImportHelpDialog } from "@/components/platform-import-help-dial
 import { PlatformLogo } from "@/components/platform-logo"
 import { WhatsAppIdentityPicker } from "@/components/whatsapp-identity-picker"
 import { Button } from "@/components/ui/button"
-import { type PlatformConfig } from "@/lib/platforms"
+import {
+  platformLogoViewTransitionName,
+  type PlatformConfig,
+} from "@/lib/platforms"
 import { cn } from "@/lib/utils"
 import { saveWrap, wrapEntryPath } from "@/lib/wrap-history"
 import { formatInvokeError } from "@/platform/api"
@@ -262,7 +265,7 @@ export function PlatformImportView({
             variant="ghost"
             size="default"
             className="text-muted-foreground"
-            render={<Link to="/" />}
+            render={<Link to="/" viewTransition />}
             nativeButton={false}
           >
             <ArrowLeft data-icon="inline-start" />
@@ -285,8 +288,11 @@ export function PlatformImportView({
 
         <header className="mb-8 flex flex-col items-center text-center">
           <span
+            style={{
+              viewTransitionName: platformLogoViewTransitionName(platform.id),
+            }}
             className={cn(
-              "mb-4 flex size-20 items-center justify-center rounded-[1.35rem] shadow-sm ring-1 ring-inset",
+              "mb-5 flex size-28 items-center justify-center rounded-[1.75rem] shadow-sm ring-1 ring-inset sm:size-32 sm:rounded-[2rem]",
               "bg-linear-to-br from-background to-muted/80",
               platform.accentClass
             )}
@@ -294,7 +300,7 @@ export function PlatformImportView({
             <PlatformLogo
               id={platform.id}
               title={platform.name}
-              className="size-11 drop-shadow-sm"
+              className="size-16 drop-shadow-sm sm:size-18"
             />
           </span>
           <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">

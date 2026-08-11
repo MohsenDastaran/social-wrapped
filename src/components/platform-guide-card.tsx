@@ -3,14 +3,11 @@ import { Link } from "react-router"
 
 import { PlatformCardFace } from "@/components/platform-card-face"
 import { PlatformLogo } from "@/components/platform-logo"
-import {
-  Card,
-  CardDescription,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardDescription, CardTitle } from "@/components/ui/card"
 import {
   isPlatformEnabled,
   platformImportPath,
+  platformLogoViewTransitionName,
   type PlatformConfig,
 } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
@@ -32,6 +29,7 @@ export function PlatformImportCard({
   className,
 }: PlatformImportCardProps) {
   const disabled = !isPlatformEnabled(platform.id)
+  const importPath = platformImportPath(platform.id)
   const cardDescription =
     description ?? `Ready for ${platform.acceptedFiles.join(" or ")} exports.`
 
@@ -50,7 +48,8 @@ export function PlatformImportCard({
 
     return (
       <Link
-        to={platformImportPath(platform.id)}
+        to={importPath}
+        viewTransition
         className={cn(
           "group/platform block w-full text-start outline-none",
           "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -68,11 +67,11 @@ export function PlatformImportCard({
   const featuredCard = (
     <Card
       className={cn(
-        "group/home-card relative overflow-hidden bg-card p-0 shadow-[0_12px_40px_-24px] shadow-foreground/35 ring-1",
+        "group/home-card relative overflow-hidden bg-card p-0 shadow-[0_12px_40px_-24px] ring-1 shadow-foreground/35",
         platform.accentClass,
         disabled
           ? "cursor-not-allowed opacity-55 saturate-50"
-          : "transition-[box-shadow,transform,border-color] duration-500 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-22px] hover:shadow-foreground/40",
+          : "transition-[box-shadow,border-color] duration-500 hover:shadow-[0_18px_36px_-22px] hover:shadow-foreground/40",
         className
       )}
     >
@@ -83,23 +82,34 @@ export function PlatformImportCard({
         )}
       />
       <div className="pointer-events-none absolute -inset-e-10 -top-12 size-36 rounded-full bg-white/40 blur-2xl dark:bg-white/10" />
-      <div className="pointer-events-none absolute -bottom-16 -inset-s-8 size-32 rounded-full bg-foreground/5 blur-2xl" />
+      <div className="pointer-events-none absolute -inset-s-8 -bottom-16 size-32 rounded-full bg-foreground/5 blur-2xl" />
 
       <div className="relative flex flex-col gap-3 p-4">
         <div className="flex items-center justify-between gap-3">
-          <span className="flex size-11 items-center justify-center rounded-xl bg-background/90 shadow-sm ring-1 ring-foreground/10 transition-transform duration-500 group-hover/home-card:-rotate-6 group-hover/home-card:scale-105">
-            <PlatformLogo
-              id={platform.id}
-              title={platform.name}
-              className="size-6 drop-shadow-sm"
-            />
+          {/*
+            Unique view-transition-name on a non-transformed box so home ↔
+            import can morph. Hover scale/rotate stays on an inner wrapper.
+          */}
+          <span
+            style={{
+              viewTransitionName: platformLogoViewTransitionName(platform.id),
+            }}
+            className="flex size-11 items-center justify-center rounded-xl bg-background/90 shadow-sm ring-1 ring-foreground/10"
+          >
+            <span className="flex size-full items-center justify-center transition-transform duration-500 group-hover/home-card:scale-105 group-hover/home-card:-rotate-6">
+              <PlatformLogo
+                id={platform.id}
+                title={platform.name}
+                className="size-6 drop-shadow-sm"
+              />
+            </span>
           </span>
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] shadow-sm",
+              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.65rem] font-bold tracking-[0.16em] uppercase shadow-sm",
               disabled
                 ? "bg-muted text-muted-foreground ring-1 ring-border"
-                : "bg-primary text-primary-foreground shadow-primary/35 ring-1 ring-primary/50"
+                : "bg-primary text-primary-foreground ring-1 shadow-primary/35 ring-primary/50"
             )}
           >
             {disabled ? (
@@ -155,7 +165,8 @@ export function PlatformImportCard({
 
   return (
     <Link
-      to={platformImportPath(platform.id)}
+      to={importPath}
+      viewTransition
       className={cn(
         "group/home-card block w-full text-start outline-none",
         "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"

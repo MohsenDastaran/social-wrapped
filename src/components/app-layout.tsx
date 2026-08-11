@@ -13,7 +13,8 @@ function ScrollToTop() {
   const { pathname } = useLocation()
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "smooth" })
+    // Instant jump — smooth scroll fights view-transition morphs.
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" })
   }, [pathname])
 
   return null
