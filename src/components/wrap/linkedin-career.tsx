@@ -1,6 +1,6 @@
 import { fmt } from "@/components/wrap/chart-theme"
+import { OverviewKpiPanel } from "@/components/wrap/overview-kpi-panel"
 import { StoryExportHost } from "@/components/wrap/story-export-host"
-import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import type { LinkedInInsights } from "@/platform/linkedin-types"
 import { listScrollMaxClass } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
@@ -37,35 +37,43 @@ export function LinkedInCareerInsights({ data }: LinkedInCareerInsightsProps) {
         </p>
       </header>
 
-      <StoryExportHost exportName="li-career-kpis">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          <WrapKpi
-            label="Job apps"
-            value={fmt(data.jobApplicationCount)}
-            icon={Briefcase}
-            accent="sky"
-          />
-          <WrapKpi
-            label="Endorsements in"
-            value={fmt(data.endorsementReceivedCount)}
-            icon={Award}
-            accent="amber"
-          />
-          <WrapKpi
-            label="Endorsements out"
-            value={fmt(data.endorsementGivenCount)}
-            icon={Sparkles}
-            accent="teal"
-          />
-          <WrapKpi
-            label="Recommendations"
-            value={fmt(
-              data.recommendationsGivenCount + data.recommendationsReceivedCount
-            )}
-            icon={GraduationCap}
-            accent="emerald"
-          />
-        </div>
+      <StoryExportHost exportName="li-career-kpis" storyCaptureWidth={560}>
+        <OverviewKpiPanel
+          sections={[
+            {
+              title: "Career",
+              stats: [
+                {
+                  label: "Job apps",
+                  value: fmt(data.jobApplicationCount),
+                  icon: Briefcase,
+                  accent: "text-sky-600 dark:text-sky-400",
+                },
+                {
+                  label: "Endorsements in",
+                  value: fmt(data.endorsementReceivedCount),
+                  icon: Award,
+                  accent: "text-amber-600 dark:text-amber-400",
+                },
+                {
+                  label: "Endorsements out",
+                  value: fmt(data.endorsementGivenCount),
+                  icon: Sparkles,
+                  accent: "text-teal-600 dark:text-teal-400",
+                },
+                {
+                  label: "Recommendations",
+                  value: fmt(
+                    data.recommendationsGivenCount +
+                      data.recommendationsReceivedCount
+                  ),
+                  icon: GraduationCap,
+                  accent: "text-emerald-600 dark:text-emerald-400",
+                },
+              ],
+            },
+          ]}
+        />
       </StoryExportHost>
 
       {data.positions.length > 0 ? (

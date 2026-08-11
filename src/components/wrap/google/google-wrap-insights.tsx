@@ -6,7 +6,7 @@ import {
 import { GoogleProductDetail } from "@/components/wrap/google/google-product-detail"
 import { GoogleProductLogo } from "@/components/wrap/google/google-product-logo"
 import { YouTubeSection } from "@/components/wrap/google/youtube-section"
-import { WrapKpi } from "@/components/wrap/wrap-kpi"
+import { OverviewKpiPanel } from "@/components/wrap/overview-kpi-panel"
 import { fmt } from "@/components/wrap/chart-theme"
 import type { GoogleInsights } from "@/platform/google-types"
 import { cn } from "@/lib/utils"
@@ -57,22 +57,30 @@ export function GoogleWrapInsights({
           </p>
         </header>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-          <WrapKpi
-            label="Products"
-            value={fmt(productCount)}
-            icon={Layers}
-            accent="sky"
-          />
-          {skipped.length > 0 ? (
-            <WrapKpi
-              label="Skipped"
-              value={fmt(skipped.length)}
-              icon={SkipForward}
-              accent="amber"
-            />
-          ) : null}
-        </div>
+        <OverviewKpiPanel
+          sections={[
+            {
+              stats: [
+                {
+                  label: "Products",
+                  value: fmt(productCount),
+                  icon: Layers,
+                  accent: "text-sky-600 dark:text-sky-400",
+                },
+                ...(skipped.length > 0
+                  ? [
+                      {
+                        label: "Skipped",
+                        value: fmt(skipped.length),
+                        icon: SkipForward,
+                        accent: "text-amber-600 dark:text-amber-400",
+                      },
+                    ]
+                  : []),
+              ],
+            },
+          ]}
+        />
 
         {skipped.length > 0 ? (
           <ul className="space-y-1 text-sm text-muted-foreground">

@@ -1,6 +1,6 @@
 import { fmt } from "@/components/wrap/chart-theme"
+import { OverviewKpiPanel } from "@/components/wrap/overview-kpi-panel"
 import { StoryExportHost } from "@/components/wrap/story-export-host"
-import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import type {
   IgCountedHandle,
   IgHandle,
@@ -73,39 +73,46 @@ export function InstagramSocialInsights({
         </h2>
       </header>
 
-      <StoryExportHost exportName="ig-network-kpis">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-          <WrapKpi
-            label="Followers"
-            value={hasNetwork ? fmt(data.followerCount) : "—"}
-            icon={Users}
-            accent="teal"
-          />
-          <WrapKpi
-            label="Following"
-            value={hasNetwork ? fmt(data.followingCount) : "—"}
-            icon={UserPlus}
-            accent="sky"
-          />
-          <WrapKpi
-            label="Unfollowed recently"
-            value={hasNetwork ? fmt(data.unfollowedRecentlyCount) : "—"}
-            icon={UserRoundMinus}
-            accent="amber"
-          />
-          <WrapKpi
-            label="Blocked"
-            value={fmt(data.blockedCount ?? 0)}
-            icon={ShieldBan}
-            accent="amber"
-          />
-          <WrapKpi
-            label="Close friends"
-            value={fmt(data.closeFriendsCount ?? 0)}
-            icon={Star}
-            accent="violet"
-          />
-        </div>
+      <StoryExportHost exportName="ig-network-kpis" storyCaptureWidth={560}>
+        <OverviewKpiPanel
+          sections={[
+            {
+              title: "Your network",
+              stats: [
+                {
+                  label: "Followers",
+                  value: hasNetwork ? fmt(data.followerCount) : "—",
+                  icon: Users,
+                  accent: "text-teal-600 dark:text-teal-400",
+                },
+                {
+                  label: "Following",
+                  value: hasNetwork ? fmt(data.followingCount) : "—",
+                  icon: UserPlus,
+                  accent: "text-sky-600 dark:text-sky-400",
+                },
+                {
+                  label: "Unfollowed",
+                  value: hasNetwork ? fmt(data.unfollowedRecentlyCount) : "—",
+                  icon: UserRoundMinus,
+                  accent: "text-amber-600 dark:text-amber-400",
+                },
+                {
+                  label: "Blocked",
+                  value: fmt(data.blockedCount ?? 0),
+                  icon: ShieldBan,
+                  accent: "text-amber-600 dark:text-amber-400",
+                },
+                {
+                  label: "Close friends",
+                  value: fmt(data.closeFriendsCount ?? 0),
+                  icon: Star,
+                  accent: "text-violet-600 dark:text-violet-400",
+                },
+              ],
+            },
+          ]}
+        />
       </StoryExportHost>
 
       {hasLists ? (

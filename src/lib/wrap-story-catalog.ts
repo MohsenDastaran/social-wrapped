@@ -122,16 +122,7 @@ export function buildInstagramStorySpecs(
       exportName: "ig-network-kpis",
       heading: "Your network",
       subtext: `${fmt(social.followerCount)} followers · ${fmt(social.followingCount)} following · ${fmt(social.blockedCount ?? 0)} blocked`,
-      kpis: [
-        { label: "Followers", value: fmt(social.followerCount) },
-        { label: "Following", value: fmt(social.followingCount) },
-        {
-          label: "Unfollowed",
-          value: fmt(social.unfollowedRecentlyCount),
-        },
-        { label: "Blocked", value: fmt(social.blockedCount ?? 0) },
-        { label: "Close friends", value: fmt(social.closeFriendsCount ?? 0) },
-      ],
+      // KPIs live in the captured card — no duplicate strip at the bottom.
     })
   }
 
@@ -195,12 +186,8 @@ export function buildLinkedInStorySpecs(
       id: "li-network",
       exportName: "li-network-kpis",
       heading: "Your network",
-      subtext: `${fmt(insights.connectionCount)} connections`,
-      kpis: [
-        { label: "Connections", value: fmt(insights.connectionCount) },
-        { label: "Invites out", value: fmt(insights.invitationOutgoing) },
-        { label: "Reactions", value: fmt(insights.reactionsCount) },
-      ],
+      subtext: `${fmt(insights.connectionCount)} connections · ${fmt(insights.invitationOutgoing)} invites sent`,
+      // KPIs live in the captured card — no duplicate strip at the bottom.
     })
   }
 
@@ -213,14 +200,7 @@ export function buildLinkedInStorySpecs(
         insights.jobApplicationCount > 0
           ? `${fmt(insights.jobApplicationCount)} job applications`
           : `${fmt(insights.positions.length)} positions on your profile`,
-      kpis: [
-        { label: "Job apps", value: fmt(insights.jobApplicationCount) },
-        {
-          label: "Endorsements",
-          value: fmt(insights.endorsementReceivedCount),
-        },
-        { label: "Skills", value: fmt(insights.skills.length) },
-      ],
+      // KPIs live in the captured card — no duplicate strip at the bottom.
     })
   }
 

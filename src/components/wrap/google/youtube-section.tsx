@@ -5,8 +5,8 @@ import {
   peakHourLabel,
 } from "@/components/wrap/charts/circadian-polar-chart"
 import { CountedRankList } from "@/components/wrap/google/counted-rank-list"
+import { OverviewKpiPanel } from "@/components/wrap/overview-kpi-panel"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
-import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { fmt } from "@/components/wrap/chart-theme"
 import type { YouTubeInsights } from "@/platform/google-types"
 import {
@@ -64,38 +64,45 @@ export function YouTubeSection({ data, standalone = false }: YouTubeSectionProps
         </p>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
-        <WrapKpi
-          label="Watches"
-          value={fmt(data.watchCount)}
-          icon={Clapperboard}
-          accent="teal"
-        />
-        <WrapKpi
-          label="Unique videos"
-          value={fmt(data.uniqueVideos)}
-          icon={ListVideo}
-          accent="sky"
-        />
-        <WrapKpi
-          label="Searches"
-          value={fmt(data.searchCount)}
-          icon={Search}
-          accent="amber"
-        />
-        <WrapKpi
-          label="Subscriptions"
-          value={fmt(data.subscriptionCount)}
-          icon={Users}
-          accent="violet"
-        />
-        <WrapKpi
-          label="Comments"
-          value={fmt(data.commentCount)}
-          icon={MessageSquareText}
-          accent="emerald"
-        />
-      </div>
+      <OverviewKpiPanel
+        sections={[
+          {
+            title: "Your year",
+            stats: [
+              {
+                label: "Watches",
+                value: fmt(data.watchCount),
+                icon: Clapperboard,
+                accent: "text-teal-600 dark:text-teal-400",
+              },
+              {
+                label: "Unique videos",
+                value: fmt(data.uniqueVideos),
+                icon: ListVideo,
+                accent: "text-sky-600 dark:text-sky-400",
+              },
+              {
+                label: "Searches",
+                value: fmt(data.searchCount),
+                icon: Search,
+                accent: "text-amber-600 dark:text-amber-400",
+              },
+              {
+                label: "Subscriptions",
+                value: fmt(data.subscriptionCount),
+                icon: Users,
+                accent: "text-violet-600 dark:text-violet-400",
+              },
+              {
+                label: "Comments",
+                value: fmt(data.commentCount),
+                icon: MessageSquareText,
+                accent: "text-emerald-600 dark:text-emerald-400",
+              },
+            ],
+          },
+        ]}
+      />
 
       {hasWatches && data.watchActivity?.daily?.length ? (
         <ActivityOverTimeChart

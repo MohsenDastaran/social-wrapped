@@ -1,6 +1,6 @@
 import { fmt } from "@/components/wrap/chart-theme"
+import { OverviewKpiPanel } from "@/components/wrap/overview-kpi-panel"
 import { StoryExportHost } from "@/components/wrap/story-export-host"
-import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import type {
   LinkedInCounted,
   LinkedInInsights,
@@ -59,45 +59,52 @@ export function LinkedInNetworkInsights({
         ) : null}
       </header>
 
-      <StoryExportHost exportName="li-network-kpis">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-          <WrapKpi
-            label="Connections"
-            value={hasNetwork ? fmt(data.connectionCount) : "—"}
-            icon={Users}
-            accent="sky"
-          />
-          <WrapKpi
-            label="Invites sent"
-            value={hasNetwork ? fmt(data.invitationOutgoing) : "—"}
-            icon={UserPlus}
-            accent="teal"
-          />
-          <WrapKpi
-            label="Invites received"
-            value={hasNetwork ? fmt(data.invitationIncoming) : "—"}
-            icon={Network}
-            accent="amber"
-          />
-          <WrapKpi
-            label="Active follows"
-            value={hasNetwork ? fmt(data.activeFollows) : "—"}
-            icon={UserPlus}
-            accent="emerald"
-          />
-          <WrapKpi
-            label="Unfollows"
-            value={hasNetwork ? fmt(data.unfollows) : "—"}
-            icon={UserMinus}
-            accent="violet"
-          />
-          <WrapKpi
-            label="Company follows"
-            value={hasNetwork ? fmt(data.companyFollows) : "—"}
-            icon={Building2}
-            accent="sky"
-          />
-        </div>
+      <StoryExportHost exportName="li-network-kpis" storyCaptureWidth={560}>
+        <OverviewKpiPanel
+          sections={[
+            {
+              title: "Your network",
+              stats: [
+                {
+                  label: "Connections",
+                  value: hasNetwork ? fmt(data.connectionCount) : "—",
+                  icon: Users,
+                  accent: "text-sky-600 dark:text-sky-400",
+                },
+                {
+                  label: "Invites sent",
+                  value: hasNetwork ? fmt(data.invitationOutgoing) : "—",
+                  icon: UserPlus,
+                  accent: "text-teal-600 dark:text-teal-400",
+                },
+                {
+                  label: "Invites received",
+                  value: hasNetwork ? fmt(data.invitationIncoming) : "—",
+                  icon: Network,
+                  accent: "text-amber-600 dark:text-amber-400",
+                },
+                {
+                  label: "Active follows",
+                  value: hasNetwork ? fmt(data.activeFollows) : "—",
+                  icon: UserPlus,
+                  accent: "text-emerald-600 dark:text-emerald-400",
+                },
+                {
+                  label: "Unfollows",
+                  value: hasNetwork ? fmt(data.unfollows) : "—",
+                  icon: UserMinus,
+                  accent: "text-violet-600 dark:text-violet-400",
+                },
+                {
+                  label: "Company follows",
+                  value: hasNetwork ? fmt(data.companyFollows) : "—",
+                  icon: Building2,
+                  accent: "text-sky-600 dark:text-sky-400",
+                },
+              ],
+            },
+          ]}
+        />
       </StoryExportHost>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
