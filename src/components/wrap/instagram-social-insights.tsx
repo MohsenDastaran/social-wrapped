@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils"
 import {
   ExternalLink,
   Heart,
+  ShieldBan,
+  Star,
   UserMinus,
   UserPlus,
   UserRoundMinus,
@@ -35,9 +37,14 @@ export function InstagramSocialInsights({
   const hasNetwork =
     data.followerCount > 0 ||
     data.followingCount > 0 ||
-    data.unfollowedRecentlyCount > 0
+    data.unfollowedRecentlyCount > 0 ||
+    (data.blockedCount ?? 0) > 0 ||
+    (data.closeFriendsCount ?? 0) > 0
   const hasFollowGaps =
     data.notFollowingBack.length > 0 || data.fansYouDontFollow.length > 0
+  const hasLists =
+    (data.blockedProfiles?.length ?? 0) > 0 ||
+    (data.closeFriends?.length ?? 0) > 0
   const hasLikes =
     data.topLikedAccounts.length > 0 || data.topStoryLikedAccounts.length > 0
 
@@ -67,7 +74,7 @@ export function InstagramSocialInsights({
       </header>
 
       <StoryExportHost exportName="ig-network-kpis">
-        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
           <WrapKpi
             label="Followers"
             value={hasNetwork ? fmt(data.followerCount) : "—"}
@@ -86,8 +93,39 @@ export function InstagramSocialInsights({
             icon={UserRoundMinus}
             accent="amber"
           />
+          <WrapKpi
+            label="Blocked"
+            value={fmt(data.blockedCount ?? 0)}
+            icon={ShieldBan}
+            accent="amber"
+          />
+          <WrapKpi
+            label="Close friends"
+            value={fmt(data.closeFriendsCount ?? 0)}
+            icon={Star}
+            accent="violet"
+          />
         </div>
       </StoryExportHost>
+
+      {hasLists ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <HandleList
+            title="Blocked accounts"
+            description="Profiles you’ve blocked"
+            icon={ShieldBan}
+            handles={data.blockedProfiles ?? []}
+            emptyLabel="No blocked profiles in this ZIP."
+          />
+          <HandleList
+            title="Close friends"
+            description="Accounts on your close friends list"
+            icon={Star}
+            handles={data.closeFriends ?? []}
+            emptyLabel="No close friends in this ZIP."
+          />
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <HandleList

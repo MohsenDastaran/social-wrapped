@@ -10,6 +10,14 @@ export function emptyInstagramSocial(): InstagramSocialInsights {
     fansYouDontFollow: [],
     topLikedAccounts: [],
     topStoryLikedAccounts: [],
+    blockedCount: 0,
+    closeFriendsCount: 0,
+    blockedProfiles: [],
+    closeFriends: [],
+    storiesViewedCount: 0,
+    storyViewHeatmap: [],
+    storyViewHourly: Array.from({ length: 24 }, () => 0),
+    topStoryViewedAccounts: [],
     likedPostsCount: 0,
     likedCommentsCount: 0,
     commentsWrittenCount: 0,
@@ -32,6 +40,13 @@ export function normalizeInstagramSocial(
   if (!raw) return base
   const hourly = Array.isArray(raw.likeHourly) ? raw.likeHourly : base.likeHourly
   const likeHourly = Array.from({ length: 24 }, (_, i) => Number(hourly[i] ?? 0) || 0)
+  const storyHourly = Array.isArray(raw.storyViewHourly)
+    ? raw.storyViewHourly
+    : base.storyViewHourly
+  const storyViewHourly = Array.from(
+    { length: 24 },
+    (_, i) => Number(storyHourly[i] ?? 0) || 0
+  )
   return {
     ...base,
     ...raw,
@@ -39,6 +54,12 @@ export function normalizeInstagramSocial(
     fansYouDontFollow: raw.fansYouDontFollow ?? base.fansYouDontFollow,
     topLikedAccounts: raw.topLikedAccounts ?? base.topLikedAccounts,
     topStoryLikedAccounts: raw.topStoryLikedAccounts ?? base.topStoryLikedAccounts,
+    blockedProfiles: raw.blockedProfiles ?? base.blockedProfiles,
+    closeFriends: raw.closeFriends ?? base.closeFriends,
+    storyViewHeatmap: raw.storyViewHeatmap ?? base.storyViewHeatmap,
+    storyViewHourly,
+    topStoryViewedAccounts:
+      raw.topStoryViewedAccounts ?? base.topStoryViewedAccounts,
     likeHeatmap: raw.likeHeatmap ?? base.likeHeatmap,
     likeHourly,
     topCommentedAccounts: raw.topCommentedAccounts ?? base.topCommentedAccounts,

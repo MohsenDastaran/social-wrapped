@@ -47,6 +47,8 @@ const MESSAGING_VIDEO_IDS = [
 
 const INSTAGRAM_VIDEO_IDS = [
   "ig-network",
+  "ig-story-view-heatmap",
+  "ig-story-view-hours",
   "heatmap",
   "ig-top-liked",
   "ig-story-hearts",
@@ -111,13 +113,15 @@ export function buildInstagramStorySpecs(
   const hasNetwork =
     social.followerCount > 0 ||
     social.followingCount > 0 ||
-    social.unfollowedRecentlyCount > 0
+    social.unfollowedRecentlyCount > 0 ||
+    (social.blockedCount ?? 0) > 0 ||
+    (social.closeFriendsCount ?? 0) > 0
   if (hasNetwork) {
     specs.push({
       id: "ig-network",
       exportName: "ig-network-kpis",
       heading: "Your network",
-      subtext: `${fmt(social.followerCount)} followers · ${fmt(social.followingCount)} following`,
+      subtext: `${fmt(social.followerCount)} followers · ${fmt(social.followingCount)} following · ${fmt(social.blockedCount ?? 0)} blocked`,
       kpis: [
         { label: "Followers", value: fmt(social.followerCount) },
         { label: "Following", value: fmt(social.followingCount) },
@@ -125,7 +129,35 @@ export function buildInstagramStorySpecs(
           label: "Unfollowed",
           value: fmt(social.unfollowedRecentlyCount),
         },
+        { label: "Blocked", value: fmt(social.blockedCount ?? 0) },
+        { label: "Close friends", value: fmt(social.closeFriendsCount ?? 0) },
       ],
+    })
+  }
+
+  const storyViewHeatmap = social.storyViewHeatmap ?? []
+  if (storyViewHeatmap.length > 0) {
+    const total = storyViewHeatmap.reduce((sum, d) => sum + d.count, 0)
+    specs.push({
+      id: "ig-story-view-heatmap",
+      exportName: "ig-story-view-heatmap",
+      heading: "Stories you watched",
+      subtext: `${fmt(social.storiesViewedCount ?? total)} views on the calendar.`,
+    })
+  }
+
+  const storyViewHourly = Array.from(
+    { length: 24 },
+    (_, i) => Number(social.storyViewHourly?.[i] ?? 0) || 0
+  )
+  if (storyViewHourly.some((n) => n > 0)) {
+    const peak = peakHourLabel(storyViewHourly)
+    const total = storyViewHourly.reduce((a, b) => a + b, 0)
+    specs.push({
+      id: "ig-story-view-hours",
+      exportName: "ig-story-view-hours",
+      heading: "When you watch",
+      subtext: `Peak ${peak} · ${fmt(total)} story views (UTC)`,
     })
   }
 
@@ -314,10 +346,7 @@ function pickVideoIds(
 export function buildPlatformStoryCatalog(
   input: StoryCatalogInput
 ): PlatformStoryCatalog {
-  const messaging = buildMessagingStorySpecs(
-    input.displayName,
-    input.analytics
-  )
+  const messaging = buildMessagingStorySpecs(input.displayName, input.analytics)
 
   if (input.platformId === "instagram" && input.instagramSocial) {
     const ig = buildInstagramStorySpecs(input.instagramSocial)

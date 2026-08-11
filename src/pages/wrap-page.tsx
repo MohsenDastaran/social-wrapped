@@ -9,6 +9,7 @@ import { GoogleWrapInsights } from "@/components/wrap/google/google-wrap-insight
 import { InstagramEngagement } from "@/components/wrap/instagram-engagement"
 import { InstagramSaved } from "@/components/wrap/instagram-saved"
 import { InstagramSocialInsights } from "@/components/wrap/instagram-social-insights"
+import { InstagramStoryViews } from "@/components/wrap/instagram-story-views"
 import { LinkedInCareerInsights } from "@/components/wrap/linkedin-career"
 import { LinkedInEngagement } from "@/components/wrap/linkedin-engagement"
 import { LinkedInNetworkInsights } from "@/components/wrap/linkedin-network"
@@ -203,6 +204,7 @@ export function WrapPage() {
       ) : igSocial ? (
         <>
           <InstagramSocialInsights data={igSocial} />
+          <InstagramStoryViews data={igSocial} />
           <InstagramSaved data={igSocial} />
           <header className="text-start">
             <h2 className="font-heading text-xl font-semibold tracking-tight">

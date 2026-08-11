@@ -268,6 +268,16 @@ export type InstagramSocialInsights = {
   topLikedAccounts: IgCountedHandle[]
   topStoryLikedAccounts: IgCountedHandle[]
 
+  blockedCount?: number
+  closeFriendsCount?: number
+  blockedProfiles?: IgHandle[]
+  closeFriends?: IgHandle[]
+
+  storiesViewedCount?: number
+  storyViewHeatmap?: HeatmapDay[]
+  storyViewHourly?: number[]
+  topStoryViewedAccounts?: IgCountedHandle[]
+
   // Engagement
   likedPostsCount: number
   likedCommentsCount: number

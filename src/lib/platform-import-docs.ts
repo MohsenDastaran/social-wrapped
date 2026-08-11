@@ -36,6 +36,19 @@ export const PLATFORM_IMPORT_DOCS: Partial<
     officialExportUrl: "https://x.com/settings/download_your_data",
     officialExportLabel: "Open X to download your data",
   },
+  instagram: {
+    title: "Export your Instagram information",
+    paragraphs: [
+      "Meta is gradually moving people to Meta Accounts. You may see either Accounts Centre or Meta Account settings as the place to manage exports.",
+      "Export a copy of your Instagram information from Accounts Centre → Your information and permissions → Export your information. Choose Export to device (not an external service) so you get a ZIP you can import here.",
+      "Android: Profile → Menu (top right) → Accounts Centre → Your information and permissions → Export your information → Create export. Select your profile, choose Export to device, then pick which info to include, a date range, format, notification email, and media quality. Prefer JSON. Tap Start export.",
+      "Computer: Menu → Settings → Accounts Centre → Your information and permissions → Export your information → Create export. Select your profile, choose Export to device, customise the same options (prefer JSON), then Start export.",
+      "When the export is ready (Instagram email and in-app notification; it can take up to 30 days), open Available downloads in Export your information. You have four days to download. Save the ZIP and import it in Social Wrapped without unzipping. Media quality mainly affects file size — Social Wrapped skips media binaries.",
+    ],
+    officialExportUrl:
+      "https://help.instagram.com/181231772500920/?helpref=uf_share",
+    officialExportLabel: "Instagram export help",
+  },
 }
 
 export function getPlatformImportDoc(

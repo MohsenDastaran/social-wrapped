@@ -151,22 +151,22 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     accentClass: "border-fuchsia-500/50",
     gradientClass:
       "from-fuchsia-500/25 via-rose-400/10 to-transparent dark:from-fuchsia-400/20 dark:via-rose-500/5",
-    summary: "Download your information from Meta Accounts Center.",
+    summary: "Export a copy of your information from Meta Accounts Centre.",
     exportPath:
-      "Accounts Center → Your information and permissions → Download your information",
-    formats: "JSON or HTML",
+      "Accounts Centre → Your information and permissions → Export your information",
+    formats: "JSON",
     extractable:
       "DMs, posts, stories metadata, comments, likes, saved posts, and search history.",
     steps: [
-      "Request a download from Meta Accounts Center.",
-      "Choose JSON when available, then download the archive ZIP.",
-      "In Social Wrapped, import that ZIP from Home → Instagram (media binaries are skipped).",
+      "Open Accounts Centre → Your information and permissions → Export your information → Create export.",
+      "Choose Export to device, select JSON, then start the export (email when ready — can take up to 30 days).",
+      "Download from Available downloads within four days, then import that ZIP in Social Wrapped (do not unzip).",
     ],
     importHint:
-      "Use the JSON Meta download ZIP. We analyze Direct messages only in v1.",
+      "Use the JSON Meta export ZIP. We analyze Direct messages and social insights from the archive.",
     importTitle: "Import Instagram data",
     importDescription:
-      "Upload your Instagram information download ZIP (JSON). Chats are processed on your device — media files are ignored.",
+      "Upload your Instagram information export ZIP (JSON). Chats are processed on your device — media files are ignored.",
     acceptedFiles: [".zip"],
     accept: ".zip,application/zip",
   },
