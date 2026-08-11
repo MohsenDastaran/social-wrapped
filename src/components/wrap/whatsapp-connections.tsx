@@ -1,5 +1,4 @@
 import { fmt } from "@/components/wrap/chart-theme"
-import { StoryExportHost } from "@/components/wrap/story-export-host"
 import type { WhatsAppContact, WhatsAppInsights } from "@/platform/whatsapp-types"
 import { listScrollMaxClass } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
@@ -51,8 +50,20 @@ function LabelListCard({
   children: ReactNode
   exportName?: string
 }) {
-  const body = (
-    <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/10">
+  return (
+    <div
+      className="flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/10"
+      {...(exportName
+        ? {
+            "data-export-name": exportName,
+            "data-export-mode": "dom",
+            "data-export-min-width": 560,
+            "data-export-story-width": 560,
+            "data-export-pixel-ratio": 3,
+            "data-export-region": "chart",
+          }
+        : {})}
+    >
       <div className="relative shrink-0 overflow-hidden border-b border-border/50 bg-linear-to-br from-emerald-500/14 via-emerald-500/4 to-transparent px-4 py-3.5 dark:from-emerald-400/12 dark:via-emerald-400/3">
         <div className="relative flex items-start gap-3">
           <span
@@ -86,13 +97,6 @@ function LabelListCard({
         </ol>
       )}
     </div>
-  )
-
-  if (!exportName) return body
-  return (
-    <StoryExportHost exportName={exportName} storyCaptureWidth={560}>
-      {body}
-    </StoryExportHost>
   )
 }
 
