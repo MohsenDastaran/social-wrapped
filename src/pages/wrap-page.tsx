@@ -187,6 +187,18 @@ export function WrapPage() {
         </p>
       ) : null}
 
+      {whatsappInsights ? (
+        <p
+          className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-950 ring-1 ring-amber-500/25 dark:text-amber-100"
+          role="status"
+        >
+          This wrap is from an Account information report — profile, contacts,
+          groups, and privacy only. For detailed messaging analysis (heatmaps,
+          word clouds, send/receive stats), export a chat from WhatsApp and
+          import it separately.
+        </p>
+      ) : null}
+
       {!isGoogleFamily ? (
         <WrapShareMedia
           wrapId={wrap.id}
