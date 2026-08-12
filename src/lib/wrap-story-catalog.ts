@@ -105,10 +105,14 @@ const SPOTIFY_VIDEO_IDS = [
 
 const APPLE_MUSIC_VIDEO_IDS = [
   "am-listen",
+  "am-top-artists",
+  "am-listen-heatmap",
+  "am-listen-hours",
+  "am-top-tracks",
+  "am-plays-by-era",
+  "am-top-genres",
+  "am-top-albums",
   "am-library",
-  "heatmap",
-  "activity",
-  "sent-received",
 ] as const
 
 /** Instagram outbound social / engagement slides (gated on data). */
@@ -495,6 +499,95 @@ export function buildAppleMusicStorySpecs(
       heading: "Your library",
       subtext: `${fmt(insights.libraryTrackCount)} tracks · ${fmt(insights.lovedCount)} loved`,
       // KPIs live in the captured card — no duplicate strip at the bottom.
+    })
+  }
+
+  const topArtist = insights.topArtists?.[0]
+  if (topArtist) {
+    specs.push({
+      id: "am-top-artists",
+      exportName: "apple-music-top-artists",
+      heading: "Top artists",
+      subtext: `Led by ${topArtist.name} · ${fmt(topArtist.count)} plays`,
+    })
+  }
+
+  const topTrack = insights.topTracks?.[0]
+  if (topTrack) {
+    specs.push({
+      id: "am-top-tracks",
+      exportName: "apple-music-top-tracks",
+      heading: "Top tracks",
+      subtext: `Led by ${topTrack.name} · ${fmt(topTrack.count)} plays`,
+    })
+  }
+
+  const heatmap = insights.listenHeatmap ?? []
+  const heatmapUsable =
+    heatmap.length > 0 &&
+    !(heatmap.length === 1 && heatmap[0]?.date === "1970-01-01")
+  if (heatmapUsable) {
+    const total = heatmap.reduce((sum, d) => sum + d.count, 0)
+    specs.push({
+      id: "am-listen-heatmap",
+      exportName: "apple-music-listen-heatmap",
+      heading: "Listening activity",
+      subtext: `${fmt(total)} plays on the calendar.`,
+    })
+  }
+
+  const hourly = Array.from(
+    { length: 24 },
+    (_, i) => Number(insights.listenHourly?.[i] ?? 0) || 0
+  )
+  if (hourly.some((n) => n > 0)) {
+    const peak = peakHourLabel(hourly)
+    const total = hourly.reduce((a, b) => a + b, 0)
+    specs.push({
+      id: "am-listen-hours",
+      exportName: "apple-music-listen-hours",
+      heading: "When you listen",
+      subtext: `Peak ${peak} · ${fmt(total)} plays (UTC)`,
+    })
+  }
+
+  const years = insights.playsByYear ?? []
+  const decades = insights.decades ?? []
+  if (years.length > 1) {
+    const peakYear = [...years].sort((a, b) => b.count - a.count)[0]!
+    specs.push({
+      id: "am-plays-by-era",
+      exportName: "apple-music-plays-by-year",
+      heading: "Plays by release era",
+      subtext: `Peak ${peakYear.year} · ${fmt(peakYear.count)} plays`,
+    })
+  } else if (decades.length > 0) {
+    const peakDecade = [...decades].sort((a, b) => b.count - a.count)[0]!
+    specs.push({
+      id: "am-plays-by-era",
+      exportName: "apple-music-plays-by-decade",
+      heading: "Plays by release era",
+      subtext: `Peak ${peakDecade.decade}s · ${fmt(peakDecade.count)} plays`,
+    })
+  }
+
+  const topGenre = insights.topGenres?.[0]
+  if (topGenre) {
+    specs.push({
+      id: "am-top-genres",
+      exportName: "apple-music-top-genres",
+      heading: "Top genres",
+      subtext: `Led by ${topGenre.name} · ${fmt(topGenre.count)} plays`,
+    })
+  }
+
+  const topAlbum = insights.topAlbums?.[0]
+  if (topAlbum) {
+    specs.push({
+      id: "am-top-albums",
+      exportName: "apple-music-top-albums",
+      heading: "Top albums",
+      subtext: `Led by ${topAlbum.name} · ${fmt(topAlbum.count)} plays`,
     })
   }
 
