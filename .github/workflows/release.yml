@@ -3,8 +3,10 @@
 # Trigger:
 #   - Publish a GitHub Release (release published), or
 #   - Actions → Release → Run workflow (pick an existing tag like v0.2.5)
-# Assets (sorted alphabetically via numeric prefixes):
-#   01a arm64-v8a APK → 01b universal APK → 02 Windows → 03 macOS → 04 deb → 05 rpm → 06 AppImage
+# Assets (GitHub sorts alphabetically; sort key sits after the tag version):
+#   name_X.Y.Z_01-android-arm64 → _01-android-universal → _02-windows →
+#   _03-macos → _04-linux-deb → _05-linux-rpm → _06-linux-appimage
+# Version in filenames comes from the release tag (e.g. v0.2.5 → 0.2.5), not package.json.
 
 name: Release
 
@@ -35,6 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
       release_id: ${{ steps.resolve.outputs.release_id }}
     steps:
       - name: Resolve release
@@ -60,8 +63,17 @@ jobs:
               releaseId = String(release.id)
             }
 
-            core.info(`tag=${tag} release_id=${releaseId}`)
+            // v0.2.5 / 0.2.5-beta.1 → strip one leading v for Tauri / npm version fields
+            const version = tag.replace(/^v/i, '')
+            if (!/^\d+\.\d+\.\d+/.test(version)) {
+              throw new Error(
+                `Tag must look like vX.Y.Z (got tag=${tag}, version=${version})`
+              )
+            }
+
+            core.info(`tag=${tag} version=${version} release_id=${releaseId}`)
             core.setOutput('tag', tag)
+            core.setOutput('version', version)
             core.setOutput('release_id', releaseId)
 
   build-tauri:
@@ -78,32 +90,32 @@ jobs:
           - platform: ubuntu-22.04
             args: --apk --split-per-abi --target aarch64
             mobile: android
-            asset_pattern: 01a-[name]_[version]_arm64-v8a[ext]
+            asset_pattern: '[name]_[version]_01-android-arm64[ext]'
             rust_targets: aarch64-linux-android,wasm32-unknown-unknown
           - platform: ubuntu-22.04
             args: --apk
             mobile: android
-            asset_pattern: 01b-[name]_[version]_universal[ext]
+            asset_pattern: '[name]_[version]_01-android-universal[ext]'
             rust_targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android,wasm32-unknown-unknown
           - platform: windows-latest
             args: ''
             mobile: ''
-            asset_pattern: 02-[name]_[version]_[arch][setup][ext]
+            asset_pattern: '[name]_[version]_02-windows_[arch][setup][ext]'
             rust_targets: wasm32-unknown-unknown
           - platform: macos-latest
             args: --target aarch64-apple-darwin
             mobile: ''
-            asset_pattern: 03-[name]_[version]_[arch][ext]
+            asset_pattern: '[name]_[version]_03-macos_[arch][ext]'
             rust_targets: aarch64-apple-darwin,wasm32-unknown-unknown
           - platform: macos-latest
             args: --target x86_64-apple-darwin
             mobile: ''
-            asset_pattern: 03-[name]_[version]_[arch][ext]
+            asset_pattern: '[name]_[version]_03-macos_[arch][ext]'
             rust_targets: x86_64-apple-darwin,wasm32-unknown-unknown
           - platform: ubuntu-22.04
             args: ''
             mobile: ''
-            # Linux: order-assets renames deb/rpm/AppImage to 04/05/06.
+            # Linux: order-assets inserts _04/_05/_06 after the version.
             asset_pattern: ''
             rust_targets: wasm32-unknown-unknown
 
@@ -214,6 +226,43 @@ jobs:
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
+      # tauri-action's [version] comes from tauri.conf.json / package.json.
+      # Overwrite those (and Cargo workspace version) from the release tag.
+      - name: Sync version from release tag
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Using release version: $VERSION"
+          node <<'NODE'
+          const fs = require('fs')
+          const version = process.env.VERSION
+          if (!version) throw new Error('VERSION env is empty')
+
+          const pkgPath = 'package.json'
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
+          pkg.version = version
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
+
+          const tauriPath = 'src-tauri/tauri.conf.json'
+          const tauri = JSON.parse(fs.readFileSync(tauriPath, 'utf8'))
+          tauri.version = version
+          fs.writeFileSync(tauriPath, JSON.stringify(tauri, null, 2) + '\n')
+
+          const cargoPath = 'Cargo.toml'
+          let cargo = fs.readFileSync(cargoPath, 'utf8')
+          const next = cargo.replace(
+            /(\[workspace\.package\][\s\S]*?^version\s*=\s*")[^"]+(")/m,
+            `$1${version}$2`
+          )
+          if (next === cargo) {
+            throw new Error('Could not update [workspace.package] version in Cargo.toml')
+          }
+          fs.writeFileSync(cargoPath, next)
+          console.log(`Synced package.json, tauri.conf.json, Cargo.toml → ${version}`)
+          NODE
+
       - name: Build and upload to release
         uses: tauri-apps/tauri-action@v1
         env:
@@ -226,9 +275,9 @@ jobs:
           mobile: ${{ matrix.mobile }}
           releaseAssetNamePattern: ${{ matrix.asset_pattern }}
 
-  # Rename Linux bundles (and any leftovers) into the sort order.
+  # Rename Linux bundles (and any leftovers) so the sort key sits after the version.
   # Still run when some matrix builds fail (e.g. a flaky macOS runner) so
-  # successful uploads (deb/rpm/AppImage) get their 04/05/06 prefixes.
+  # successful uploads (deb/rpm/AppImage) get their _04/_05/_06 keys.
   order-assets:
     needs: [meta, build-tauri]
     if: ${{ always() && !cancelled() && needs.meta.result == 'success' }}
@@ -236,13 +285,15 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-      - name: Prefix / normalize asset names for display order
+      - name: Normalize asset names for display order
         uses: actions/github-script@v7
         env:
           RELEASE_ID: ${{ needs.meta.outputs.release_id }}
+          VERSION: ${{ needs.meta.outputs.version }}
         with:
           script: |
             const release_id = Number(process.env.RELEASE_ID)
+            const version = process.env.VERSION
             const { data: assets } = await github.rest.repos.listReleaseAssets({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -250,33 +301,81 @@ jobs:
               per_page: 100,
             })
 
-            function desiredName(name) {
-              // Already prefixed by releaseAssetNamePattern — leave alone.
-              if (/^\d{2}[a-z]?-/.test(name)) return name
+            // After version: 01-android-*, 02-windows, 03-macos, 04/05/06-linux-*
+            const SORT_AFTER_VERSION =
+              /_\d{2}-(?:android|windows|macos|linux)(?:[-_]|$)/i
 
+            function sortKeyFor(name) {
               const bare = name.replace(/\.sig$/i, '').toLowerCase()
-              let prefix = '99'
               if (bare.endsWith('.apk') || bare.endsWith('.aab')) {
-                prefix =
-                  bare.includes('arm64') || bare.includes('aarch64')
-                    ? '01a'
-                    : '01b'
-              } else if (bare.endsWith('.msi') || bare.endsWith('.exe')) {
-                prefix = '02'
-              } else if (
+                return bare.includes('arm64') || bare.includes('aarch64')
+                  ? '01-android-arm64'
+                  : '01-android-universal'
+              }
+              if (bare.endsWith('.msi') || bare.endsWith('.exe')) {
+                return '02-windows'
+              }
+              if (
                 bare.endsWith('.dmg') ||
                 bare.endsWith('.app') ||
                 bare.includes('.app.tar')
               ) {
-                prefix = '03'
-              } else if (bare.endsWith('.deb')) {
-                prefix = '04'
-              } else if (bare.endsWith('.rpm')) {
-                prefix = '05'
-              } else if (bare.endsWith('.appimage')) {
-                prefix = '06'
+                return '03-macos'
               }
-              return `${prefix}-${name}`
+              if (bare.endsWith('.deb')) return '04-linux-deb'
+              if (bare.endsWith('.rpm')) return '05-linux-rpm'
+              if (bare.endsWith('.appimage')) return '06-linux-appimage'
+              return '99-other'
+            }
+
+            function stripLegacyLeadingPrefix(name) {
+              // Old scheme: 01a-name… / 02-name…
+              return name.replace(/^\d{2}[a-z]?-/, '')
+            }
+
+            function insertSortKeyAfterVersion(name, sortKey) {
+              if (SORT_AFTER_VERSION.test(name)) return name
+
+              // Prefer exact release version from the tag.
+              if (version) {
+                const needle = `_${version}_`
+                const idx = name.indexOf(needle)
+                if (idx !== -1) {
+                  const after = name.slice(idx + needle.length)
+                  // Drop a leftover numeric mid-key if present.
+                  const cleaned = after.replace(/^\d{2}[a-z]?[-_]/, '')
+                  return (
+                    name.slice(0, idx + needle.length) +
+                    sortKey +
+                    (cleaned ? `_${cleaned}` : '')
+                  )
+                }
+                // name_version.ext (no arch segment)
+                const dotted = `_${version}.`
+                const dIdx = name.indexOf(dotted)
+                if (dIdx !== -1) {
+                  return (
+                    name.slice(0, dIdx + 1 + version.length) +
+                    `_${sortKey}` +
+                    name.slice(dIdx + 1 + version.length)
+                  )
+                }
+              }
+
+              // Fallback: first semver-looking segment.
+              const m = name.match(/^(.*?_)(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]*)?)(_|\.|$)(.*)$/)
+              if (!m) return `${name.replace(/(\.[^.]+)$/, `_${sortKey}$1`)}`
+              const [, prefix, ver, sep, rest] = m
+              if (sep === '_') {
+                const cleaned = rest.replace(/^\d{2}[a-z]?[-_]/, '')
+                return `${prefix}${ver}_${sortKey}${cleaned ? `_${cleaned}` : ''}`
+              }
+              return `${prefix}${ver}_${sortKey}${sep}${rest}`
+            }
+
+            function desiredName(name) {
+              const stripped = stripLegacyLeadingPrefix(name)
+              return insertSortKeyAfterVersion(stripped, sortKeyFor(stripped))
             }
 
             for (const asset of assets) {
