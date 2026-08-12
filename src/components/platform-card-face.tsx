@@ -1,4 +1,4 @@
-import { ChevronRight, Lock } from "lucide-react"
+import { Lock, Upload } from "lucide-react"
 
 import { PlatformLogo } from "@/components/platform-logo"
 import {
@@ -6,7 +6,11 @@ import {
   CardDescription,
   CardTitle,
 } from "@/components/ui/card"
-import { isPlatformEnabled, type PlatformConfig } from "@/lib/platforms"
+import {
+  isPlatformEnabled,
+  platformImportAreaViewTransitionName,
+  type PlatformConfig,
+} from "@/lib/platforms"
 import { cn } from "@/lib/utils"
 
 type PlatformCardFaceProps = {
@@ -69,16 +73,20 @@ export function PlatformCardFace({
 
       {!disabled ? (
         <span
+          style={{
+            viewTransitionName: platformImportAreaViewTransitionName(
+              platform.id
+            ),
+          }}
           className={cn(
-            "relative flex size-10 shrink-0 items-center justify-center rounded-full",
-            "bg-muted text-foreground ring-1 ring-foreground/10",
+            "flex size-10 shrink-0 items-center justify-center rounded-full",
+            "bg-background text-primary ring-1 ring-foreground/10",
             "transition-colors duration-300",
-            "group-hover/platform:bg-primary group-hover/platform:text-primary-foreground group-hover/platform:ring-primary/30"
+            "group-hover/platform:bg-primary/10 group-hover/platform:ring-primary/30"
           )}
           aria-hidden
         >
-          <ChevronRight className="size-4 transition-transform duration-300 ease-out group-hover/platform:translate-x-0.5 rtl:rotate-180 rtl:group-hover/platform:-translate-x-0.5" />
-          <ChevronRight className="absolute size-4 opacity-0 transition-all duration-300 ease-out group-hover/platform:translate-x-1 group-hover/platform:opacity-40 rtl:rotate-180 rtl:group-hover/platform:-translate-x-1" />
+          <Upload className="size-4" />
         </span>
       ) : (
         <span

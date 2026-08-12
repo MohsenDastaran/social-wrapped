@@ -15,6 +15,7 @@ import { PlatformLogo } from "@/components/platform-logo"
 import { WhatsAppIdentityPicker } from "@/components/whatsapp-identity-picker"
 import { Button } from "@/components/ui/button"
 import {
+  platformImportAreaViewTransitionName,
   platformLogoViewTransitionName,
   type PlatformConfig,
 } from "@/lib/platforms"
@@ -348,8 +349,15 @@ export function PlatformImportView({
               : "border-border bg-muted/30 hover:border-foreground/30 hover:bg-muted/50"
           )}
         >
-          <span className="flex size-12 items-center justify-center rounded-full bg-background ring-1 ring-foreground/10">
-            <Upload className="size-5 text-primary" aria-hidden />
+          <span
+            style={{
+              viewTransitionName: platformImportAreaViewTransitionName(
+                platform.id
+              ),
+            }}
+            className="flex size-16 items-center justify-center rounded-full bg-background ring-1 ring-foreground/10"
+          >
+            <Upload className="size-6 text-primary" aria-hidden />
           </span>
           <div>
             <p className="font-heading text-base font-semibold tracking-tight">

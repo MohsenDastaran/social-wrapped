@@ -1,4 +1,4 @@
-import { ArrowUpRight, FileArchive, Lock, Sparkles } from "lucide-react"
+import { FileArchive, Lock, Sparkles, Upload } from "lucide-react"
 import { Link } from "react-router"
 
 import { PlatformCardFace } from "@/components/platform-card-face"
@@ -6,6 +6,7 @@ import { PlatformLogo } from "@/components/platform-logo"
 import { Card, CardDescription, CardTitle } from "@/components/ui/card"
 import {
   isPlatformEnabled,
+  platformImportAreaViewTransitionName,
   platformImportPath,
   platformLogoViewTransitionName,
   type PlatformConfig,
@@ -145,10 +146,17 @@ export function PlatformImportCard({
             {platform.acceptedFiles.join(" · ")}
           </span>
           {!disabled ? (
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
-              Import
-              <span className="flex size-6 items-center justify-center rounded-full bg-foreground text-background transition-transform duration-300 group-hover/home-card:translate-x-0.5 group-hover/home-card:-translate-y-0.5 rtl:group-hover/home-card:-translate-x-0.5">
-                <ArrowUpRight className="size-3" aria-hidden />
+            <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+              <span
+                style={{
+                  viewTransitionName: platformImportAreaViewTransitionName(
+                    platform.id
+                  ),
+                }}
+                className="flex size-8 items-center justify-center rounded-full bg-background ring-1 ring-foreground/10"
+                aria-hidden
+              >
+                <Upload className="size-3.5 text-primary" />
               </span>
             </span>
           ) : (

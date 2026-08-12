@@ -5,7 +5,15 @@ import {
   formatListeningMs,
   type AppleMusicInsights,
 } from "@/platform/apple-music-types"
-import { Clock, Disc3, Heart, Library, Music2, SkipForward, Users } from "lucide-react"
+import {
+  Clock,
+  Disc3,
+  Heart,
+  Library,
+  Music2,
+  SkipForward,
+  Users,
+} from "lucide-react"
 
 type AppleMusicListeningInsightsProps = {
   data: AppleMusicInsights
@@ -15,8 +23,7 @@ type AppleMusicListeningInsightsProps = {
 export function AppleMusicListeningInsights({
   data,
 }: AppleMusicListeningInsightsProps) {
-  const name =
-    data.profile.displayName?.trim() || "Apple Music Library"
+  const name = data.profile.displayName?.trim() || "Apple Music Library"
   const libraryId = data.profile.libraryPersistentId?.trim()
   const version = data.profile.applicationVersion?.trim()
   const exported = data.profile.exportDate?.trim()

@@ -305,3 +305,8 @@ export function platformImportPath(id: PlatformId): string {
 export function platformLogoViewTransitionName(id: PlatformId): string {
   return `platform-logo-${id}`
 }
+
+/** Shared element name for home Import CTA ↔ import dropzone morphs. */
+export function platformImportAreaViewTransitionName(id: PlatformId): string {
+  return `platform-import-area-${id}`
+}

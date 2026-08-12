@@ -125,8 +125,7 @@ export function normalizeAppleMusicInsights(
     topAlbums: raw.topAlbums ?? base.topAlbums,
     topAlbumsByMs: raw.topAlbumsByMs ?? base.topAlbumsByMs,
     lovedTracks: raw.lovedTracks ?? base.lovedTracks,
-    libraryGrowthHeatmap:
-      raw.libraryGrowthHeatmap ?? base.libraryGrowthHeatmap,
+    libraryGrowthHeatmap: raw.libraryGrowthHeatmap ?? base.libraryGrowthHeatmap,
     playlists: { ...base.playlists, ...(raw.playlists ?? {}) },
     decades: raw.decades ?? base.decades,
   }
