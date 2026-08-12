@@ -340,7 +340,7 @@ export function PlatformImportView({
                         className="size-5"
                       />
                     </span>
-                    <span className="text-[0.7rem] font-medium leading-tight">
+                    <span className="text-[0.7rem] leading-tight font-medium">
                       {product.label}
                     </span>
                     {!product.analyzed ? (
@@ -351,10 +351,6 @@ export function PlatformImportView({
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-center text-[0.7rem] text-muted-foreground">
-                Gmail headers and Drive library metadata are analyzed; message
-                bodies and file contents are not ingested.
-              </p>
             </div>
           ) : null}
           <p className="mt-3 text-xs font-medium text-muted-foreground">

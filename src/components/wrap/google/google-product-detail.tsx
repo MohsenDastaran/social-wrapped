@@ -7,11 +7,14 @@ import {
 import { CountedRankList } from "@/components/wrap/google/counted-rank-list"
 import type { GoogleProductId } from "@/components/wrap/google/google-products"
 import { YouTubeSection } from "@/components/wrap/google/youtube-section"
+import { WordCloudChart } from "@/components/wrap/charts/word-cloud-chart"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { fmt } from "@/components/wrap/chart-theme"
-import type { GoogleInsights } from "@/platform/google-types"
+import type { CountedItem, GoogleInsights } from "@/platform/google-types"
+import type { KeywordStats } from "@/platform/analytics-types"
 import {
+  AtSign,
   Bookmark,
   BookOpen,
   Ban,
@@ -27,10 +30,14 @@ import {
   Mail,
   MapPinned,
   Monitor,
+  Newspaper,
   NotebookPen,
+  Paperclip,
   Puzzle,
+  Reply,
   Search,
   Shield,
+  Users,
 } from "lucide-react"
 import { useState } from "react"
 
@@ -553,6 +560,19 @@ function fmtBytes(n: number): string {
   return `${(n / 1024 ** 3).toFixed(1)} GB`
 }
 
+function fmtPct(part: number, total: number): string {
+  if (total <= 0) return "—"
+  return `${Math.round((part / total) * 100)}%`
+}
+
+function countedToKeywords(items: CountedItem[]): KeywordStats {
+  return {
+    counts: Object.fromEntries(
+      items.map((item) => [item.name, [item.count, 0] as [number, number]])
+    ),
+  }
+}
+
 function GmailSection({
   data,
 }: {
@@ -561,6 +581,9 @@ function GmailSection({
   const hourly = padHourly(data.hourly)
   const peak = peakHourLabel(hourly)
   const hourTotal = hourly.reduce((a, b) => a + b, 0)
+  const total = data.messageCount || 0
+  const subjectWords = data.subjectWords ?? []
+  const subjectKeywords = countedToKeywords(subjectWords)
 
   return (
     <section className="flex flex-col gap-5 text-start">
@@ -588,6 +611,40 @@ function GmailSection({
           value={fmt(data.blockedAddressCount)}
           icon={Ban}
           accent="violet"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        <WrapKpi
+          label="Reply ratio"
+          value={fmtPct(data.replyCount ?? 0, total)}
+          icon={Reply}
+          accent="sky"
+        />
+        <WrapKpi
+          label="With attachments"
+          value={fmtPct(data.attachmentCount ?? 0, total)}
+          icon={Paperclip}
+          accent="teal"
+        />
+        <WrapKpi
+          label="Spam ratio"
+          value={fmtPct(data.spamCount, total)}
+          icon={Ban}
+          accent="amber"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <WrapKpi
+          label="Newsletters"
+          value={`${fmt(data.newsletterCount ?? 0)} · ${fmtPct(data.newsletterCount ?? 0, total)}`}
+          icon={Newspaper}
+          accent="violet"
+        />
+        <WrapKpi
+          label="People"
+          value={`${fmt(data.peopleCount ?? 0)} · ${fmtPct(data.peopleCount ?? 0, total)}`}
+          icon={Users}
+          accent="emerald"
         />
       </div>
       {data.activity?.daily?.length || data.activity?.monthly?.length ? (
@@ -621,15 +678,35 @@ function GmailSection({
           />
         </WrapChartCard>
       ) : null}
+      {subjectWords.length > 0 ? (
+        <WordCloudChart
+          keywords={subjectKeywords}
+          mode="you"
+          enableScopeToggle={false}
+          title="Subject word cloud"
+          description="Words from subject lines only — bodies are not read"
+          exportName="gmail-subject-word-cloud"
+        />
+      ) : null}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <CountedRankList
+          title="Top phrases"
+          description="Two-word phrases from subject lines"
+          icon={Mail}
+          items={data.topPhrases ?? []}
+          emptyLabel="No subject phrases in this export."
+          accent="sky"
+        />
         <CountedRankList
           title="Top labels"
           description="Gmail labels on the most messages"
           icon={Mail}
           items={data.topLabels ?? []}
           emptyLabel="No labels in this export."
-          accent="sky"
+          accent="violet"
         />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <CountedRankList
           title="Top senders"
           description="Addresses that appear most in From"
@@ -638,7 +715,23 @@ function GmailSection({
           emptyLabel="No senders in this export."
           accent="teal"
         />
+        <CountedRankList
+          title="Top recipients"
+          description="Addresses you write to most (Sent)"
+          icon={Users}
+          items={data.topRecipients ?? []}
+          emptyLabel="No sent recipients in this export."
+          accent="emerald"
+        />
       </div>
+      <CountedRankList
+        title="Top sender domains"
+        description="Where incoming mail comes from"
+        icon={AtSign}
+        items={data.topSenderDomains ?? []}
+        emptyLabel="No sender domains in this export."
+        accent="amber"
+      />
     </section>
   )
 }

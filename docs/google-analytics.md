@@ -16,7 +16,7 @@ Catalog of analytics Social Wrapped derives from Google Takeout ZIP parts.
 4. ✅ **My Activity** — product drill-down page (Search, YouTube, Maps, Chrome, Gemini Apps, …); chips for products with ≥1 event.
 5. ✅ **Fit** — step deltas, active minutes, distance / calories / heart minutes (merge files), activity TCX type mix.
 6. ✅ **Keep / Calendar / Photos metadata / Access Log** — including activity over time (+ Access Log cities).
-7. ✅ **Gmail** — streamed `.mbox` **headers** (Date, From, X-Gmail-Labels); blocked-address **count** only. Message bodies are not ingested.
+7. ✅ **Gmail** — streamed `.mbox` **headers** (Date, From, To, Subject, X-Gmail-Labels, List-*, MIME). Reply / attachment / spam ratios, newsletters vs people, sender domains, recipients, subject word cloud + phrases. Message bodies are not ingested.
 8. ✅ **Drive** — ZIP entry **metadata** (counts, sizes, folders, dates). File contents are not ingested.
 
 ---
@@ -40,7 +40,7 @@ Catalog of analytics Social Wrapped derives from Google Takeout ZIP parts.
 | ✅ | `Google Photos/**/*.json` | Photo sidecars only |
 | ✅ | `Access Log Activity/*.csv` | Access rows |
 | ✅ | `Profile/Profile.json` | Display name |
-| ✅ | `Mail/*.mbox` | Headers only (no bodies) |
+| ✅ | `Mail/*.mbox` | Headers only (no bodies): volume, labels, senders, recipients, domains, reply/attachment/spam ratios, newsletters vs people, subject words/phrases |
 | ✅ | `Mail/**/Blocked Addresses.json` | Count only |
 | ✅ | `Drive/**` ZIP entries | Metadata only (no file bytes) |
 

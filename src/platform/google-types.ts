@@ -128,8 +128,16 @@ export type GmailInsights = {
   spamCount: number
   unreadCount: number
   blockedAddressCount: number
+  replyCount: number
+  attachmentCount: number
+  newsletterCount: number
+  peopleCount: number
   topLabels: CountedItem[]
   topSenders: CountedItem[]
+  topRecipients: CountedItem[]
+  topSenderDomains: CountedItem[]
+  topPhrases: CountedItem[]
+  subjectWords: CountedItem[]
   heatmap: HeatmapDay[]
   hourly: number[]
   activity: ActivityTimeSeries
@@ -202,7 +210,19 @@ export function normalizeGoogleInsights(
     calendar: raw.calendar ?? null,
     photos: raw.photos ?? null,
     accessLog: raw.accessLog ?? null,
-    gmail: raw.gmail ?? null,
+    gmail: raw.gmail
+      ? {
+          ...raw.gmail,
+          replyCount: raw.gmail.replyCount ?? 0,
+          attachmentCount: raw.gmail.attachmentCount ?? 0,
+          newsletterCount: raw.gmail.newsletterCount ?? 0,
+          peopleCount: raw.gmail.peopleCount ?? 0,
+          topRecipients: raw.gmail.topRecipients ?? [],
+          topSenderDomains: raw.gmail.topSenderDomains ?? [],
+          topPhrases: raw.gmail.topPhrases ?? [],
+          subjectWords: raw.gmail.subjectWords ?? [],
+        }
+      : null,
     drive: raw.drive ?? null,
   }
 }

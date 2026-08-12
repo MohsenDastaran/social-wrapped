@@ -95,7 +95,7 @@ const CATALOG: GoogleProductMeta[] = [
   {
     id: "gmail",
     label: "Gmail",
-    description: "Message volume, labels, and senders",
+    description: "Volume, replies, newsletters, and subject phrases",
     icon: Mail,
     accent: "sky",
   },

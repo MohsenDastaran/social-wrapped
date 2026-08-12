@@ -133,17 +133,17 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     exportPath: "Google Takeout (takeout.google.com)",
     formats: "JSON, CSV, HTML, ICS (ZIP)",
     extractable:
-      "YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos metadata, Access Log, Gmail headers, Drive library metadata. Message bodies and Drive file contents are not ingested.",
+      "YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos metadata, Access Log, Gmail headers, Drive library metadata.",
     steps: [
       "Open Google Takeout and select the services you want (YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos, Gmail, Drive, …).",
       "Export and download all ZIP parts when ready — do not unzip.",
       "In Social Wrapped, import every Takeout ZIP part together from Home → Google.",
     ],
     importHint:
-      "Multi-part Takeout downloads are supported. Gmail headers and Drive library metadata are analyzed on your device; message bodies and Drive file contents are not ingested.",
+      "Multi-part Takeout downloads are supported. Gmail headers and Drive library metadata are analyzed on your device",
     importTitle: "Import Google Takeout",
     importDescription:
-      "Upload one or more Google Takeout ZIP archives. We analyze YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos, Access Log, Gmail headers, and Drive metadata on your device — message bodies and Drive file contents are not ingested.",
+      "Upload one or more Google Takeout ZIP archives. We analyze YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos, Access Log, Gmail headers, and Drive metadata on your device",
     acceptedFiles: [".zip"],
     accept: ".zip,application/zip",
   },
@@ -273,8 +273,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
       "from-sky-600/25 via-blue-500/10 to-transparent dark:from-sky-500/20 dark:via-blue-600/5",
     summary:
       "Request a data archive from Settings & Privacy on desktop (not mobile).",
-    exportPath:
-      "Me → Settings & Privacy → Data privacy → Download your data",
+    exportPath: "Me → Settings & Privacy → Data privacy → Download your data",
     formats: "CSV (ZIP)",
     extractable:
       "Connections, messages, reactions, comments, shares, invitations, endorsements, and job applications.",
