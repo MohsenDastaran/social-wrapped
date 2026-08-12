@@ -1,4 +1,3 @@
-import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 import {
   CircadianPolarChart,
   peakHourLabel,

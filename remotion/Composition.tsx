@@ -525,7 +525,7 @@ function chartSequenceNodes(
             motion="pan"
           />
         ) : (
-          <ChartBeat id={slide.id} src={slide.src} heading={slide.heading} />
+          <ChartBeat src={slide.src} />
         )}
       </TransitionSeries.Sequence>,
     ]

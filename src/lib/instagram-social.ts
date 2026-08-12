@@ -42,7 +42,7 @@ export function normalizeInstagramSocial(
   const likeHourly = Array.from({ length: 24 }, (_, i) => Number(hourly[i] ?? 0) || 0)
   const storyHourly = Array.isArray(raw.storyViewHourly)
     ? raw.storyViewHourly
-    : base.storyViewHourly
+    : (base.storyViewHourly ?? [])
   const storyViewHourly = Array.from(
     { length: 24 },
     (_, i) => Number(storyHourly[i] ?? 0) || 0

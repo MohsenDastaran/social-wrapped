@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 
 import { AnimatedLines } from "@/components/animated-lines"
 import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
-import { ArrowDown, ArrowUpRight } from "lucide-react"
+import { ArrowDown } from "lucide-react"
 
 function scrollToPlatforms() {
   const el = document.getElementById("platforms")

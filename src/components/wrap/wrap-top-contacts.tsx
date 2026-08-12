@@ -159,8 +159,7 @@ function SavedMessagesCard({
   chat: ChatResult
   onSelect: (chatId: number) => void
 }) {
-  const { ref, exporting, exportError, exportPng } =
-    useDomExport<HTMLDivElement>(CARD_EXPORT)
+  const { ref } = useDomExport<HTMLDivElement>(CARD_EXPORT)
   const total = chat.analytics.totalMessages
 
   return (
@@ -188,12 +187,6 @@ function SavedMessagesCard({
           aria-hidden
         />
       </button>
-      {/* <IconExportButton
-        title="Saved Messages"
-        exporting={exporting}
-        exportError={exportError}
-        onExport={() => void exportPng("saved-messages.png")}
-      /> */}
     </div>
   )
 }

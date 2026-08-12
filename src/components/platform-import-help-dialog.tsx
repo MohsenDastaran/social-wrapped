@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react"
-import { ExternalLink, Lock } from "lucide-react"
+import { ExternalLink } from "lucide-react"
 
 import { PlatformLogo } from "@/components/platform-logo"
 import { Button } from "@/components/ui/button"
@@ -7,7 +7,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
