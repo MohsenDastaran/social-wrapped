@@ -16,7 +16,8 @@ Catalog of analytics Social Wrapped derives from Google Takeout ZIP parts.
 4. ✅ **My Activity** — product drill-down page (Search, YouTube, Maps, Chrome, Gemini Apps, …); chips for products with ≥1 event.
 5. ✅ **Fit** — step deltas, active minutes, distance / calories / heart minutes (merge files), activity TCX type mix.
 6. ✅ **Keep / Calendar / Photos metadata / Access Log** — including activity over time (+ Access Log cities).
-7. ✅ **Skipped** Mail `.mbox` and Drive file bodies (detected + disclosed; listed on the import page).
+7. ✅ **Gmail** — streamed `.mbox` **headers** (Date, From, X-Gmail-Labels); blocked-address **count** only. Message bodies are not ingested.
+8. ✅ **Drive** — ZIP entry **metadata** (counts, sizes, folders, dates). File contents are not ingested.
 
 ---
 
@@ -39,8 +40,9 @@ Catalog of analytics Social Wrapped derives from Google Takeout ZIP parts.
 | ✅ | `Google Photos/**/*.json` | Photo sidecars only |
 | ✅ | `Access Log Activity/*.csv` | Access rows |
 | ✅ | `Profile/Profile.json` | Display name |
-| ⛔ | `Mail/*.mbox` | Not analyzed (v1); listed on import |
-| ⛔ | `Drive/**` binaries | Not analyzed (v1); listed on import |
+| ✅ | `Mail/*.mbox` | Headers only (no bodies) |
+| ✅ | `Mail/**/Blocked Addresses.json` | Count only |
+| ✅ | `Drive/**` ZIP entries | Metadata only (no file bytes) |
 
 ---
 
@@ -53,5 +55,6 @@ Persisted on `WrapRecord.googleInsights`. Route stays `/wrap/:wrapId` for the **
 3. Chrome → product page
 4. My Activity → product page (inner product picker)
 5. Fit / Keep / Calendar / Photos / Access log → product pages
+6. Gmail / Drive → product pages (More products)
 
 Reusable UI: `WrapKpi`, `WrapChartCard`, `CalendarHeatmap`, `ActivityOverTimeChart`, `CircadianPolarChart`.

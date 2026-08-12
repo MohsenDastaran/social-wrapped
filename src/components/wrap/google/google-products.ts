@@ -3,7 +3,9 @@ import {
   CalendarDays,
   Clapperboard,
   Footprints,
+  HardDrive,
   Image,
+  Mail,
   Monitor,
   NotebookPen,
   Search,
@@ -22,6 +24,8 @@ export type GoogleProductId =
   | "calendar"
   | "photos"
   | "access-log"
+  | "gmail"
+  | "drive"
 
 export type GoogleProductMeta = {
   id: GoogleProductId
@@ -88,6 +92,20 @@ const CATALOG: GoogleProductMeta[] = [
     icon: Shield,
     accent: "amber",
   },
+  {
+    id: "gmail",
+    label: "Gmail",
+    description: "Message volume, labels, and senders",
+    icon: Mail,
+    accent: "sky",
+  },
+  {
+    id: "drive",
+    label: "Drive",
+    description: "Library size, types, and folders",
+    icon: HardDrive,
+    accent: "emerald",
+  },
 ]
 
 export function isGoogleProductId(value: string): value is GoogleProductId {
@@ -121,6 +139,10 @@ export function productHasData(
       return insights.photos != null
     case "access-log":
       return insights.accessLog != null
+    case "gmail":
+      return insights.gmail != null
+    case "drive":
+      return insights.drive != null
   }
 }
 
@@ -177,16 +199,25 @@ export function productHighlight(
       if (!al) return "—"
       return `${fmt(al.entryCount)} entries`
     }
+    case "gmail": {
+      const gm = insights.gmail
+      if (!gm) return "—"
+      return `${fmt(gm.messageCount)} messages`
+    }
+    case "drive": {
+      const dr = insights.drive
+      if (!dr) return "—"
+      return `${fmt(dr.fileCount)} files`
+    }
   }
 }
 
-/** Products shown on the Google import page (analyzed + listed-only). */
-export type GoogleImportProductId = GoogleProductId | "gmail" | "drive"
+/** Products shown on the Google import page. */
+export type GoogleImportProductId = GoogleProductId
 
 export type GoogleImportProductMeta = {
   id: GoogleImportProductId
   label: string
-  /** When false, Takeout may include it but we skip file bodies. */
   analyzed: boolean
   caption?: string
 }
@@ -200,16 +231,6 @@ export const GOOGLE_IMPORT_PRODUCTS: GoogleImportProductMeta[] = [
   { id: "calendar", label: "Calendar", analyzed: true },
   { id: "photos", label: "Photos", analyzed: true },
   { id: "access-log", label: "Access log", analyzed: true },
-  {
-    id: "gmail",
-    label: "Gmail",
-    analyzed: false,
-    caption: "Included in Takeout; mail bodies not analyzed",
-  },
-  {
-    id: "drive",
-    label: "Drive",
-    analyzed: false,
-    caption: "Included in Takeout; file bodies not analyzed",
-  },
+  { id: "gmail", label: "Gmail", analyzed: true },
+  { id: "drive", label: "Drive", analyzed: true },
 ]

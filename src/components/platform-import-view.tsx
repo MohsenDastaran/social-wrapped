@@ -352,8 +352,8 @@ export function PlatformImportView({
                 ))}
               </ul>
               <p className="mt-2 text-center text-[0.7rem] text-muted-foreground">
-                Gmail and Drive can be in your ZIP — file bodies are not
-                analyzed.
+                Gmail headers and Drive library metadata are analyzed; message
+                bodies and file contents are not ingested.
               </p>
             </div>
           ) : null}

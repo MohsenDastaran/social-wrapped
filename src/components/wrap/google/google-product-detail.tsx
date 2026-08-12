@@ -14,12 +14,17 @@ import type { GoogleInsights } from "@/platform/google-types"
 import {
   Bookmark,
   BookOpen,
+  Ban,
   CalendarDays,
+  File,
+  Folder,
   Footprints,
   FormInput,
   Globe,
+  HardDrive,
   HeartPulse,
   Image,
+  Mail,
   MapPinned,
   Monitor,
   NotebookPen,
@@ -68,6 +73,10 @@ export function GoogleProductDetail({
       return insights.accessLog ? (
         <AccessLogSection data={insights.accessLog} />
       ) : null
+    case "gmail":
+      return insights.gmail ? <GmailSection data={insights.gmail} /> : null
+    case "drive":
+      return insights.drive ? <DriveSection data={insights.drive} /> : null
   }
 }
 
@@ -533,6 +542,162 @@ function PhotosSection({
         emptyLabel="No albums in this export."
         accent="violet"
       />
+    </section>
+  )
+}
+
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 ** 2) return `${(n / 1024).toFixed(1)} KB`
+  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`
+  return `${(n / 1024 ** 3).toFixed(1)} GB`
+}
+
+function GmailSection({
+  data,
+}: {
+  data: NonNullable<GoogleInsights["gmail"]>
+}) {
+  const hourly = padHourly(data.hourly)
+  const peak = peakHourLabel(hourly)
+  const hourTotal = hourly.reduce((a, b) => a + b, 0)
+
+  return (
+    <section className="flex flex-col gap-5 text-start">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+        <WrapKpi
+          label="Messages"
+          value={fmt(data.messageCount)}
+          icon={Mail}
+          accent="sky"
+        />
+        <WrapKpi
+          label="Sent"
+          value={fmt(data.sentCount)}
+          icon={Mail}
+          accent="teal"
+        />
+        <WrapKpi
+          label="Spam"
+          value={fmt(data.spamCount)}
+          icon={Ban}
+          accent="amber"
+        />
+        <WrapKpi
+          label="Blocked"
+          value={fmt(data.blockedAddressCount)}
+          icon={Ban}
+          accent="violet"
+        />
+      </div>
+      {data.activity?.daily?.length || data.activity?.monthly?.length ? (
+        <ActivityOverTimeChart
+          series={data.activity}
+          title="Mail over time"
+          exportName="gmail-over-time"
+          sentLabel="Messages"
+          receivedLabel="—"
+        />
+      ) : null}
+      {(data.heatmap?.length ?? 0) > 0 ? (
+        <CalendarHeatmap
+          days={data.heatmap}
+          title="Mail activity"
+          exportName="gmail-heatmap"
+        />
+      ) : null}
+      {hourly.some((n) => n > 0) ? (
+        <WrapChartCard
+          title="When you mail"
+          description={`Peak ${peak} · ${fmt(hourTotal)} messages (UTC)`}
+          exportName="gmail-hours"
+          exportSize="compact"
+          chartClassName="h-80 sm:h-[22rem]"
+        >
+          <CircadianPolarChart
+            series={[{ name: "Messages", hourly }]}
+            showLegend={false}
+            className="h-full w-full p-2"
+          />
+        </WrapChartCard>
+      ) : null}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <CountedRankList
+          title="Top labels"
+          description="Gmail labels on the most messages"
+          icon={Mail}
+          items={data.topLabels ?? []}
+          emptyLabel="No labels in this export."
+          accent="sky"
+        />
+        <CountedRankList
+          title="Top senders"
+          description="Addresses that appear most in From"
+          icon={Mail}
+          items={data.topSenders ?? []}
+          emptyLabel="No senders in this export."
+          accent="teal"
+        />
+      </div>
+    </section>
+  )
+}
+
+function DriveSection({
+  data,
+}: {
+  data: NonNullable<GoogleInsights["drive"]>
+}) {
+  return (
+    <section className="flex flex-col gap-5 text-start">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <WrapKpi
+          label="Files"
+          value={fmt(data.fileCount)}
+          icon={HardDrive}
+          accent="emerald"
+        />
+        <WrapKpi
+          label="Library size"
+          value={fmtBytes(data.totalBytes)}
+          icon={HardDrive}
+          accent="sky"
+        />
+      </div>
+      {data.activity?.daily?.length || data.activity?.monthly?.length ? (
+        <ActivityOverTimeChart
+          series={data.activity}
+          title="Files over time"
+          exportName="drive-over-time"
+          sentLabel="Files"
+          receivedLabel="—"
+        />
+      ) : null}
+      {(data.heatmap?.length ?? 0) > 0 ? (
+        <CalendarHeatmap
+          days={data.heatmap}
+          title="File activity"
+          exportName="drive-heatmap"
+        />
+      ) : null}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <CountedRankList
+          title="Extensions"
+          description="File types in your Drive library"
+          icon={File}
+          items={data.topExtensions ?? []}
+          emptyLabel="No file types in this export."
+          accent="emerald"
+        />
+        <CountedRankList
+          title="Folders"
+          description="Top-level folders by file count"
+          icon={Folder}
+          items={data.topFolders ?? []}
+          emptyLabel="No folders in this export."
+          accent="sky"
+        />
+      </div>
     </section>
   )
 }

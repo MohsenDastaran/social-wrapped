@@ -73,7 +73,7 @@ async function handleFiles(
         }
       )
     } catch (error) {
-      // Drive/Mail-only parts have no analyzable products — skip them.
+      // Empty / unsupported ZIP parts (no analyzable products) — skip them.
       const msg = error instanceof Error ? error.message : String(error)
       if (
         msg.includes("No supported Google Takeout products") ||

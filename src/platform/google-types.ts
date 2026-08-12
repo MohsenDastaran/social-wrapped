@@ -121,6 +121,29 @@ export type AccessLogInsights = {
   activity: ActivityTimeSeries
 }
 
+export type GmailInsights = {
+  messageCount: number
+  sentCount: number
+  inboxCount: number
+  spamCount: number
+  unreadCount: number
+  blockedAddressCount: number
+  topLabels: CountedItem[]
+  topSenders: CountedItem[]
+  heatmap: HeatmapDay[]
+  hourly: number[]
+  activity: ActivityTimeSeries
+}
+
+export type DriveInsights = {
+  fileCount: number
+  totalBytes: number
+  topExtensions: CountedItem[]
+  topFolders: CountedItem[]
+  heatmap: HeatmapDay[]
+  activity: ActivityTimeSeries
+}
+
 export type GoogleInsights = {
   displayName?: string | null
   productsFound: string[]
@@ -133,6 +156,8 @@ export type GoogleInsights = {
   calendar?: CalendarInsights | null
   photos?: PhotosInsights | null
   accessLog?: AccessLogInsights | null
+  gmail?: GmailInsights | null
+  drive?: DriveInsights | null
 }
 
 export function emptyActivitySeries(): ActivityTimeSeries {
@@ -177,5 +202,7 @@ export function normalizeGoogleInsights(
     calendar: raw.calendar ?? null,
     photos: raw.photos ?? null,
     accessLog: raw.accessLog ?? null,
+    gmail: raw.gmail ?? null,
+    drive: raw.drive ?? null,
   }
 }
