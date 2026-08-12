@@ -141,20 +141,22 @@ export function YouTubeSection({ data, standalone = false }: YouTubeSectionProps
         </WrapChartCard>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <CountedRankList
           title="Top channels"
-          description="Most watched"
+          description="Channels you watched most"
           icon={Users}
           items={data.topChannels ?? []}
-          emptyLabel="No channel data"
+          emptyLabel="No channel data in this export."
+          accent="violet"
         />
         <CountedRankList
           title="Top videos"
-          description="Most rewatched titles"
+          description="Titles you rewatched most"
           icon={Clapperboard}
           items={data.topVideos ?? []}
-          emptyLabel="No video titles"
+          emptyLabel="No video titles in this export."
+          accent="teal"
         />
       </div>
 
@@ -184,9 +186,11 @@ export function YouTubeSection({ data, standalone = false }: YouTubeSectionProps
           ) : null}
           <CountedRankList
             title="Top searches"
+            description="Queries you searched most"
             icon={Search}
             items={data.topSearches ?? []}
-            emptyLabel="No search queries"
+            emptyLabel="No search queries in this export."
+            accent="amber"
           />
         </>
       ) : null}

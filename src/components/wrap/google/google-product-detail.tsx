@@ -127,18 +127,22 @@ function ChromeSection({
           />
         </WrapChartCard>
       ) : null}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <CountedRankList
           title="Top domains"
+          description="Sites you visited most"
           icon={Globe}
           items={data.topDomains ?? []}
-          emptyLabel="No domains"
+          emptyLabel="No domains in this export."
+          accent="teal"
         />
         <CountedRankList
           title="Top page titles"
+          description="Pages you opened most"
           icon={Monitor}
           items={data.topTitles ?? []}
-          emptyLabel="No titles"
+          emptyLabel="No page titles in this export."
+          accent="sky"
         />
       </div>
     </section>
@@ -229,9 +233,11 @@ function MyActivitySection({
           ) : null}
           <CountedRankList
             title={`Top ${active.name} items`}
+            description={`Most frequent ${active.name.toLowerCase()} activity`}
             icon={active.name === "Maps" ? MapPinned : Search}
             items={active.topItems ?? []}
-            emptyLabel="No ranked items"
+            emptyLabel="No ranked items in this export."
+            accent="sky"
           />
         </>
       ) : null}
@@ -280,9 +286,11 @@ function FitSection({ data }: { data: NonNullable<GoogleInsights["fit"]> }) {
       ) : null}
       <CountedRankList
         title="Activity types"
+        description="Workouts and activities you logged most"
         icon={Footprints}
         items={data.activityTypes ?? []}
-        emptyLabel="No recorded workouts"
+        emptyLabel="No recorded workouts in this export."
+        accent="emerald"
       />
     </section>
   )
@@ -358,9 +366,11 @@ function CalendarSection({
       ) : null}
       <CountedRankList
         title="Frequent events"
+        description="Event titles that repeat most"
         icon={CalendarDays}
         items={data.topSummaries ?? []}
-        emptyLabel="No event titles"
+        emptyLabel="No event titles in this export."
+        accent="sky"
       />
     </section>
   )
@@ -396,9 +406,11 @@ function PhotosSection({
       ) : null}
       <CountedRankList
         title="Albums"
+        description="Where most of your photos live"
         icon={Image}
         items={data.byAlbum ?? []}
-        emptyLabel="No albums"
+        emptyLabel="No albums in this export."
+        accent="violet"
       />
     </section>
   )
@@ -434,9 +446,11 @@ function AccessLogSection({
       ) : null}
       <CountedRankList
         title="Products"
+        description="Google products you accessed most"
         icon={Shield}
         items={data.topProducts ?? []}
-        emptyLabel="No products"
+        emptyLabel="No products in this export."
+        accent="sky"
       />
     </section>
   )
