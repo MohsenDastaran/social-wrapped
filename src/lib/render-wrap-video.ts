@@ -8,6 +8,7 @@ import {
   VIDEO_FPS,
   VIDEO_HEIGHT,
   VIDEO_WIDTH,
+  appleMusicStickerExtras,
   slidesIncludeClock,
   slidesIncludeEmojis,
   slidesIncludeHeatmap,
@@ -136,11 +137,14 @@ async function renderOnce(
   }
 ): Promise<Blob> {
   const slides = props.chartSlides ?? []
+  const amStickers = appleMusicStickerExtras(slides)
   const durationInFrames = videoDurationFrames(slides.length, {
     includeHeatmapSticker: slidesIncludeHeatmap(slides),
     includeClockSticker: slidesIncludeClock(slides),
     includeWordCloudSticker: slidesIncludeWordCloud(slides),
     includeEmojiSticker: slidesIncludeEmojis(slides),
+    appleMusicExtraFrames: amStickers.frames,
+    appleMusicExtraWhips: amStickers.whips,
   })
 
   const support = await canRenderMediaOnWeb({

@@ -75,10 +75,7 @@ const X_VIDEO_IDS = [
   "sent-received",
 ] as const
 
-const WHATSAPP_ACCOUNT_VIDEO_IDS = [
-  "wa-overview",
-  "wa-connections",
-] as const
+const WHATSAPP_ACCOUNT_VIDEO_IDS = ["wa-overview", "wa-connections"] as const
 
 /** Messaging slides that X tweet charts replace. */
 const X_MESSAGING_STORY_EXCLUDE = new Set([
@@ -106,13 +103,11 @@ const SPOTIFY_VIDEO_IDS = [
 const APPLE_MUSIC_VIDEO_IDS = [
   "am-listen",
   "am-top-artists",
-  "am-listen-heatmap",
-  "am-listen-hours",
-  "am-top-tracks",
-  "am-plays-by-era",
   "am-top-genres",
   "am-top-albums",
-  "am-library",
+  "am-top-tracks",
+  "am-listen-hours",
+  "am-listen-heatmap",
 ] as const
 
 /** Instagram outbound social / engagement slides (gated on data). */
@@ -360,10 +355,11 @@ export function buildTikTokStorySpecs(
 
 function pickVideoIds(
   preferred: readonly string[],
-  available: WrapStorySpec[]
+  available: WrapStorySpec[],
+  limit = 5
 ): string[] {
   const have = new Set(available.map((s) => s.id))
-  return preferred.filter((id) => have.has(id)).slice(0, 5)
+  return preferred.filter((id) => have.has(id)).slice(0, limit)
 }
 
 /** Per-platform Stories carousel + video highlight ids. */
@@ -433,7 +429,7 @@ export function buildPlatformStoryCatalog(
     const storySpecs = [...am, ...messaging]
     return {
       storySpecs,
-      videoSlideIds: pickVideoIds(APPLE_MUSIC_VIDEO_IDS, storySpecs),
+      videoSlideIds: pickVideoIds(APPLE_MUSIC_VIDEO_IDS, storySpecs, 9),
     }
   }
 
@@ -512,6 +508,26 @@ export function buildAppleMusicStorySpecs(
     })
   }
 
+  const topGenre = insights.topGenres?.[0]
+  if (topGenre) {
+    specs.push({
+      id: "am-top-genres",
+      exportName: "apple-music-top-genres",
+      heading: "Top genres",
+      subtext: `Led by ${topGenre.name} · ${fmt(topGenre.count)} plays`,
+    })
+  }
+
+  const topAlbum = insights.topAlbums?.[0]
+  if (topAlbum) {
+    specs.push({
+      id: "am-top-albums",
+      exportName: "apple-music-top-albums",
+      heading: "Top albums",
+      subtext: `Led by ${topAlbum.name} · ${fmt(topAlbum.count)} plays`,
+    })
+  }
+
   const topTrack = insights.topTracks?.[0]
   if (topTrack) {
     specs.push({
@@ -568,26 +584,6 @@ export function buildAppleMusicStorySpecs(
       exportName: "apple-music-plays-by-decade",
       heading: "Plays by release era",
       subtext: `Peak ${peakDecade.decade}s · ${fmt(peakDecade.count)} plays`,
-    })
-  }
-
-  const topGenre = insights.topGenres?.[0]
-  if (topGenre) {
-    specs.push({
-      id: "am-top-genres",
-      exportName: "apple-music-top-genres",
-      heading: "Top genres",
-      subtext: `Led by ${topGenre.name} · ${fmt(topGenre.count)} plays`,
-    })
-  }
-
-  const topAlbum = insights.topAlbums?.[0]
-  if (topAlbum) {
-    specs.push({
-      id: "am-top-albums",
-      exportName: "apple-music-top-albums",
-      heading: "Top albums",
-      subtext: `Led by ${topAlbum.name} · ${fmt(topAlbum.count)} plays`,
     })
   }
 

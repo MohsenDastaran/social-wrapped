@@ -23,6 +23,7 @@ import {
   VIDEO_FPS,
   VIDEO_HEIGHT,
   VIDEO_WIDTH,
+  appleMusicStickerExtras,
   slidesIncludeClock,
   slidesIncludeEmojis,
   slidesIncludeHeatmap,
@@ -145,11 +146,14 @@ export function WrapShareVideo({
 
   const playerReady = ready && slidesReady
   const encoding = encodeStatus === "encoding"
+  const amStickers = appleMusicStickerExtras(videoSlides)
   const durationInFrames = videoDurationFrames(videoSlides.length, {
     includeHeatmapSticker: slidesIncludeHeatmap(videoSlides),
     includeClockSticker: slidesIncludeClock(videoSlides),
     includeWordCloudSticker: slidesIncludeWordCloud(videoSlides),
     includeEmojiSticker: slidesIncludeEmojis(videoSlides),
+    appleMusicExtraFrames: amStickers.frames,
+    appleMusicExtraWhips: amStickers.whips,
   })
   const playerKey = `${durationInFrames}-${chartSrcKey}-${videoSlides.map((s) => s.src.length).join("-")}`
 

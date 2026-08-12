@@ -57,7 +57,7 @@ const SCENE_MARKER = 300 // ~5s
 const SCENE_CHART = 390 // ~6.5s
 const SCENE_STATS = 540 // ~9s
 const SCENE_LOGOS = 330 // ~5.5s
-const MAX_CHARTS = 5
+const MAX_CHARTS = 9
 
 /** Deep-dive chart order (after early activity / sent-received beats). */
 const DEEP_DIVE_ORDER = [
@@ -74,11 +74,17 @@ const SCENE_HEATMAP_STICKER = 220 // ~3.7s
 const SCENE_CLOCK_STICKER = 240 // ~4s
 const SCENE_WORD_CLOUD_STICKER = 240 // ~4s
 const SCENE_EMOJI_STICKER = 240 // ~4s
+const SCENE_AM_TEASER = 240 // ~4s Apple Music paper tease
+const SCENE_AM_RANK_STICKER = 200 // ~3.3s Apple Music rank stack
 const SCENE_PLATFORMS_STICKER = 300 // ~5s
 const STICKER_STEP = 6
 const DESK = "#f1eee7"
 
 const HEATMAP_STICKER_LABELS = ["Your", "activity", "on the", "calendar"]
+const AM_LISTEN_HEATMAP_LABELS = ["Your", "listening", "on the", "calendar"]
+const AM_TOP_ARTISTS_LABELS = ["Your", "top", "artists"]
+const AM_TOP_GENRES_LABELS = ["Your", "top", "genres"]
+const AM_TOP_ALBUMS_LABELS = ["Your", "top", "albums"]
 const PLATFORM_STICKER_LABELS = [
   "for",
   "Telegram",
@@ -283,7 +289,10 @@ export function slidesIncludeClock(slides: VideoChartSlide[]): boolean {
     .slice(0, MAX_CHARTS)
     .some(
       (s) =>
-        (s.id === "circadian" || s.id === "x-tweet-hours") && Boolean(s.src)
+        (s.id === "circadian" ||
+          s.id === "x-tweet-hours" ||
+          s.id === "am-listen-hours") &&
+        Boolean(s.src)
     )
 }
 
@@ -306,8 +315,38 @@ export function slidesIncludeHeatmap(slides: VideoChartSlide[]): boolean {
     .slice(0, MAX_CHARTS)
     .some(
       (s) =>
-        (s.id === "heatmap" || s.id === "x-tweet-heatmap") && Boolean(s.src)
+        (s.id === "heatmap" ||
+          s.id === "x-tweet-heatmap" ||
+          s.id === "am-listen-heatmap") &&
+        Boolean(s.src)
     )
+}
+
+/** Extra Apple Music teaser stickers (beyond shared heatmap/hours). */
+export function appleMusicStickerExtras(slides: VideoChartSlide[]): {
+  frames: number
+  whips: number
+} {
+  const present = new Set(
+    slides
+      .slice(0, MAX_CHARTS)
+      .filter((s) => s.src)
+      .map((s) => s.id)
+  )
+  let frames = 0
+  let whips = 0
+  const add = (id: string, duration: number) => {
+    if (!present.has(id)) return
+    frames += duration
+    whips += 1
+  }
+  add("am-listen", SCENE_AM_TEASER)
+  add("am-top-artists", SCENE_AM_RANK_STICKER)
+  add("am-top-genres", SCENE_AM_RANK_STICKER)
+  add("am-top-albums", SCENE_AM_RANK_STICKER)
+  add("am-top-tracks", SCENE_AM_TEASER)
+  // heatmap + hours use shared slidesIncludeHeatmap / slidesIncludeClock
+  return { frames, whips }
 }
 
 /** Must be TransitionSeries.Transition itself — wrappers fail Remotion's child-type check. */
@@ -361,8 +400,16 @@ const stickerLabelStyle: React.CSSProperties = {
   textAlign: "center",
 }
 
-/** Paper sticker tease right before “Your clock”. */
-function ClockStickerIntro() {
+/** Two-sticker paper tease (main + accent sub). */
+function PaperTeaserIntro({
+  main,
+  sub,
+  seed,
+}: {
+  main: string
+  sub: string
+  seed: string
+}) {
   return (
     <SceneShell>
       <AbsoluteFill
@@ -377,7 +424,7 @@ function ClockStickerIntro() {
       >
         <PaperSticker
           at={12}
-          seed="clock-tease-main"
+          seed={`${seed}-main`}
           step={STICKER_STEP}
           background={PAPER}
           borderColor="rgba(4,21,18,0.35)"
@@ -385,12 +432,12 @@ function ClockStickerIntro() {
           maxTilt={2.2}
         >
           <span style={{ ...stickerLabelStyle, fontSize: 44, maxWidth: 760 }}>
-            See when you sent your messages
+            {main}
           </span>
         </PaperSticker>
         <PaperSticker
           at={36}
-          seed="clock-tease-sub"
+          seed={`${seed}-sub`}
           step={STICKER_STEP}
           background="#ecfdf5"
           borderColor="rgba(13,148,136,0.45)"
@@ -400,114 +447,102 @@ function ClockStickerIntro() {
           <span
             style={{ ...stickerLabelStyle, fontSize: 26, color: "#0f766e" }}
           >
-            Your daily rhythm, hour by hour
+            {sub}
           </span>
         </PaperSticker>
       </AbsoluteFill>
     </SceneShell>
+  )
+}
+
+/** Paper sticker tease right before “Your clock”. */
+function ClockStickerIntro() {
+  return (
+    <PaperTeaserIntro
+      seed="clock-tease"
+      main="See when you sent your messages"
+      sub="Your daily rhythm, hour by hour"
+    />
   )
 }
 
 /** Paper sticker tease right before “Your word cloud”. */
 function WordCloudStickerIntro() {
   return (
-    <SceneShell>
-      <AbsoluteFill
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 28,
-          padding: "0 72px",
-        }}
-      >
-        <PaperSticker
-          at={12}
-          seed="word-cloud-tease-main"
-          step={STICKER_STEP}
-          background={PAPER}
-          borderColor="rgba(4,21,18,0.35)"
-          padding="26px 34px"
-          maxTilt={2.2}
-        >
-          <span style={{ ...stickerLabelStyle, fontSize: 44, maxWidth: 760 }}>
-            The words you type on repeat
-          </span>
-        </PaperSticker>
-        <PaperSticker
-          at={36}
-          seed="word-cloud-tease-sub"
-          step={STICKER_STEP}
-          background="#ecfdf5"
-          borderColor="rgba(13,148,136,0.45)"
-          padding="14px 22px"
-          maxTilt={1.6}
-        >
-          <span
-            style={{ ...stickerLabelStyle, fontSize: 26, color: "#0f766e" }}
-          >
-            Your vocabulary, sized by how often
-          </span>
-        </PaperSticker>
-      </AbsoluteFill>
-    </SceneShell>
+    <PaperTeaserIntro
+      seed="word-cloud-tease"
+      main="The words you type on repeat"
+      sub="Your vocabulary, sized by how often"
+    />
   )
 }
 
 /** Paper sticker tease right before “Top emojis”. */
 function EmojiStickerIntro() {
   return (
-    <SceneShell>
-      <AbsoluteFill
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 28,
-          padding: "0 72px",
-        }}
-      >
-        <PaperSticker
-          at={12}
-          seed="emoji-tease-main"
-          step={STICKER_STEP}
-          background={PAPER}
-          borderColor="rgba(4,21,18,0.35)"
-          padding="26px 34px"
-          maxTilt={2.2}
-        >
-          <span style={{ ...stickerLabelStyle, fontSize: 44, maxWidth: 760 }}>
-            The emojis you reached for most
-          </span>
-        </PaperSticker>
-        <PaperSticker
-          at={36}
-          seed="emoji-tease-sub"
-          step={STICKER_STEP}
-          background="#ecfdf5"
-          borderColor="rgba(13,148,136,0.45)"
-          padding="14px 22px"
-          maxTilt={1.6}
-        >
-          <span
-            style={{ ...stickerLabelStyle, fontSize: 26, color: "#0f766e" }}
-          >
-            Your reaction vocabulary, ranked
-          </span>
-        </PaperSticker>
-      </AbsoluteFill>
-    </SceneShell>
+    <PaperTeaserIntro
+      seed="emoji-tease"
+      main="The emojis you reached for most"
+      sub="Your reaction vocabulary, ranked"
+    />
   )
+}
+
+function AppleMusicListenIntro() {
+  return (
+    <PaperTeaserIntro
+      seed="am-listen-tease"
+      main="How much you listened this year"
+      sub="Hours, plays, and your music habit"
+    />
+  )
+}
+
+function AppleMusicHoursIntro() {
+  return (
+    <PaperTeaserIntro
+      seed="am-hours-tease"
+      main="See when the music was on"
+      sub="Your listening rhythm, hour by hour"
+    />
+  )
+}
+
+function AppleMusicTracksIntro() {
+  return (
+    <PaperTeaserIntro
+      seed="am-tracks-tease"
+      main="The songs you couldn't quit"
+      sub="Your most-played tracks, ranked"
+    />
+  )
+}
+
+function prependSticker(
+  key: string,
+  durationInFrames: number,
+  scene: React.ReactNode,
+  chartNodes: React.ReactElement[]
+): React.ReactElement[] {
+  return [
+    <TransitionSeries.Transition
+      key={`whip-${key}`}
+      timing={whipTiming}
+      presentation={whipPresentation}
+    />,
+    <TransitionSeries.Sequence key={key} durationInFrames={durationInFrames}>
+      {scene}
+    </TransitionSeries.Sequence>,
+    ...chartNodes,
+  ]
 }
 
 function chartSequenceNodes(
   slides: VideoChartSlide[],
   keyPrefix: string
-): React.ReactNode[] {
+): React.ReactElement[] {
   return slides.flatMap((slide, index) => {
-    const chartNodes = [
+    const chartNodes: React.ReactElement[] = [
       <TransitionSeries.Transition
         key={`whip-${keyPrefix}-${index}`}
         timing={whipTiming}
@@ -530,72 +565,106 @@ function chartSequenceNodes(
       </TransitionSeries.Sequence>,
     ]
 
-    if (slide.id === "heatmap" || slide.id === "x-tweet-heatmap") {
-      return [
-        <TransitionSeries.Transition
-          key="whip-heatmap-sticker"
-          timing={whipTiming}
-          presentation={whipPresentation}
+    if (
+      slide.id === "heatmap" ||
+      slide.id === "x-tweet-heatmap" ||
+      slide.id === "am-listen-heatmap"
+    ) {
+      return prependSticker(
+        slide.id === "am-listen-heatmap"
+          ? "am-heatmap-sticker"
+          : "heatmap-sticker",
+        SCENE_HEATMAP_STICKER,
+        <RawStickerScene
+          labels={
+            slide.id === "am-listen-heatmap"
+              ? AM_LISTEN_HEATMAP_LABELS
+              : HEATMAP_STICKER_LABELS
+          }
         />,
-        <TransitionSeries.Sequence
-          key="heatmap-sticker"
-          durationInFrames={SCENE_HEATMAP_STICKER}
-        >
-          <RawStickerScene labels={HEATMAP_STICKER_LABELS} />
-        </TransitionSeries.Sequence>,
-        ...chartNodes,
-      ]
+        chartNodes
+      )
     }
 
     if (slide.id === "circadian" || slide.id === "x-tweet-hours") {
-      return [
-        <TransitionSeries.Transition
-          key="whip-clock-sticker"
-          timing={whipTiming}
-          presentation={whipPresentation}
-        />,
-        <TransitionSeries.Sequence
-          key="clock-sticker"
-          durationInFrames={SCENE_CLOCK_STICKER}
-        >
-          <ClockStickerIntro />
-        </TransitionSeries.Sequence>,
-        ...chartNodes,
-      ]
+      return prependSticker(
+        "clock-sticker",
+        SCENE_CLOCK_STICKER,
+        <ClockStickerIntro />,
+        chartNodes
+      )
+    }
+
+    if (slide.id === "am-listen-hours") {
+      return prependSticker(
+        "am-hours-sticker",
+        SCENE_CLOCK_STICKER,
+        <AppleMusicHoursIntro />,
+        chartNodes
+      )
     }
 
     if (slide.id === "word-cloud" || slide.id === "x-tweet-word-cloud") {
-      return [
-        <TransitionSeries.Transition
-          key="whip-word-cloud-sticker"
-          timing={whipTiming}
-          presentation={whipPresentation}
-        />,
-        <TransitionSeries.Sequence
-          key="word-cloud-sticker"
-          durationInFrames={SCENE_WORD_CLOUD_STICKER}
-        >
-          <WordCloudStickerIntro />
-        </TransitionSeries.Sequence>,
-        ...chartNodes,
-      ]
+      return prependSticker(
+        "word-cloud-sticker",
+        SCENE_WORD_CLOUD_STICKER,
+        <WordCloudStickerIntro />,
+        chartNodes
+      )
     }
 
     if (slide.id === "emojis") {
-      return [
-        <TransitionSeries.Transition
-          key="whip-emoji-sticker"
-          timing={whipTiming}
-          presentation={whipPresentation}
-        />,
-        <TransitionSeries.Sequence
-          key="emoji-sticker"
-          durationInFrames={SCENE_EMOJI_STICKER}
-        >
-          <EmojiStickerIntro />
-        </TransitionSeries.Sequence>,
-        ...chartNodes,
-      ]
+      return prependSticker(
+        "emoji-sticker",
+        SCENE_EMOJI_STICKER,
+        <EmojiStickerIntro />,
+        chartNodes
+      )
+    }
+
+    if (slide.id === "am-listen") {
+      return prependSticker(
+        "am-listen-sticker",
+        SCENE_AM_TEASER,
+        <AppleMusicListenIntro />,
+        chartNodes
+      )
+    }
+
+    if (slide.id === "am-top-artists") {
+      return prependSticker(
+        "am-artists-sticker",
+        SCENE_AM_RANK_STICKER,
+        <RawStickerScene labels={AM_TOP_ARTISTS_LABELS} />,
+        chartNodes
+      )
+    }
+
+    if (slide.id === "am-top-genres") {
+      return prependSticker(
+        "am-genres-sticker",
+        SCENE_AM_RANK_STICKER,
+        <RawStickerScene labels={AM_TOP_GENRES_LABELS} />,
+        chartNodes
+      )
+    }
+
+    if (slide.id === "am-top-albums") {
+      return prependSticker(
+        "am-albums-sticker",
+        SCENE_AM_RANK_STICKER,
+        <RawStickerScene labels={AM_TOP_ALBUMS_LABELS} />,
+        chartNodes
+      )
+    }
+
+    if (slide.id === "am-top-tracks") {
+      return prependSticker(
+        "am-tracks-sticker",
+        SCENE_AM_TEASER,
+        <AppleMusicTracksIntro />,
+        chartNodes
+      )
     }
 
     return chartNodes
@@ -613,6 +682,8 @@ export function videoDurationFrames(
     includeClockSticker?: boolean
     includeWordCloudSticker?: boolean
     includeEmojiSticker?: boolean
+    appleMusicExtraFrames?: number
+    appleMusicExtraWhips?: number
   }
 ): number {
   const charts = Math.min(Math.max(chartCount, 0), MAX_CHARTS)
@@ -626,6 +697,8 @@ export function videoDurationFrames(
   const wordCloudWhip = options?.includeWordCloudSticker ? 1 : 0
   const emoji = options?.includeEmojiSticker ? SCENE_EMOJI_STICKER : 0
   const emojiWhip = options?.includeEmojiSticker ? 1 : 0
+  const amExtra = options?.appleMusicExtraFrames ?? 0
+  const amExtraWhip = options?.appleMusicExtraWhips ?? 0
   // Platforms sticker always precedes the logos outro.
   const platforms = SCENE_PLATFORMS_STICKER
   const platformsWhip = 1
@@ -640,6 +713,7 @@ export function videoDurationFrames(
     clock +
     wordCloud +
     emoji +
+    amExtra +
     platforms +
     SCENE_LOGOS -
     WHIP *
@@ -649,6 +723,7 @@ export function videoDurationFrames(
         clockWhip +
         wordCloudWhip +
         emojiWhip +
+        amExtraWhip +
         platformsWhip)
   )
 }
