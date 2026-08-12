@@ -60,6 +60,18 @@ export const PLATFORM_IMPORT_DOCS: Partial<
     officialExportUrl: "https://faq.whatsapp.com/1180414079177245",
     officialExportLabel: "WhatsApp account information help",
   },
+  tiktok: {
+    title: "How to download your TikTok data",
+    paragraphs: [
+      "You can request a copy of your TikTok data, which may include your username, watch history, comment history, privacy settings, and more. Some data may not be available to download (for example, data that affects others’ privacy). Due to processing times, the last 24–48 hours of some categories may be missing — you can request again later for more recent data.",
+      "To request your data: in the TikTok app, tap Profile → Menu ☰ → Settings and privacy → Account → Download your data. Choose which information to include and select a file format (prefer TXT for Social Wrapped). Tap Request data. TikTok prepares a file and notifies you in the app when it’s ready — this can take a few days.",
+      "To download: Profile → Menu ☰ → Settings and privacy → Account → Download your data → Download data. When the status shows ready, tap Download. The file is available for up to 4 days. Save the ZIP and import it here without unzipping.",
+      "To cancel a pending request: open Download your data → Download data → Cancel next to the request → Delete request. You can request your data again anytime.",
+    ],
+    officialExportUrl:
+      "https://www.tiktok.com/support/faq_detail?id=7543597460594285112&category=web_account",
+    officialExportLabel: "TikTok download-your-data help",
+  },
 }
 
 export function getPlatformImportDoc(

@@ -178,15 +178,17 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     accentClass: "border-cyan-500/50",
     gradientClass:
       "from-cyan-500/25 via-teal-400/10 to-transparent dark:from-cyan-400/20 dark:via-teal-500/5",
-    summary: "Request a copy of your TikTok account data from settings.",
-    exportPath: "Settings → Account → Download your data",
+    summary:
+      "Request a copy of your TikTok data (watch history, comments, and more) from Account settings.",
+    exportPath:
+      "Profile → Menu → Settings and privacy → Account → Download your data",
     formats: "TXT ZIP",
     extractable:
       "Watch history, likes, comments, DMs, favorites, and profile details.",
     steps: [
-      "In TikTok, go to Settings → Account → Download your data.",
-      "Choose TXT format, request the download, then save the ZIP.",
-      "Import the ZIP here — everything stays on your device.",
+      "In the TikTok app: Profile → Menu ☰ → Settings and privacy → Account → Download your data.",
+      "Choose what to include, select TXT format, then tap Request data. TikTok notifies you in-app when the file is ready (this can take a few days).",
+      "Open Download your data → Download data, tap Download when ready (available up to 4 days), then import the ZIP here — everything stays on your device.",
     ],
     importTitle: "Import TikTok data",
     importDescription:
