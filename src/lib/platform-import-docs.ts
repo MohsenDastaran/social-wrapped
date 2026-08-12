@@ -72,6 +72,18 @@ export const PLATFORM_IMPORT_DOCS: Partial<
       "https://www.tiktok.com/support/faq_detail?id=7543597460594285112&category=web_account",
     officialExportLabel: "TikTok download-your-data help",
   },
+  linkedin: {
+    title: "Download your LinkedIn data",
+    paragraphs: [
+      "The fastest way to get a copy of your LinkedIn data is from Settings & Privacy on a personal computer (this feature is not available on mobile). Click the Me icon at the top of your LinkedIn homepage → Settings & Privacy → Data privacy (left rail) → under How LinkedIn uses your data, click Download your data.",
+      "Select the data you want and click Request archive. You can choose specific categories or a larger download. Specific categories arrive by email within minutes; the larger archive usually within 24 hours. Use the link in the email to download — the file stays available for 72 hours.",
+      "For Social Wrapped, request the larger archive (complete export), not a single fast category. Save the ZIP and import it here without unzipping.",
+      "LinkedIn only includes categories that apply to your account and activities — for example, no Certifications file if you have none listed. You receive your own personal data only; People You May Know and Who’s Viewed Your Profile are not included. Some connections’ email addresses may be missing depending on their privacy settings.",
+    ],
+    officialExportUrl:
+      "https://www.linkedin.com/mypreferences/d/download-my-data",
+    officialExportLabel: "LinkedIn download your data",
+  },
 }
 
 export function getPlatformImportDoc(

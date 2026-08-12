@@ -271,19 +271,20 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     accentClass: "border-sky-600/50",
     gradientClass:
       "from-sky-600/25 via-blue-500/10 to-transparent dark:from-sky-500/20 dark:via-blue-600/5",
-    summary: "Request a full archive ZIP from Settings → Data privacy.",
-    exportPath: "Settings → Data privacy → Get a copy of your data",
+    summary:
+      "Request a data archive from Settings & Privacy on desktop (not mobile).",
+    exportPath:
+      "Me → Settings & Privacy → Data privacy → Download your data",
     formats: "CSV (ZIP)",
     extractable:
       "Connections, messages, reactions, comments, shares, invitations, endorsements, and job applications.",
     steps: [
-      "Open LinkedIn → Settings & Privacy → Data privacy → Get a copy of your data.",
-      "Request the larger archive (not the fast download) and wait for the email.",
-      "Download the ZIP when ready — do not unzip.",
-      "In Social Wrapped, import that ZIP from Home → LinkedIn.",
+      "On a personal computer: Me icon → Settings & Privacy → Data privacy → Download your data (under How LinkedIn uses your data).",
+      "Select your data and click Request archive. For Social Wrapped, choose the larger archive — email usually arrives within 24 hours (specific categories are faster).",
+      "Use the link in the email to download within 72 hours. Do not unzip — import the complete ZIP here.",
     ],
     importHint:
-      "Use the Complete LinkedIn Data Export ZIP. Media URLs are skipped; emails in Connections are never shown.",
+      "Use the complete LinkedIn data export ZIP from desktop. Media URLs are skipped; emails in Connections are never shown.",
     importTitle: "Import LinkedIn data",
     importDescription:
       "Upload your LinkedIn data export ZIP. Connections, messages, and engagement are processed on your device.",
