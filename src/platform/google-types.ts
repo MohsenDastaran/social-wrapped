@@ -28,6 +28,7 @@ export type YouTubeInsights = {
   topChannels: CountedItem[]
   topVideos: CountedItem[]
   topSearches: CountedItem[]
+  topPlaylists: CountedItem[]
   watchHeatmap: HeatmapDay[]
   watchHourly: number[]
   watchActivity: ActivityTimeSeries
@@ -45,6 +46,12 @@ export type ChromeInsights = {
   heatmap: HeatmapDay[]
   hourly: number[]
   activity: ActivityTimeSeries
+  bookmarkCount: number
+  topBookmarkFolders: CountedItem[]
+  extensionCount: number
+  topExtensions: CountedItem[]
+  readingListCount: number
+  savedAddressCount: number
 }
 
 export type MyActivityProduct = {
@@ -75,6 +82,10 @@ export type FitInsights = {
   daily: FitDayPoint[]
   stepsActivity: ActivityTimeSeries
   stepsHeatmap: HeatmapDay[]
+  /** Distance in meters. */
+  totalDistanceM: number
+  totalCalories: number
+  totalHeartMinutes: number
 }
 
 export type KeepInsights = {
@@ -136,10 +147,32 @@ export function normalizeGoogleInsights(
     displayName: raw.displayName ?? null,
     productsFound: raw.productsFound ?? [],
     skipped: raw.skipped ?? [],
-    youtube: raw.youtube ?? null,
-    chrome: raw.chrome ?? null,
+    youtube: raw.youtube
+      ? {
+          ...raw.youtube,
+          topPlaylists: raw.youtube.topPlaylists ?? [],
+        }
+      : null,
+    chrome: raw.chrome
+      ? {
+          ...raw.chrome,
+          bookmarkCount: raw.chrome.bookmarkCount ?? 0,
+          topBookmarkFolders: raw.chrome.topBookmarkFolders ?? [],
+          extensionCount: raw.chrome.extensionCount ?? 0,
+          topExtensions: raw.chrome.topExtensions ?? [],
+          readingListCount: raw.chrome.readingListCount ?? 0,
+          savedAddressCount: raw.chrome.savedAddressCount ?? 0,
+        }
+      : null,
     myActivity: raw.myActivity ?? null,
-    fit: raw.fit ?? null,
+    fit: raw.fit
+      ? {
+          ...raw.fit,
+          totalDistanceM: raw.fit.totalDistanceM ?? 0,
+          totalCalories: raw.fit.totalCalories ?? 0,
+          totalHeartMinutes: raw.fit.totalHeartMinutes ?? 0,
+        }
+      : null,
     keep: raw.keep ?? null,
     calendar: raw.calendar ?? null,
     photos: raw.photos ?? null,

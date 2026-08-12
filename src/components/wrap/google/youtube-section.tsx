@@ -33,6 +33,7 @@ export function YouTubeSection({ data, standalone = false }: YouTubeSectionProps
   const searchHourly = padHourly(data.searchHourly)
   const hasWatches = (data.watchCount ?? 0) > 0
   const hasSearches = (data.searchCount ?? 0) > 0
+  const playlists = data.topPlaylists ?? []
 
   if (!hasWatches && !hasSearches && !(data.subscriptionCount > 0)) {
     return (
@@ -99,6 +100,12 @@ export function YouTubeSection({ data, standalone = false }: YouTubeSectionProps
                 icon: MessageSquareText,
                 accent: "text-emerald-600 dark:text-emerald-400",
               },
+              {
+                label: "Playlists",
+                value: fmt(data.playlistCount ?? 0),
+                icon: ListVideo,
+                accent: "text-rose-600 dark:text-rose-400",
+              },
             ],
           },
         ]}
@@ -160,8 +167,29 @@ export function YouTubeSection({ data, standalone = false }: YouTubeSectionProps
         />
       </div>
 
+      {playlists.length > 0 ? (
+        <CountedRankList
+          title="Playlists"
+          description="Videos saved in each playlist"
+          icon={ListVideo}
+          items={playlists}
+          emptyLabel="No playlists in this export."
+          accent="rose"
+        />
+      ) : null}
+
       {hasSearches ? (
         <>
+          {data.searchActivity?.daily?.length ||
+          data.searchActivity?.monthly?.length ? (
+            <ActivityOverTimeChart
+              series={data.searchActivity}
+              title="Searches over time"
+              exportName="yt-searches-over-time"
+              sentLabel="Searches"
+              receivedLabel="—"
+            />
+          ) : null}
           {(data.searchHeatmap?.length ?? 0) > 0 ? (
             <CalendarHeatmap
               days={data.searchHeatmap}

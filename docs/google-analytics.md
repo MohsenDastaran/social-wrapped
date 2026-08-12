@@ -11,12 +11,12 @@ Catalog of analytics Social Wrapped derives from Google Takeout ZIP parts.
 ## What’s done
 
 1. ✅ **Multi-ZIP import** — upload all Takeout parts together; processed sequentially.
-2. ✅ **YouTube** — watch/search HTML histories, subscriptions, comments, playlists.
-3. ✅ **Chrome** — `History.json` visits, domains, heatmaps.
-4. ✅ **My Activity** — per-product HTML (Search, YouTube, Maps, Chrome, Gemini Apps deep-parsed).
-5. ✅ **Fit** — step deltas, active minutes, activity TCX type mix.
-6. ✅ **Keep / Calendar / Photos metadata / Access Log**.
-7. ✅ **Skipped** Mail `.mbox` and Drive file bodies (detected + disclosed).
+2. ✅ **YouTube** — watch/search HTML histories, subscriptions, comments, playlists (+ video counts), search over time.
+3. ✅ **Chrome** — `History.json` visits, domains, heatmaps; bookmarks / extensions / reading list / autofill **counts**.
+4. ✅ **My Activity** — product drill-down page (Search, YouTube, Maps, Chrome, Gemini Apps, …); chips for products with ≥1 event.
+5. ✅ **Fit** — step deltas, active minutes, distance / calories / heart minutes (merge files), activity TCX type mix.
+6. ✅ **Keep / Calendar / Photos metadata / Access Log** — including activity over time (+ Access Log cities).
+7. ✅ **Skipped** Mail `.mbox` and Drive file bodies (detected + disclosed; listed on the import page).
 
 ---
 
@@ -28,16 +28,19 @@ Catalog of analytics Social Wrapped derives from Google Takeout ZIP parts.
 | ✅ | `YouTube and YouTube Music/history/search-history.html` | Search events |
 | ✅ | `YouTube and YouTube Music/subscriptions/*.csv` | Subscriptions |
 | ✅ | `YouTube and YouTube Music/comments/*.csv` | Comments |
+| ✅ | `YouTube and YouTube Music/playlists/*-videos.csv` | Playlist video counts |
 | ✅ | `Chrome/History.json` | Browser visits |
+| ✅ | `Chrome/Bookmarks.html` / `Extensions.json` / `Reading List.html` | Counts + ranks |
+| ✅ | `Chrome/Addresses and more.json` | Autofill **count only** |
 | ✅ | `My Activity/*/MyActivity.html` | Product activity |
-| ✅ | `Fit/All Data/*step_count*` / `*active_minutes*` | Fitness series |
+| ✅ | `Fit/All Data/*step_count*` / `*active_minutes*` / merge distance·calories·heart | Fitness series |
 | ✅ | `Keep/*.json` | Notes |
 | ✅ | `Calendar/*.ics` | Events |
 | ✅ | `Google Photos/**/*.json` | Photo sidecars only |
 | ✅ | `Access Log Activity/*.csv` | Access rows |
 | ✅ | `Profile/Profile.json` | Display name |
-| ⛔ | `Mail/*.mbox` | Not analyzed (v1) |
-| ⛔ | `Drive/**` binaries | Not analyzed (v1) |
+| ⛔ | `Mail/*.mbox` | Not analyzed (v1); listed on import |
+| ⛔ | `Drive/**` binaries | Not analyzed (v1); listed on import |
 
 ---
 

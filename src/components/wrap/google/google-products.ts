@@ -179,3 +179,37 @@ export function productHighlight(
     }
   }
 }
+
+/** Products shown on the Google import page (analyzed + listed-only). */
+export type GoogleImportProductId = GoogleProductId | "gmail" | "drive"
+
+export type GoogleImportProductMeta = {
+  id: GoogleImportProductId
+  label: string
+  /** When false, Takeout may include it but we skip file bodies. */
+  analyzed: boolean
+  caption?: string
+}
+
+export const GOOGLE_IMPORT_PRODUCTS: GoogleImportProductMeta[] = [
+  { id: "youtube", label: "YouTube", analyzed: true },
+  { id: "chrome", label: "Chrome", analyzed: true },
+  { id: "my-activity", label: "My Activity", analyzed: true },
+  { id: "fit", label: "Fit", analyzed: true },
+  { id: "keep", label: "Keep", analyzed: true },
+  { id: "calendar", label: "Calendar", analyzed: true },
+  { id: "photos", label: "Photos", analyzed: true },
+  { id: "access-log", label: "Access log", analyzed: true },
+  {
+    id: "gmail",
+    label: "Gmail",
+    analyzed: false,
+    caption: "Included in Takeout; mail bodies not analyzed",
+  },
+  {
+    id: "drive",
+    label: "Drive",
+    analyzed: false,
+    caption: "Included in Takeout; file bodies not analyzed",
+  },
+]

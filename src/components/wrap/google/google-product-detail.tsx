@@ -12,13 +12,18 @@ import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { fmt } from "@/components/wrap/chart-theme"
 import type { GoogleInsights } from "@/platform/google-types"
 import {
+  Bookmark,
+  BookOpen,
   CalendarDays,
   Footprints,
+  FormInput,
   Globe,
+  HeartPulse,
   Image,
   MapPinned,
   Monitor,
   NotebookPen,
+  Puzzle,
   Search,
   Shield,
 } from "lucide-react"
@@ -74,6 +79,12 @@ function ChromeSection({
   const hourly = padHourly(data.hourly)
   const peak = peakHourLabel(hourly)
   const hourTotal = hourly.reduce((a, b) => a + b, 0)
+  const hasExtras =
+    (data.bookmarkCount ?? 0) > 0 ||
+    (data.extensionCount ?? 0) > 0 ||
+    (data.readingListCount ?? 0) > 0 ||
+    (data.savedAddressCount ?? 0) > 0
+
   return (
     <section className="flex flex-col gap-5 text-start">
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
@@ -96,6 +107,34 @@ function ChromeSection({
           accent="violet"
         />
       </div>
+      {hasExtras ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+          <WrapKpi
+            label="Bookmarks"
+            value={fmt(data.bookmarkCount ?? 0)}
+            icon={Bookmark}
+            accent="amber"
+          />
+          <WrapKpi
+            label="Extensions"
+            value={fmt(data.extensionCount ?? 0)}
+            icon={Puzzle}
+            accent="violet"
+          />
+          <WrapKpi
+            label="Reading list"
+            value={fmt(data.readingListCount ?? 0)}
+            icon={BookOpen}
+            accent="sky"
+          />
+          <WrapKpi
+            label="Autofill rows"
+            value={fmt(data.savedAddressCount ?? 0)}
+            icon={FormInput}
+            accent="teal"
+          />
+        </div>
+      ) : null}
       {data.activity?.daily?.length ? (
         <ActivityOverTimeChart
           series={data.activity}
@@ -145,6 +184,27 @@ function ChromeSection({
           accent="sky"
         />
       </div>
+      {(data.topBookmarkFolders?.length ?? 0) > 0 ||
+      (data.topExtensions?.length ?? 0) > 0 ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <CountedRankList
+            title="Bookmark folders"
+            description="Where your saved links live"
+            icon={Bookmark}
+            items={data.topBookmarkFolders ?? []}
+            emptyLabel="No bookmark folders in this export."
+            accent="amber"
+          />
+          <CountedRankList
+            title="Extensions"
+            description="Chrome extensions in this export"
+            icon={Puzzle}
+            items={data.topExtensions ?? []}
+            emptyLabel="No extensions in this export."
+            accent="violet"
+          />
+        </div>
+      ) : null}
     </section>
   )
 }
@@ -154,7 +214,7 @@ function MyActivitySection({
 }: {
   data: NonNullable<GoogleInsights["myActivity"]>
 }) {
-  const products = (data.products ?? []).filter((p) => (p.eventCount ?? 0) >= 10)
+  const products = (data.products ?? []).filter((p) => (p.eventCount ?? 0) >= 1)
   const [selected, setSelected] = useState(products[0]?.name ?? "")
   const active =
     products.find((p) => p.name === selected) ?? products[0] ?? null
@@ -191,7 +251,7 @@ function MyActivitySection({
       </div>
       {products.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No products with 10+ events in this export.
+          No products with activity in this export.
         </p>
       ) : null}
       {active ? (
@@ -246,6 +306,12 @@ function MyActivitySection({
 }
 
 function FitSection({ data }: { data: NonNullable<GoogleInsights["fit"]> }) {
+  const distanceKm = (data.totalDistanceM ?? 0) / 1000
+  const hasExtras =
+    (data.totalDistanceM ?? 0) > 0 ||
+    (data.totalCalories ?? 0) > 0 ||
+    (data.totalHeartMinutes ?? 0) > 0
+
   return (
     <section className="flex flex-col gap-5 text-start">
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
@@ -268,6 +334,34 @@ function FitSection({ data }: { data: NonNullable<GoogleInsights["fit"]> }) {
           accent="amber"
         />
       </div>
+      {hasExtras ? (
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          {(data.totalDistanceM ?? 0) > 0 ? (
+            <WrapKpi
+              label="Distance"
+              value={`${distanceKm >= 100 ? fmt(Math.round(distanceKm)) : distanceKm.toFixed(1)} km`}
+              icon={MapPinned}
+              accent="sky"
+            />
+          ) : null}
+          {(data.totalCalories ?? 0) > 0 ? (
+            <WrapKpi
+              label="Calories"
+              value={fmt(data.totalCalories)}
+              icon={HeartPulse}
+              accent="amber"
+            />
+          ) : null}
+          {(data.totalHeartMinutes ?? 0) > 0 ? (
+            <WrapKpi
+              label="Heart points"
+              value={fmt(data.totalHeartMinutes)}
+              icon={HeartPulse}
+              accent="violet"
+            />
+          ) : null}
+        </div>
+      ) : null}
       {data.stepsActivity?.daily?.length ? (
         <ActivityOverTimeChart
           series={data.stepsActivity}
@@ -319,6 +413,15 @@ function KeepSection({ data }: { data: NonNullable<GoogleInsights["keep"]> }) {
           accent="violet"
         />
       </div>
+      {data.activity?.daily?.length || data.activity?.monthly?.length ? (
+        <ActivityOverTimeChart
+          series={data.activity}
+          title="Note edits over time"
+          exportName="keep-over-time"
+          sentLabel="Edits"
+          receivedLabel="—"
+        />
+      ) : null}
       {(data.heatmap?.length ?? 0) > 0 ? (
         <CalendarHeatmap
           days={data.heatmap}
@@ -357,6 +460,15 @@ function CalendarSection({
           accent="amber"
         />
       </div>
+      {data.activity?.daily?.length || data.activity?.monthly?.length ? (
+        <ActivityOverTimeChart
+          series={data.activity}
+          title="Events over time"
+          exportName="calendar-over-time"
+          sentLabel="Events"
+          receivedLabel="—"
+        />
+      ) : null}
       {(data.heatmap?.length ?? 0) > 0 ? (
         <CalendarHeatmap
           days={data.heatmap}
@@ -397,6 +509,15 @@ function PhotosSection({
           accent="emerald"
         />
       </div>
+      {data.activity?.daily?.length || data.activity?.monthly?.length ? (
+        <ActivityOverTimeChart
+          series={data.activity}
+          title="Photos over time"
+          exportName="photos-over-time"
+          sentLabel="Photos"
+          receivedLabel="—"
+        />
+      ) : null}
       {(data.heatmap?.length ?? 0) > 0 ? (
         <CalendarHeatmap
           days={data.heatmap}
@@ -437,6 +558,15 @@ function AccessLogSection({
         icon={Shield}
         accent="sky"
       />
+      {data.activity?.daily?.length || data.activity?.monthly?.length ? (
+        <ActivityOverTimeChart
+          series={data.activity}
+          title="Access over time"
+          exportName="access-over-time"
+          sentLabel="Entries"
+          receivedLabel="—"
+        />
+      ) : null}
       {(data.heatmap?.length ?? 0) > 0 ? (
         <CalendarHeatmap
           days={data.heatmap}
@@ -444,14 +574,24 @@ function AccessLogSection({
           exportName="access-heatmap"
         />
       ) : null}
-      <CountedRankList
-        title="Products"
-        description="Google products you accessed most"
-        icon={Shield}
-        items={data.topProducts ?? []}
-        emptyLabel="No products in this export."
-        accent="sky"
-      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <CountedRankList
+          title="Products"
+          description="Google products you accessed most"
+          icon={Shield}
+          items={data.topProducts ?? []}
+          emptyLabel="No products in this export."
+          accent="sky"
+        />
+        <CountedRankList
+          title="Cities"
+          description="Places where access was logged"
+          icon={MapPinned}
+          items={data.topCities ?? []}
+          emptyLabel="No cities in this export."
+          accent="teal"
+        />
+      </div>
     </section>
   )
 }

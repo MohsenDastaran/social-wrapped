@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils"
-import type { GoogleProductId } from "@/components/wrap/google/google-products"
+import type { GoogleImportProductId } from "@/components/wrap/google/google-products"
 
 /** Simple Icons brand SVGs — Google products under /public/images/platforms */
-const LOGO_SRC: Record<GoogleProductId, string> = {
+const LOGO_SRC: Record<GoogleImportProductId, string> = {
   youtube: "/images/platforms/youtube.svg",
   chrome: "/images/platforms/chrome.svg",
   fit: "/images/platforms/fit.svg",
@@ -11,10 +11,12 @@ const LOGO_SRC: Record<GoogleProductId, string> = {
   photos: "/images/platforms/photos.svg",
   "my-activity": "/images/platforms/google.svg",
   "access-log": "/images/platforms/google.svg",
+  gmail: "/images/platforms/gmail.svg",
+  drive: "/images/platforms/drive.svg",
 }
 
 type GoogleProductLogoProps = {
-  id: GoogleProductId
+  id: GoogleImportProductId
   className?: string
   title?: string
 }

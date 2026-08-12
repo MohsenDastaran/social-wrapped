@@ -129,21 +129,21 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     gradientClass:
       "from-blue-500/25 via-blue-400/10 to-transparent dark:from-blue-400/20 dark:via-blue-500/5",
     summary:
-      "Import Google Takeout ZIP parts — Chrome, My Activity, Fit, Keep, and more.",
+      "Import Google Takeout ZIP parts — YouTube, Chrome, Fit, Keep, and more.",
     exportPath: "Google Takeout (takeout.google.com)",
     formats: "JSON, CSV, HTML, ICS (ZIP)",
     extractable:
-      "YouTube, Chrome history, My Activity, Fit, Keep, Calendar, Photos metadata, Access Log.",
+      "YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos metadata, Access Log. Gmail and Drive can be included in the ZIP (file bodies are not analyzed).",
     steps: [
-      "Open Google Takeout and select the services you want (YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos, …).",
+      "Open Google Takeout and select the services you want (YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos, Gmail, Drive, …).",
       "Export and download all ZIP parts when ready — do not unzip.",
       "In Social Wrapped, import every Takeout ZIP part together from Home → Google.",
     ],
     importHint:
-      "Multi-part Takeout downloads are supported. Mail and Drive file bodies are skipped.",
+      "Multi-part Takeout downloads are supported. Gmail (.mbox) and Drive file bodies are skipped; everything else we support is analyzed on your device.",
     importTitle: "Import Google Takeout",
     importDescription:
-      "Upload one or more Google Takeout ZIP archives. Everything is processed on your device — Mail/Drive binaries are skipped.",
+      "Upload one or more Google Takeout ZIP archives. We analyze YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos, and Access Log on your device — Gmail and Drive bodies are skipped.",
     acceptedFiles: [".zip"],
     accept: ".zip,application/zip",
   },

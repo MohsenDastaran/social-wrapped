@@ -18,6 +18,8 @@ Catalog of analytics Social Wrapped derives from Google Takeout → **YouTube an
 | ✅ | Subscriptions count | `subscriptions/subscriptions.csv` |
 | ✅ | Comments count | `comments/comments.csv` |
 | ✅ | Playlist count | `playlists/playlists.csv` |
+| ✅ | Playlist video counts | `playlists/*-videos.csv` |
+| ✅ | Search activity over time | search timestamps |
 | ✅ | Channel title | `channels/channel.csv` |
 | ☐ | JSON history format (`watch-history.json`) | not in sample; HTML is primary |
 
