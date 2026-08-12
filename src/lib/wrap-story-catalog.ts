@@ -97,7 +97,7 @@ const TIKTOK_VIDEO_IDS = [
 
 const SPOTIFY_VIDEO_IDS = [
   "sp-listen",
-  "sp-tops",
+  "sp-skips",
   "heatmap",
   "activity",
   "sent-received",
@@ -105,7 +105,7 @@ const SPOTIFY_VIDEO_IDS = [
 
 const APPLE_MUSIC_VIDEO_IDS = [
   "am-listen",
-  "am-tops",
+  "am-library",
   "heatmap",
   "activity",
   "sent-received",
@@ -451,29 +451,17 @@ export function buildSpotifyStorySpecs(
       exportName: "spotify-listen-kpis",
       heading: "Your listening year",
       subtext: `${fmt(insights.playCount)} plays · ${formatListeningMs(insights.totalMsPlayed)}`,
-      kpis: [
-        { label: "Plays", value: fmt(insights.playCount) },
-        {
-          label: "Time",
-          value: formatListeningMs(insights.totalMsPlayed),
-        },
-        { label: "Artists", value: fmt(insights.uniqueArtistCount) },
-      ],
+      // KPIs live in the captured card — no duplicate strip at the bottom.
     })
   }
 
-  const topArtist = insights.topArtists?.[0]
-  if (topArtist) {
+  if (insights.skipCount > 0 || insights.format) {
     specs.push({
-      id: "sp-tops",
+      id: "sp-skips",
       exportName: "spotify-skip-kpis",
-      heading: "Your #1 artist",
-      subtext: `${topArtist.name} · ${fmt(topArtist.count)} plays`,
-      kpis: [
-        { label: "Artist", value: topArtist.name.slice(0, 18) },
-        { label: "Plays", value: fmt(topArtist.count) },
-        { label: "Tracks", value: fmt(insights.uniqueTrackCount) },
-      ],
+      heading: "Playback details",
+      subtext: `${fmt(insights.skipCount)} short plays · ${insights.format === "extended" ? "Extended" : "Account"} export`,
+      // KPIs live in the captured card — no duplicate strip at the bottom.
     })
   }
 
@@ -492,29 +480,21 @@ export function buildAppleMusicStorySpecs(
       exportName: "apple-music-listen-kpis",
       heading: "Your listening",
       subtext: `${fmt(insights.playCount)} plays · ${formatListeningMs(insights.totalMsPlayed)}`,
-      kpis: [
-        { label: "Plays", value: fmt(insights.playCount) },
-        {
-          label: "Time",
-          value: formatListeningMs(insights.totalMsPlayed),
-        },
-        { label: "Artists", value: fmt(insights.uniqueArtistCount) },
-      ],
+      // KPIs live in the captured card — no duplicate strip at the bottom.
     })
   }
 
-  const topArtist = insights.topArtists?.[0]
-  if (topArtist) {
+  if (
+    insights.libraryTrackCount > 0 ||
+    insights.lovedCount > 0 ||
+    insights.skipCount > 0
+  ) {
     specs.push({
-      id: "am-tops",
+      id: "am-library",
       exportName: "apple-music-library-kpis",
-      heading: "Your #1 artist",
-      subtext: `${topArtist.name} · ${fmt(topArtist.count)} plays`,
-      kpis: [
-        { label: "Artist", value: topArtist.name.slice(0, 18) },
-        { label: "Plays", value: fmt(topArtist.count) },
-        { label: "Library", value: fmt(insights.libraryTrackCount) },
-      ],
+      heading: "Your library",
+      subtext: `${fmt(insights.libraryTrackCount)} tracks · ${fmt(insights.lovedCount)} loved`,
+      // KPIs live in the captured card — no duplicate strip at the bottom.
     })
   }
 
