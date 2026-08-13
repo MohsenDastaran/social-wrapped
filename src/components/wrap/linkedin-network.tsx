@@ -7,7 +7,7 @@ import type {
 } from "@/platform/linkedin-types"
 import { listScrollMaxClass } from "@/lib/scroll"
 import { cn } from "@/lib/utils"
-import { Building2, Network, UserMinus, UserPlus, Users } from "lucide-react"
+import { Building2, Inbox, Send, UserMinus, UserPlus, Users } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 type LinkedInNetworkInsightsProps = {
@@ -67,37 +67,37 @@ export function LinkedInNetworkInsights({
               stats: [
                 {
                   label: "Connections",
-                  value: hasNetwork ? fmt(data.connectionCount) : "—",
+                  value: fmt(data.connectionCount),
                   icon: Users,
                   accent: "text-sky-600 dark:text-sky-400",
                 },
                 {
                   label: "Invites sent",
-                  value: hasNetwork ? fmt(data.invitationOutgoing) : "—",
-                  icon: UserPlus,
+                  value: fmt(data.invitationOutgoing),
+                  icon: Send,
                   accent: "text-teal-600 dark:text-teal-400",
                 },
                 {
                   label: "Invites received",
-                  value: hasNetwork ? fmt(data.invitationIncoming) : "—",
-                  icon: Network,
+                  value: fmt(data.invitationIncoming),
+                  icon: Inbox,
                   accent: "text-amber-600 dark:text-amber-400",
                 },
                 {
                   label: "Active follows",
-                  value: hasNetwork ? fmt(data.activeFollows) : "—",
+                  value: fmt(data.activeFollows),
                   icon: UserPlus,
                   accent: "text-emerald-600 dark:text-emerald-400",
                 },
                 {
                   label: "Unfollows",
-                  value: hasNetwork ? fmt(data.unfollows) : "—",
+                  value: fmt(data.unfollows),
                   icon: UserMinus,
                   accent: "text-violet-600 dark:text-violet-400",
                 },
                 {
                   label: "Company follows",
-                  value: hasNetwork ? fmt(data.companyFollows) : "—",
+                  value: fmt(data.companyFollows),
                   icon: Building2,
                   accent: "text-sky-600 dark:text-sky-400",
                 },
