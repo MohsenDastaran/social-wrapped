@@ -6,6 +6,8 @@
 # Assets (GitHub sorts alphabetically; sort key sits after the tag version):
 #   name_X.Y.Z_01-android-arm64 → _01-android-universal → _02-windows →
 #   _03-macos → _04-linux-deb → _05-linux-rpm → _06-linux-appimage
+# RPM bundles arrive as name-version-release.arch.rpm (hyphens); order-assets
+# rewrites them to the underscore scheme so they sit with .deb, not at the top.
 # Version in filenames comes from the release tag (e.g. v0.2.5 → 0.2.5), not package.json.
 
 name: Release
@@ -373,9 +375,33 @@ jobs:
               return `${prefix}${ver}_${sortKey}${sep}${rest}`
             }
 
+            // Tauri/rpmbuild emits name-version-release.arch.rpm (hyphens).
+            // GitHub sorts '-' before '_', so those float above every other asset
+            // unless rewritten to name_version_05-linux-rpm_arch.rpm.
+            function normalizeHyphenatedRpm(name) {
+              const sig = /\.sig$/i.test(name) ? '.sig' : ''
+              const core = name.replace(/\.sig$/i, '')
+              if (!/\.rpm$/i.test(core)) return null
+
+              const escaped = version.replace(/\./g, '\\.')
+              const m = core.match(
+                new RegExp(
+                  `^(.*?)-${escaped}-(\\d+)\\.(.+?)(?:_\\d{2}-linux-rpm)?\\.rpm$`,
+                  'i'
+                )
+              )
+              if (!m) return null
+              const pkg = m[1]
+              const arch = m[3]
+              return `${pkg}_${version}_05-linux-rpm_${arch}.rpm${sig}`
+            }
+
             function desiredName(name) {
               const stripped = stripLegacyLeadingPrefix(name)
-              return insertSortKeyAfterVersion(stripped, sortKeyFor(stripped))
+              return (
+                normalizeHyphenatedRpm(stripped) ??
+                insertSortKeyAfterVersion(stripped, sortKeyFor(stripped))
+              )
             }
 
             for (const asset of assets) {
