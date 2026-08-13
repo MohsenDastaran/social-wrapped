@@ -12,6 +12,8 @@ import { AppLoader } from "@/components/app-loader"
 import LightRays from "@/components/LightRays"
 import { PlatformImportHelpDialog } from "@/components/platform-import-help-dialog"
 import { PlatformLogo } from "@/components/platform-logo"
+import { GoogleProductLogo } from "@/components/wrap/google/google-product-logo"
+import { GOOGLE_IMPORT_PRODUCTS } from "@/components/wrap/google/google-products"
 import { WhatsAppIdentityPicker } from "@/components/whatsapp-identity-picker"
 import { Button } from "@/components/ui/button"
 import {
@@ -310,6 +312,47 @@ export function PlatformImportView({
           <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
             {description}
           </p>
+          {platform.id === "google" ? (
+            <div className="mt-5 w-full max-w-md text-start">
+              <p className="mb-2 text-center text-[0.7rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                Products we support
+              </p>
+              <ul className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                {GOOGLE_IMPORT_PRODUCTS.map((product) => (
+                  <li
+                    key={product.id}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 text-center ring-1",
+                      product.analyzed
+                        ? "bg-card ring-foreground/10"
+                        : "bg-muted/40 ring-border/50"
+                    )}
+                    title={
+                      product.analyzed
+                        ? `Analyzed · ${product.label}`
+                        : product.caption
+                    }
+                  >
+                    <span className="flex size-9 items-center justify-center rounded-lg bg-background ring-1 ring-foreground/10">
+                      <GoogleProductLogo
+                        id={product.id}
+                        title={product.label}
+                        className="size-5"
+                      />
+                    </span>
+                    <span className="text-[0.7rem] leading-tight font-medium">
+                      {product.label}
+                    </span>
+                    {!product.analyzed ? (
+                      <span className="text-[0.6rem] leading-tight text-muted-foreground">
+                        Listed only
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <p className="mt-3 text-xs font-medium text-muted-foreground">
             Accepted: {acceptedFiles.join(", ")}
             {multi

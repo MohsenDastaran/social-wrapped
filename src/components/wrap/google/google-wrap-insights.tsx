@@ -13,10 +13,7 @@ import { cn } from "@/lib/utils"
 import { ChevronRight, Layers, SkipForward } from "lucide-react"
 
 /** Shown inline on the overview — not linked as drill-down cards. */
-const OVERVIEW_INLINE: ReadonlySet<GoogleProductId> = new Set([
-  "my-activity",
-  "access-log",
-])
+const OVERVIEW_INLINE: ReadonlySet<GoogleProductId> = new Set(["access-log"])
 
 type GoogleWrapInsightsProps = {
   insights: GoogleInsights
@@ -52,8 +49,7 @@ export function GoogleWrapInsights({
               ? `${insights.displayName} · `
               : ""}
             {fmt(productCount)} product{productCount === 1 ? "" : "s"} analyzed.
-            Open a product for deep analytics, or scroll for My Activity and
-            Access log.
+            Open a product for deep analytics, or scroll for Access log.
           </p>
         </header>
 
@@ -152,10 +148,6 @@ export function GoogleWrapInsights({
           </p>
         ) : null}
       </section>
-
-      {insights.myActivity ? (
-        <GoogleProductDetail insights={insights} productId="my-activity" />
-      ) : null}
 
       {insights.accessLog ? (
         <GoogleProductDetail insights={insights} productId="access-log" />

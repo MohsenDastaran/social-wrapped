@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { useDomExport } from "@/hooks/use-dom-export"
 import type { ChatResult, WrapAnalytics } from "@/platform/analytics-types"
 import { cn } from "@/lib/utils"
+import { scrollYClass } from "@/lib/scroll"
 import {
   Bookmark,
   ChevronRight,
@@ -12,10 +13,13 @@ import {
   Ghost,
   Loader2,
   MessagesSquare,
+  Search,
   UserX,
   Users,
+  X,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+import { useMemo, useState } from "react"
 
 const CARD_EXPORT = {
   minWidth: 1,
@@ -27,6 +31,8 @@ const LIST_EXPORT = {
   pixelRatio: 3,
   captureMode: "dom",
 } as const
+
+const VISIBLE_CONTACTS = 50
 
 type WrapTopContactsProps = {
   analytics: WrapAnalytics
@@ -53,7 +59,7 @@ export function contactGhostScore(chat: ChatResult, selfName: string): number {
 export function WrapTopContacts({
   analytics,
   onSelect,
-  description = "People and groups you message most. Tap one to open their stats.",
+  description = "People and groups you message most. Search to find anyone, then tap to open their stats.",
 }: WrapTopContactsProps) {
   const selfName = analytics.displayName
   const savedMessages =
@@ -64,10 +70,27 @@ export function WrapTopContacts({
     null
   const isNotSaved = (c: ChatResult) =>
     !c.isSavedMessages && !/^saved messages$/i.test(c.chatName.trim())
+  const directory = useMemo(() => {
+    const byId = new Map<number, ChatResult>()
+    const lists = [
+      analytics.topContacts,
+      analytics.chats.filter((c) => !c.isGroup),
+      analytics.recentContacts,
+      analytics.fadedContacts,
+      analytics.topGhosters,
+    ]
+    for (const list of lists) {
+      for (const chat of list ?? []) {
+        if (!isNotSaved(chat) || chat.isGroup) continue
+        if (!byId.has(chat.chatId)) byId.set(chat.chatId, chat)
+      }
+    }
+    return [...byId.values()].sort(
+      (a, b) => b.analytics.totalMessages - a.analytics.totalMessages
+    )
+  }, [analytics])
   const topContacts = (
-    analytics.topContacts?.length
-      ? analytics.topContacts
-      : analytics.chats.filter((c) => !c.isGroup).slice(0, 20)
+    analytics.topContacts?.length ? analytics.topContacts : directory
   ).filter(isNotSaved)
   const recent = (analytics.recentContacts ?? []).filter(isNotSaved)
   const faded = (analytics.fadedContacts ?? []).filter(isNotSaved)
@@ -86,7 +109,7 @@ export function WrapTopContacts({
 
   if (
     !savedMessages &&
-    topContacts.length === 0 &&
+    directory.length === 0 &&
     recent.length === 0 &&
     faded.length === 0 &&
     groups.length === 0 &&
@@ -145,8 +168,12 @@ export function WrapTopContacts({
         />
       </div>
 
-      {topContacts.length > 0 ? (
-        <TopContactsList chats={topContacts} onSelect={onSelect} />
+      {directory.length > 0 ? (
+        <TopContactsList
+          chats={topContacts}
+          directory={directory}
+          onSelect={onSelect}
+        />
       ) : null}
     </section>
   )
@@ -338,17 +365,47 @@ function InsightListCard({
   )
 }
 
+function contactMatches(chat: ChatResult, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  const d = chatDisplay(chat)
+  return [d.title, d.subtitle, chat.chatName]
+    .filter((s): s is string => Boolean(s))
+    .some((s) => s.toLowerCase().includes(q))
+}
+
 function TopContactsList({
   chats,
+  directory,
   onSelect,
 }: {
   chats: ChatResult[]
+  directory: ChatResult[]
   onSelect: (chatId: number) => void
 }) {
   const { ref, exporting, exportError, exportPng } =
     useDomExport<HTMLDivElement>(LIST_EXPORT)
-  const max = Math.max(...chats.map((c) => c.analytics.totalMessages), 1)
-  const title = `Top ${chats.length} contacts`
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [query, setQuery] = useState("")
+  const ranked = directory.length > 0 ? directory : chats
+  const searching = searchOpen && query.trim().length > 0
+  const visible = searching
+    ? ranked.filter((chat) => contactMatches(chat, query))
+    : ranked.slice(0, VISIBLE_CONTACTS)
+  const max = Math.max(
+    ...(searching ? visible : ranked.slice(0, VISIBLE_CONTACTS)).map(
+      (c) => c.analytics.totalMessages
+    ),
+    1
+  )
+  const rankById = useMemo(() => {
+    const map = new Map<number, number>()
+    ranked.forEach((chat, index) => map.set(chat.chatId, index))
+    return map
+  }, [ranked])
+  const title = searching
+    ? `${visible.length} ${visible.length === 1 ? "match" : "matches"}`
+    : `Top ${Math.min(VISIBLE_CONTACTS, ranked.length)} contacts`
 
   return (
     <div
@@ -360,6 +417,24 @@ function TopContactsList({
         <p className="min-w-0 flex-1 text-[0.65rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
           {title}
         </p>
+        <Button
+          type="button"
+          variant={searchOpen ? "secondary" : "outline"}
+          size="icon-xs"
+          data-export-ignore
+          aria-label={searchOpen ? "Close contact search" : "Search contacts"}
+          aria-pressed={searchOpen}
+          className="shrink-0"
+          onClick={(e) => {
+            e.stopPropagation()
+            setSearchOpen((open) => {
+              if (open) setQuery("")
+              return !open
+            })
+          }}
+        >
+          {searchOpen ? <X /> : <Search />}
+        </Button>
         <IconExportButton
           title={title}
           exporting={exporting}
@@ -367,17 +442,71 @@ function TopContactsList({
           onExport={() => void exportPng("top-contacts.png")}
         />
       </div>
-      <ul className="divide-y divide-border/50">
-        {chats.map((chat, index) => (
-          <ContactRow
-            key={chat.chatId}
-            chat={chat}
-            index={index}
-            max={max}
-            onSelect={onSelect}
-          />
-        ))}
-      </ul>
+      {searchOpen ? (
+        <div
+          className="border-b border-border/60 px-4 py-2"
+          data-export-ignore
+        >
+          <label className="sr-only" htmlFor="top-contacts-search">
+            Search contacts
+          </label>
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute inset-s-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <input
+              id="top-contacts-search"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search a contact…"
+              autoComplete="off"
+              spellCheck={false}
+              className={cn(
+                "h-8 w-full rounded-md border border-border bg-background pe-3 ps-8 text-sm outline-none",
+                "placeholder:text-muted-foreground",
+                "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
+                "[&::-webkit-search-cancel-button]:hidden"
+              )}
+            />
+          </div>
+        </div>
+      ) : null}
+      {visible.length === 0 ? (
+        <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+          {searching
+            ? "No contacts match that name."
+            : "No contacts in this export."}
+        </p>
+      ) : (
+        <ul
+          className={cn(
+            "divide-y divide-border/50",
+            "max-h-[min(40rem,70vh)]",
+            scrollYClass
+          )}
+        >
+          {visible.map((chat) => (
+            <ContactRow
+              key={chat.chatId}
+              chat={chat}
+              index={rankById.get(chat.chatId) ?? 0}
+              max={max}
+              onSelect={onSelect}
+            />
+          ))}
+        </ul>
+      )}
+      {!searching && ranked.length > VISIBLE_CONTACTS ? (
+        <p
+          className="border-t border-border/60 px-4 py-2 text-[0.65rem] text-muted-foreground"
+          data-export-ignore
+        >
+          Showing {VISIBLE_CONTACTS} of {fmt(ranked.length)}. Search to find
+          someone else.
+        </p>
+      ) : null}
     </div>
   )
 }

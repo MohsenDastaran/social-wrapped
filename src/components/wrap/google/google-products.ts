@@ -3,7 +3,9 @@ import {
   CalendarDays,
   Clapperboard,
   Footprints,
+  HardDrive,
   Image,
+  Mail,
   Monitor,
   NotebookPen,
   Search,
@@ -22,6 +24,8 @@ export type GoogleProductId =
   | "calendar"
   | "photos"
   | "access-log"
+  | "gmail"
+  | "drive"
 
 export type GoogleProductMeta = {
   id: GoogleProductId
@@ -88,6 +92,20 @@ const CATALOG: GoogleProductMeta[] = [
     icon: Shield,
     accent: "amber",
   },
+  {
+    id: "gmail",
+    label: "Gmail",
+    description: "Volume, replies, newsletters, and subject phrases",
+    icon: Mail,
+    accent: "sky",
+  },
+  {
+    id: "drive",
+    label: "Drive",
+    description: "Library size, types, and folders",
+    icon: HardDrive,
+    accent: "emerald",
+  },
 ]
 
 export function isGoogleProductId(value: string): value is GoogleProductId {
@@ -121,6 +139,10 @@ export function productHasData(
       return insights.photos != null
     case "access-log":
       return insights.accessLog != null
+    case "gmail":
+      return insights.gmail != null
+    case "drive":
+      return insights.drive != null
   }
 }
 
@@ -177,5 +199,38 @@ export function productHighlight(
       if (!al) return "—"
       return `${fmt(al.entryCount)} entries`
     }
+    case "gmail": {
+      const gm = insights.gmail
+      if (!gm) return "—"
+      return `${fmt(gm.messageCount)} messages`
+    }
+    case "drive": {
+      const dr = insights.drive
+      if (!dr) return "—"
+      return `${fmt(dr.fileCount)} files`
+    }
   }
 }
+
+/** Products shown on the Google import page. */
+export type GoogleImportProductId = GoogleProductId
+
+export type GoogleImportProductMeta = {
+  id: GoogleImportProductId
+  label: string
+  analyzed: boolean
+  caption?: string
+}
+
+export const GOOGLE_IMPORT_PRODUCTS: GoogleImportProductMeta[] = [
+  { id: "youtube", label: "YouTube", analyzed: true },
+  { id: "chrome", label: "Chrome", analyzed: true },
+  { id: "my-activity", label: "My Activity", analyzed: true },
+  { id: "fit", label: "Fit", analyzed: true },
+  { id: "keep", label: "Keep", analyzed: true },
+  { id: "calendar", label: "Calendar", analyzed: true },
+  { id: "photos", label: "Photos", analyzed: true },
+  { id: "access-log", label: "Access log", analyzed: true },
+  { id: "gmail", label: "Gmail", analyzed: true },
+  { id: "drive", label: "Drive", analyzed: true },
+]

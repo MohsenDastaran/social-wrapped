@@ -33,6 +33,7 @@ export function YouTubeSection({ data, standalone = false }: YouTubeSectionProps
   const searchHourly = padHourly(data.searchHourly)
   const hasWatches = (data.watchCount ?? 0) > 0
   const hasSearches = (data.searchCount ?? 0) > 0
+  const playlists = data.topPlaylists ?? []
 
   if (!hasWatches && !hasSearches && !(data.subscriptionCount > 0)) {
     return (
@@ -99,6 +100,12 @@ export function YouTubeSection({ data, standalone = false }: YouTubeSectionProps
                 icon: MessageSquareText,
                 accent: "text-emerald-600 dark:text-emerald-400",
               },
+              {
+                label: "Playlists",
+                value: fmt(data.playlistCount ?? 0),
+                icon: ListVideo,
+                accent: "text-rose-600 dark:text-rose-400",
+              },
             ],
           },
         ]}
@@ -141,25 +148,48 @@ export function YouTubeSection({ data, standalone = false }: YouTubeSectionProps
         </WrapChartCard>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <CountedRankList
           title="Top channels"
-          description="Most watched"
+          description="Channels you watched most"
           icon={Users}
           items={data.topChannels ?? []}
-          emptyLabel="No channel data"
+          emptyLabel="No channel data in this export."
+          accent="violet"
         />
         <CountedRankList
           title="Top videos"
-          description="Most rewatched titles"
+          description="Titles you rewatched most"
           icon={Clapperboard}
           items={data.topVideos ?? []}
-          emptyLabel="No video titles"
+          emptyLabel="No video titles in this export."
+          accent="teal"
         />
       </div>
 
+      {playlists.length > 0 ? (
+        <CountedRankList
+          title="Playlists"
+          description="Videos saved in each playlist"
+          icon={ListVideo}
+          items={playlists}
+          emptyLabel="No playlists in this export."
+          accent="rose"
+        />
+      ) : null}
+
       {hasSearches ? (
         <>
+          {data.searchActivity?.daily?.length ||
+          data.searchActivity?.monthly?.length ? (
+            <ActivityOverTimeChart
+              series={data.searchActivity}
+              title="Searches over time"
+              exportName="yt-searches-over-time"
+              sentLabel="Searches"
+              receivedLabel="—"
+            />
+          ) : null}
           {(data.searchHeatmap?.length ?? 0) > 0 ? (
             <CalendarHeatmap
               days={data.searchHeatmap}
@@ -184,9 +214,11 @@ export function YouTubeSection({ data, standalone = false }: YouTubeSectionProps
           ) : null}
           <CountedRankList
             title="Top searches"
+            description="Queries you searched most"
             icon={Search}
             items={data.topSearches ?? []}
-            emptyLabel="No search queries"
+            emptyLabel="No search queries in this export."
+            accent="amber"
           />
         </>
       ) : null}
