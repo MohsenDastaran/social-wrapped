@@ -116,15 +116,20 @@ export function PrivacyPage() {
           <SectionHeading>Trust boundary</SectionHeading>
           <p className="mb-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
             The public app shell — UI, routing, and how files are handed to the
-            analyzer — is open source and auditable on GitHub. The analytics
-            engine under <code className="rounded bg-muted px-1.5 py-0.5 text-[0.85em]">crates/core</code>{" "}
-            is a private submodule: closed source by design, still running on
+            analyzer — is auditable on GitHub. The analytics engine under{" "}
+            <code className="rounded bg-muted px-1.5 py-0.5 text-[0.85em]">
+              crates/core
+            </code>{" "}
+            is a private submodule: closed source by default, still running on
             your machine rather than on our servers.
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
             That split is intentional. You can inspect everything that loads
-            your files into the engine and stores results; the proprietary
-            scoring and insight logic stays local and closed.
+            your files into the engine and stores results. The scoring logic
+            stays local. If you want to read the engine itself — as a reviewer,
+            researcher, or skeptical user — ask: open a GitHub issue titled
+            “Core review request” (or contact the maintainer). We grant
+            read-only access to the core submodule for good-faith review.
           </p>
         </section>
 

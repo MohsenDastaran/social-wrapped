@@ -143,11 +143,11 @@ export function DataSafetyDialog({
           <section className="mb-1">
             <SectionHeading>Open source, inspectable</SectionHeading>
             <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
-              The public app shell is open source. You (or someone you trust)
-              can read how exports are handled, see that analysis is designed
-              to run locally, and report anything that doesn’t match what we
-              claim here. Privacy isn’t a slogan for us — it’s the product:
-              personal insights without giving yourself away.
+              The public app shell is auditable on GitHub. You (or someone you
+              trust) can read how exports are handled and that analysis is
+              designed to run locally. The scoring engine is a private submodule
+              that still runs on your device — we grant read access for
+              good-faith review if you request it.
             </p>
             <p className="text-sm leading-relaxed text-muted-foreground">
               <DialogClose
