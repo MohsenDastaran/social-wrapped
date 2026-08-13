@@ -11,6 +11,17 @@ export type SpotifyYearCount = {
   count: number
 }
 
+export type SpotifyPlaylistSummary = {
+  name: string
+  trackCount: number
+}
+
+export type SpotifyPlaylistInsights = {
+  totalCount: number
+  userPlaylistCount: number
+  topPlaylists: SpotifyPlaylistSummary[]
+}
+
 export type SpotifyProfile = {
   displayName: string
   username: string
@@ -35,8 +46,28 @@ export type SpotifyInsights = {
   topTracks: SpotifyCounted[]
   topArtistsByMs: SpotifyCounted[]
   topTracksByMs: SpotifyCounted[]
+  topAlbums: SpotifyCounted[]
+  topAlbumsByMs: SpotifyCounted[]
+  topPodcasts: SpotifyCounted[]
+  savedTracks: SpotifyCounted[]
+  topSearchQueries: SpotifyCounted[]
+  playlists: SpotifyPlaylistInsights
+  libraryGrowthHeatmap: HeatmapDay[]
+  savedTrackCount: number
+  savedArtistCount: number
+  savedAlbumCount: number
+  followingCount: number
+  followerCount: number
+  podcastPlayCount: number
+  podcastMsPlayed: number
   format: string
 }
+
+const emptyPlaylists = (): SpotifyPlaylistInsights => ({
+  totalCount: 0,
+  userPlaylistCount: 0,
+  topPlaylists: [],
+})
 
 export function emptySpotifyInsights(): SpotifyInsights {
   return {
@@ -53,6 +84,20 @@ export function emptySpotifyInsights(): SpotifyInsights {
     topTracks: [],
     topArtistsByMs: [],
     topTracksByMs: [],
+    topAlbums: [],
+    topAlbumsByMs: [],
+    topPodcasts: [],
+    savedTracks: [],
+    topSearchQueries: [],
+    playlists: emptyPlaylists(),
+    libraryGrowthHeatmap: [],
+    savedTrackCount: 0,
+    savedArtistCount: 0,
+    savedAlbumCount: 0,
+    followingCount: 0,
+    followerCount: 0,
+    podcastPlayCount: 0,
+    podcastMsPlayed: 0,
     format: "account",
   }
 }
@@ -77,6 +122,17 @@ export function normalizeSpotifyInsights(
     topTracks: raw.topTracks ?? base.topTracks,
     topArtistsByMs: raw.topArtistsByMs ?? base.topArtistsByMs,
     topTracksByMs: raw.topTracksByMs ?? base.topTracksByMs,
+    topAlbums: raw.topAlbums ?? base.topAlbums,
+    topAlbumsByMs: raw.topAlbumsByMs ?? base.topAlbumsByMs,
+    topPodcasts: raw.topPodcasts ?? base.topPodcasts,
+    savedTracks: raw.savedTracks ?? base.savedTracks,
+    topSearchQueries: raw.topSearchQueries ?? base.topSearchQueries,
+    playlists: {
+      ...base.playlists,
+      ...(raw.playlists ?? {}),
+      topPlaylists: raw.playlists?.topPlaylists ?? base.playlists.topPlaylists,
+    },
+    libraryGrowthHeatmap: raw.libraryGrowthHeatmap ?? base.libraryGrowthHeatmap,
   }
 }
 

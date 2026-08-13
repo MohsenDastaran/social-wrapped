@@ -18,6 +18,7 @@ import { AppleMusicEngagement } from "@/components/wrap/apple-music-engagement"
 import { AppleMusicLibraryInsights } from "@/components/wrap/apple-music-library"
 import { AppleMusicListeningInsights } from "@/components/wrap/apple-music-listening"
 import { SpotifyEngagement } from "@/components/wrap/spotify-engagement"
+import { SpotifyLibraryInsights } from "@/components/wrap/spotify-library"
 import { SpotifyListeningInsights } from "@/components/wrap/spotify-listening"
 import { TikTokActivityInsights } from "@/components/wrap/tiktok-activity"
 import { TikTokEngagement } from "@/components/wrap/tiktok-engagement"
@@ -265,6 +266,7 @@ export function WrapPage() {
         <>
           <SpotifyListeningInsights data={spotifyInsights} />
           <SpotifyEngagement data={spotifyInsights} />
+          <SpotifyLibraryInsights data={spotifyInsights} />
         </>
       ) : tiktokInsights ? (
         <>

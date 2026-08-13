@@ -1,16 +1,14 @@
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
+import { CountSeriesChart } from "@/components/wrap/charts/count-series-chart"
 import {
   CircadianPolarChart,
   peakHourLabel,
 } from "@/components/wrap/charts/circadian-polar-chart"
 import { fmt } from "@/components/wrap/chart-theme"
+import { TopListeningRanksCard } from "@/components/wrap/top-listening-ranks"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
-import {
-  formatListeningMs,
-  type SpotifyInsights,
-} from "@/platform/spotify-types"
-import { listScrollMaxClass } from "@/lib/scroll"
-import { cn } from "@/lib/utils"
+import type { SpotifyInsights } from "@/platform/spotify-types"
+import { Disc3, Music2 } from "lucide-react"
 
 type SpotifyEngagementProps = {
   data: SpotifyInsights
@@ -30,6 +28,12 @@ export function SpotifyEngagement({ data }: SpotifyEngagementProps) {
   const artists = data.topArtists ?? []
   const tracks = data.topTracks ?? []
   const years = data.playsByYear ?? []
+  const yearChartData = years
+    .slice()
+    .sort((a, b) => a.year - b.year)
+    .map((y) => ({ label: String(y.year), count: y.count }))
+
+  const hasRanks = artists.length > 0 || tracks.length > 0
 
   return (
     <section className="flex flex-col gap-5 text-start">
@@ -41,6 +45,39 @@ export function SpotifyEngagement({ data }: SpotifyEngagementProps) {
           Listening patterns and your most-played artists and tracks.
         </p>
       </header>
+
+      {hasRanks ? (
+        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2 lg:gap-5">
+          {artists.length > 0 ? (
+            <div className="flex min-h-0 flex-col">
+              <TopListeningRanksCard
+                title="Top artists"
+                description="Who you streamed most"
+                exportName="spotify-top-artists"
+                items={artists}
+                icon={Music2}
+                accent="rose"
+                limit={12}
+              />
+            </div>
+          ) : null}
+
+          {tracks.length > 0 ? (
+            <div className="flex min-h-0 flex-col">
+              <TopListeningRanksCard
+                title="Top tracks"
+                description="Songs you kept coming back to"
+                exportName="spotify-top-tracks"
+                items={tracks}
+                icon={Disc3}
+                accent="teal"
+                limit={12}
+                splitArtistTrack
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {heatmap.length > 0 &&
       !(heatmap.length === 1 && heatmap[0]?.date === "1970-01-01") ? (
@@ -69,69 +106,16 @@ export function SpotifyEngagement({ data }: SpotifyEngagementProps) {
         </WrapChartCard>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {artists.length > 0 ? (
-          <div className="rounded-xl bg-muted/40 p-4 ring-1 ring-border/60">
-            <h3 className="text-sm font-medium">Top artists</h3>
-            <ul
-              className={cn(
-                "mt-3 flex flex-col gap-2 text-sm",
-                listScrollMaxClass
-              )}
-            >
-              {artists.slice(0, 15).map((a) => (
-                <li
-                  key={a.name}
-                  className="flex min-w-0 items-baseline justify-between gap-2"
-                >
-                  <span className="truncate text-foreground">{a.name}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {fmt(a.count)}
-                    {a.msPlayed ? ` · ${formatListeningMs(a.msPlayed)}` : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        {tracks.length > 0 ? (
-          <div className="rounded-xl bg-muted/40 p-4 ring-1 ring-border/60">
-            <h3 className="text-sm font-medium">Top tracks</h3>
-            <ul
-              className={cn(
-                "mt-3 flex flex-col gap-2 text-sm",
-                listScrollMaxClass
-              )}
-            >
-              {tracks.slice(0, 15).map((t) => (
-                <li
-                  key={t.name}
-                  className="flex min-w-0 items-baseline justify-between gap-2"
-                >
-                  <span className="truncate text-foreground">{t.name}</span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {fmt(t.count)}
-                    {t.msPlayed ? ` · ${formatListeningMs(t.msPlayed)}` : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-      </div>
-
-      {years.length > 1 ? (
-        <div className="rounded-xl bg-muted/40 p-4 ring-1 ring-border/60">
-          <h3 className="text-sm font-medium">Plays by year</h3>
-          <ul className="mt-3 flex flex-wrap gap-3 text-sm text-muted-foreground">
-            {years.map((y) => (
-              <li key={y.year}>
-                <span className="text-foreground">{y.year}</span>: {fmt(y.count)}
-              </li>
-            ))}
-          </ul>
-        </div>
+      {yearChartData.length > 1 ? (
+        <CountSeriesChart
+          title="Plays by year"
+          description="How your listening stacked up over calendar years"
+          exportName="spotify-plays-by-year"
+          valueLabel="Plays"
+          variant="bar"
+          accent="rose"
+          data={yearChartData}
+        />
       ) : null}
     </section>
   )

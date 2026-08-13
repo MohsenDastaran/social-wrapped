@@ -291,7 +291,8 @@ export function slidesIncludeClock(slides: VideoChartSlide[]): boolean {
       (s) =>
         (s.id === "circadian" ||
           s.id === "x-tweet-hours" ||
-          s.id === "am-listen-hours") &&
+          s.id === "am-listen-hours" ||
+          s.id === "sp-listen-hours") &&
         Boolean(s.src)
     )
 }
@@ -317,7 +318,8 @@ export function slidesIncludeHeatmap(slides: VideoChartSlide[]): boolean {
       (s) =>
         (s.id === "heatmap" ||
           s.id === "x-tweet-heatmap" ||
-          s.id === "am-listen-heatmap") &&
+          s.id === "am-listen-heatmap" ||
+          s.id === "sp-listen-heatmap") &&
         Boolean(s.src)
     )
 }
@@ -341,10 +343,14 @@ export function appleMusicStickerExtras(slides: VideoChartSlide[]): {
     whips += 1
   }
   add("am-listen", SCENE_AM_TEASER)
+  add("sp-listen", SCENE_AM_TEASER)
   add("am-top-artists", SCENE_AM_RANK_STICKER)
+  add("sp-top-artists", SCENE_AM_RANK_STICKER)
   add("am-top-genres", SCENE_AM_RANK_STICKER)
   add("am-top-albums", SCENE_AM_RANK_STICKER)
+  add("sp-top-albums", SCENE_AM_RANK_STICKER)
   add("am-top-tracks", SCENE_AM_TEASER)
+  add("sp-top-tracks", SCENE_AM_TEASER)
   // heatmap + hours use shared slidesIncludeHeatmap / slidesIncludeClock
   return { frames, whips }
 }
@@ -568,16 +574,17 @@ function chartSequenceNodes(
     if (
       slide.id === "heatmap" ||
       slide.id === "x-tweet-heatmap" ||
-      slide.id === "am-listen-heatmap"
+      slide.id === "am-listen-heatmap" ||
+      slide.id === "sp-listen-heatmap"
     ) {
       return prependSticker(
-        slide.id === "am-listen-heatmap"
-          ? "am-heatmap-sticker"
+        slide.id === "am-listen-heatmap" || slide.id === "sp-listen-heatmap"
+          ? "listen-heatmap-sticker"
           : "heatmap-sticker",
         SCENE_HEATMAP_STICKER,
         <RawStickerScene
           labels={
-            slide.id === "am-listen-heatmap"
+            slide.id === "am-listen-heatmap" || slide.id === "sp-listen-heatmap"
               ? AM_LISTEN_HEATMAP_LABELS
               : HEATMAP_STICKER_LABELS
           }
@@ -595,9 +602,9 @@ function chartSequenceNodes(
       )
     }
 
-    if (slide.id === "am-listen-hours") {
+    if (slide.id === "am-listen-hours" || slide.id === "sp-listen-hours") {
       return prependSticker(
-        "am-hours-sticker",
+        "listen-hours-sticker",
         SCENE_CLOCK_STICKER,
         <AppleMusicHoursIntro />,
         chartNodes
@@ -622,18 +629,18 @@ function chartSequenceNodes(
       )
     }
 
-    if (slide.id === "am-listen") {
+    if (slide.id === "am-listen" || slide.id === "sp-listen") {
       return prependSticker(
-        "am-listen-sticker",
+        "listen-sticker",
         SCENE_AM_TEASER,
         <AppleMusicListenIntro />,
         chartNodes
       )
     }
 
-    if (slide.id === "am-top-artists") {
+    if (slide.id === "am-top-artists" || slide.id === "sp-top-artists") {
       return prependSticker(
-        "am-artists-sticker",
+        "artists-sticker",
         SCENE_AM_RANK_STICKER,
         <RawStickerScene labels={AM_TOP_ARTISTS_LABELS} />,
         chartNodes
@@ -649,18 +656,18 @@ function chartSequenceNodes(
       )
     }
 
-    if (slide.id === "am-top-albums") {
+    if (slide.id === "am-top-albums" || slide.id === "sp-top-albums") {
       return prependSticker(
-        "am-albums-sticker",
+        "albums-sticker",
         SCENE_AM_RANK_STICKER,
         <RawStickerScene labels={AM_TOP_ALBUMS_LABELS} />,
         chartNodes
       )
     }
 
-    if (slide.id === "am-top-tracks") {
+    if (slide.id === "am-top-tracks" || slide.id === "sp-top-tracks") {
       return prependSticker(
-        "am-tracks-sticker",
+        "tracks-sticker",
         SCENE_AM_TEASER,
         <AppleMusicTracksIntro />,
         chartNodes

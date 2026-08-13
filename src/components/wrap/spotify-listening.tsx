@@ -5,7 +5,15 @@ import {
   formatListeningMs,
   type SpotifyInsights,
 } from "@/platform/spotify-types"
-import { Clock, Disc3, Music2, SkipForward, Users } from "lucide-react"
+import {
+  Clock,
+  Disc3,
+  Heart,
+  Library,
+  Music2,
+  SkipForward,
+  Users,
+} from "lucide-react"
 
 type SpotifyListeningInsightsProps = {
   data: SpotifyInsights
@@ -71,12 +79,27 @@ export function SpotifyListeningInsights({
         />
       </StoryExportHost>
 
-      <StoryExportHost exportName="spotify-skip-kpis" storyCaptureWidth={560}>
+      <StoryExportHost
+        exportName="spotify-library-kpis"
+        storyCaptureWidth={560}
+      >
         <OverviewKpiPanel
           sections={[
             {
-              title: "Playback details",
+              title: "Your library",
               stats: [
+                {
+                  label: "Saved tracks",
+                  value: fmt(data.savedTrackCount),
+                  icon: Library,
+                  accent: "text-emerald-600 dark:text-emerald-400",
+                },
+                {
+                  label: "Saved artists",
+                  value: fmt(data.savedArtistCount),
+                  icon: Music2,
+                  accent: "text-teal-600 dark:text-teal-400",
+                },
                 {
                   label: "Short plays",
                   value: fmt(data.skipCount),
@@ -84,10 +107,10 @@ export function SpotifyListeningInsights({
                   accent: "text-amber-600 dark:text-amber-400",
                 },
                 {
-                  label: "Format",
-                  value: data.format === "extended" ? "Extended" : "Account",
-                  icon: Music2,
-                  accent: "text-emerald-600 dark:text-emerald-400",
+                  label: "Following",
+                  value: fmt(data.followingCount),
+                  icon: Heart,
+                  accent: "text-rose-600 dark:text-rose-400",
                 },
               ],
             },

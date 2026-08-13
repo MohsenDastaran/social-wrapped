@@ -94,10 +94,11 @@ const TIKTOK_VIDEO_IDS = [
 
 const SPOTIFY_VIDEO_IDS = [
   "sp-listen",
-  "sp-skips",
-  "heatmap",
-  "activity",
-  "sent-received",
+  "sp-top-artists",
+  "sp-top-albums",
+  "sp-top-tracks",
+  "sp-listen-hours",
+  "sp-listen-heatmap",
 ] as const
 
 const APPLE_MUSIC_VIDEO_IDS = [
@@ -420,7 +421,7 @@ export function buildPlatformStoryCatalog(
     const storySpecs = [...sp, ...messaging]
     return {
       storySpecs,
-      videoSlideIds: pickVideoIds(SPOTIFY_VIDEO_IDS, storySpecs),
+      videoSlideIds: pickVideoIds(SPOTIFY_VIDEO_IDS, storySpecs, 9),
     }
   }
 
@@ -451,17 +452,90 @@ export function buildSpotifyStorySpecs(
       exportName: "spotify-listen-kpis",
       heading: "Your listening year",
       subtext: `${fmt(insights.playCount)} plays · ${formatListeningMs(insights.totalMsPlayed)}`,
-      // KPIs live in the captured card — no duplicate strip at the bottom.
     })
   }
 
-  if (insights.skipCount > 0 || insights.format) {
+  if (
+    insights.savedTrackCount > 0 ||
+    insights.savedArtistCount > 0 ||
+    insights.skipCount > 0 ||
+    insights.followingCount > 0
+  ) {
     specs.push({
-      id: "sp-skips",
-      exportName: "spotify-skip-kpis",
-      heading: "Playback details",
-      subtext: `${fmt(insights.skipCount)} short plays · ${insights.format === "extended" ? "Extended" : "Account"} export`,
-      // KPIs live in the captured card — no duplicate strip at the bottom.
+      id: "sp-library",
+      exportName: "spotify-library-kpis",
+      heading: "Your library",
+      subtext: `${fmt(insights.savedTrackCount)} saved · ${fmt(insights.followingCount)} following`,
+    })
+  }
+
+  const topArtist = insights.topArtists?.[0]
+  if (topArtist) {
+    specs.push({
+      id: "sp-top-artists",
+      exportName: "spotify-top-artists",
+      heading: "Top artists",
+      subtext: `Led by ${topArtist.name} · ${fmt(topArtist.count)} plays`,
+    })
+  }
+
+  const topAlbum = insights.topAlbums?.[0]
+  if (topAlbum) {
+    specs.push({
+      id: "sp-top-albums",
+      exportName: "spotify-top-albums",
+      heading: "Top albums",
+      subtext: `Led by ${topAlbum.name} · ${fmt(topAlbum.count)} plays`,
+    })
+  }
+
+  const topTrack = insights.topTracks?.[0]
+  if (topTrack) {
+    specs.push({
+      id: "sp-top-tracks",
+      exportName: "spotify-top-tracks",
+      heading: "Top tracks",
+      subtext: `Led by ${topTrack.name} · ${fmt(topTrack.count)} plays`,
+    })
+  }
+
+  const heatmap = insights.listenHeatmap ?? []
+  const heatmapUsable =
+    heatmap.length > 0 &&
+    !(heatmap.length === 1 && heatmap[0]?.date === "1970-01-01")
+  if (heatmapUsable) {
+    const total = heatmap.reduce((sum, d) => sum + d.count, 0)
+    specs.push({
+      id: "sp-listen-heatmap",
+      exportName: "spotify-listen-heatmap",
+      heading: "Listening activity",
+      subtext: `${fmt(total)} plays on the calendar.`,
+    })
+  }
+
+  const hourly = Array.from(
+    { length: 24 },
+    (_, i) => Number(insights.listenHourly?.[i] ?? 0) || 0
+  )
+  if (hourly.some((n) => n > 0)) {
+    const peak = peakHourLabel(hourly)
+    const total = hourly.reduce((a, b) => a + b, 0)
+    specs.push({
+      id: "sp-listen-hours",
+      exportName: "spotify-listen-hours",
+      heading: "When you listen",
+      subtext: `Peak ${peak} · ${fmt(total)} plays (UTC)`,
+    })
+  }
+
+  const years = insights.playsByYear ?? []
+  if (years.length > 1) {
+    const peakYear = [...years].sort((a, b) => b.count - a.count)[0]!
+    specs.push({
+      id: "sp-plays-by-year",
+      exportName: "spotify-plays-by-year",
+      heading: "Plays by year",
+      subtext: `Peak ${peakYear.year} · ${fmt(peakYear.count)} plays`,
     })
   }
 
