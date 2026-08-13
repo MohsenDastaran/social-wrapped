@@ -104,17 +104,6 @@ const FALLBACK_COLOR = "rgba(120, 120, 120, 1)"
 // `stroke="var(--background)" strokeWidth={5}`.
 const OVERLAP_BORDER_WIDTH = 5
 
-// Selecting a sector pops it radially OUTWARD from the center — the offset-slice
-// look from the official ECharts pie-pattern example. This is the pixel distance
-// the chosen sector translates along its own bisector; deselecting returns it.
-const SELECTED_OFFSET = 12
-
-// The selected sector stays fully opaque; the others recede to this dimmed
-// opacity. Tuned to ~half the former 0.3 so the selected sector reads with more
-// contrast against the dimmed ones — the analogue of the area chart's dim-fill
-// halving (its dimmed fill went 0.2 → 0.1 while the selected state stays full).
-const DIMMED_OPACITY = 0.15
-
 // Positive gaps between sectors are drawn as a CONSTANT-WIDTH background-colored
 // border (px), NOT an angular padAngle. An angular pad tapers to a wedge toward
 // the center; a border keeps every gap parallel-edged all the way from the rim to
@@ -725,11 +714,8 @@ function pieCenterY(legendSlot: LegendSlot): string {
 // item-triggered, so each hover surfaces exactly one sector — its indicator,
 // label, value, and share of the whole.
 function createTooltipFormatter(ctx: OptionBuildContext) {
-  const { config, selectedSector, tooltipSlot, data, dataKey } = ctx
-  const total = data.reduce(
-    (sum, row) => sum + (Number(row[dataKey]) || 0),
-    0
-  )
+  const { config, tooltipSlot, data, dataKey } = ctx
+  const total = data.reduce((sum, row) => sum + (Number(row[dataKey]) || 0), 0)
 
   return (params: unknown): string => {
     const p = (Array.isArray(params) ? params[0] : params) as {
@@ -745,8 +731,7 @@ function createTooltipFormatter(ctx: OptionBuildContext) {
     const item = config[name]
     const colorsCount = item ? getColorsCount(item) : 1
     const labelText = typeof item?.label === "string" ? item.label : name
-    const raw =
-      typeof p.value === "number" ? p.value : Number(p.value) || 0
+    const raw = typeof p.value === "number" ? p.value : Number(p.value) || 0
     const pct =
       typeof p.percent === "number" && Number.isFinite(p.percent)
         ? Math.round(p.percent)
@@ -754,8 +739,6 @@ function createTooltipFormatter(ctx: OptionBuildContext) {
           ? Math.round((raw / total) * 100)
           : 0
     const valueText = `${raw.toLocaleString()} (${pct}%)`
-    const dimmed =
-      selectedSector != null && selectedSector !== name ? " opacity-30" : ""
 
     // The row shape matches the area chart's indicator + label + value, so it
     // reuses the shared tooltipRow/tooltipIndicatorHtml. The pie tooltip is
@@ -766,7 +749,7 @@ function createTooltipFormatter(ctx: OptionBuildContext) {
       indicatorHtml: tooltipIndicatorHtml(name, colorsCount),
       labelText,
       valueText,
-      dimmed,
+      dimmed: "",
     })
 
     return `<div class="grid min-w-32 items-start gap-1.5 border border-border/50 px-2.5 py-1.5 text-xs shadow-xl ${roundnessClass[tooltipSlot.roundness]} ${tooltipVariantClass[tooltipSlot.variant]}">
@@ -796,9 +779,8 @@ function buildTooltipOption(ctx: OptionBuildContext): TooltipComponentOption {
 }
 
 // The pie series. Each row becomes a sector whose fill is its own color gradient,
-// dimmed when another sector is selected, and separated from its neighbors by a
-// constant-width background border (see sectorBorder). The selected sector pops
-// radially outward via ECharts' native select state (selectedOffset).
+// separated from its neighbors by a constant-width background border (see
+// sectorBorder). Clicks do not select, dim, or offset slices.
 function buildPieSeries(ctx: OptionBuildContext): PieSeriesOption[] {
   const {
     data,
@@ -806,14 +788,11 @@ function buildPieSeries(ctx: OptionBuildContext): PieSeriesOption[] {
     nameKey,
     dataKey,
     pie,
-    selectedSector,
     legendSlot,
     resolved,
   } = ctx
   if (!pie) return []
   const { tokens } = resolved
-  const hasSelection = selectedSector !== null
-  // Selection (dim + pop-out) is only meaningful on a clickable pie.
   const border = sectorBorder(pie.paddingAngle, tokens.background)
 
   const totalValue = data.reduce(
@@ -825,9 +804,6 @@ function buildPieSeries(ctx: OptionBuildContext): PieSeriesOption[] {
   const sectors = data.map((row) => {
     const name = String(row[nameKey])
     const slots = resolved.series[name] ?? [FALLBACK_COLOR]
-    // Only a clickable pie dims — a static one never has a selection to dim from.
-    const isSelected = pie.isClickable && selectedSector === name
-    const isDimmed = pie.isClickable && hasSelection && selectedSector !== name
     const value = Number(row[dataKey]) || 0
     const sharePct = totalValue > 0 ? (value / totalValue) * 100 : 0
     const showSectorLabel =
@@ -836,7 +812,7 @@ function buildPieSeries(ctx: OptionBuildContext): PieSeriesOption[] {
 
     const itemStyle: PieItemStyle = {
       color: sectorPaint(slots),
-      opacity: isDimmed ? DIMMED_OPACITY : 1,
+      opacity: 1,
       borderRadius: pie.cornerRadius,
     }
     // Constant-width background gap (positive paddingAngle) or overlap separator
@@ -846,13 +822,10 @@ function buildPieSeries(ctx: OptionBuildContext): PieSeriesOption[] {
       itemStyle.borderWidth = border.borderWidth
     }
 
-    // The `selected` flag drives the native offset — React selection is the single
-    // source of truth, re-applied on every notMerge push so it survives rebuilds.
     return {
       name,
       value,
       itemStyle,
-      selected: isSelected,
       label: { show: showSectorLabel },
       labelLine: { show: showSectorLabel && pie.labelPosition === "outside" },
     }
@@ -908,18 +881,12 @@ function buildPieSeries(ctx: OptionBuildContext): PieSeriesOption[] {
       // gaps are drawn as constant-width borders instead — an angular pad would
       // taper to a wedge toward the center.
       padAngle: Math.min(pie.paddingAngle, 0),
-      cursor: pie.isClickable ? "pointer" : "default",
-      // No hover scale on ANY variant — hovering only surfaces the tooltip. The
-      // pop-out below is the sole selection affordance, never a hover effect.
-      emphasis: { scale: false },
-      // Native select state: the chosen sector translates SELECTED_OFFSET px along
-      // its bisector, away from the center (the offset-slice pie-pattern look).
-      // Driven by each datum's `selected` flag; deselecting returns it.
-      selectedMode: pie.isClickable ? "single" : false,
-      selectedOffset: SELECTED_OFFSET,
-      // Neutralize any default select styling — the selected sector keeps its
-      // normal paint (inherited via state merge) and only its position moves.
-      select: { itemStyle: {} },
+      cursor: "default",
+      // Hover only shows the tooltip — no scale, blur of other slices, or
+      // click-to-select pop-out.
+      emphasis: { disabled: true, scale: false, focus: "none" },
+      selectedMode: false,
+      select: { disabled: true },
       avoidLabelOverlap: true,
       minShowLabelAngle: minPercent != null ? (minPercent / 100) * 360 : 0,
       label,
@@ -1208,21 +1175,21 @@ export function EChartsPieChart<TData extends Record<string, unknown>>({
       attributeFilter: ["class"],
     })
 
-    chart.on("click", (params) => {
-      const {
-        isClickable,
-        selectedSector: selected,
-        selectSector: select,
-      } = live.handlers
-      if (!isClickable) return
-      const p = params as { name?: string; seriesId?: string }
-      // Ignore the loading skeleton's `__`-prefixed series.
-      if (String(p.seriesId ?? "").startsWith("__")) return
-      const name = p.name
-      if (typeof name !== "string") return
-      // Clicking the selected sector clears the selection, otherwise selects it.
-      select(selected === name ? null : name)
-    })
+    // chart.on("click", (params) => {
+    //   const {
+    //     isClickable,
+    //     selectedSector: selected,
+    //     selectSector: select,
+    //   } = live.handlers
+    //   if (!isClickable) return
+    //   const p = params as { name?: string; seriesId?: string }
+    //   // Ignore the loading skeleton's `__`-prefixed series.
+    //   if (String(p.seriesId ?? "").startsWith("__")) return
+    //   const name = p.name
+    //   if (typeof name !== "string") return
+    //   // Clicking the selected sector clears the selection, otherwise selects it.
+    //   select(selected === name ? null : name)
+    // })
 
     return () => {
       resizeObserver.disconnect()
@@ -1389,27 +1356,11 @@ export function EChartsPieChart<TData extends Record<string, unknown>>({
           align={legendSlot.align}
           verticalAlign={legendSlot.verticalAlign}
           lines={legendSlot.lines}
-          selectedKey={selectedSector}
+          selectedKey={null}
           hoveredKey={null}
-          isClickable={legendSlot.isClickable}
+          isClickable={false}
           valueByKey={legendPercents}
-          onToggle={(key) => {
-            const next = selectedSector === key ? null : key
-            selectSector(next)
-            const chart = echartsRef.current
-            if (!chart || !tooltipSlot.present) return
-            if (next == null) {
-              chart.dispatchAction({ type: "hideTip" })
-              return
-            }
-            const dataIndex = sectorKeys.indexOf(next)
-            if (dataIndex < 0) return
-            chart.dispatchAction({
-              type: "showTip",
-              seriesIndex: 0,
-              dataIndex,
-            })
-          }}
+          onToggle={() => {}}
           style={legendStyle}
         />
       )}
