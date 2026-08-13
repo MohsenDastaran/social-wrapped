@@ -208,24 +208,18 @@ async function expandForExport(
     transform: el.style.transform,
   }
 
-  el.style.position = "fixed"
-  el.style.left = "-12000px"
-  el.style.top = "0"
-  el.style.width = `${targetWidth}px`
-  el.style.maxWidth = `${targetWidth}px`
-  el.style.minWidth = `${targetWidth}px`
-  el.style.zIndex = "0"
-  el.style.opacity = "1"
-  el.style.pointerEvents = "none"
-  el.style.transform = "none"
+  // Hold layout space so the on-screen card doesn't collapse while we park
+  // the live node off-canvas for a wider capture.
+  const placeholder = document.createElement("div")
+  placeholder.setAttribute("aria-hidden", "true")
+  placeholder.setAttribute("data-export-placeholder", "")
+  placeholder.style.width = `${el.offsetWidth}px`
+  placeholder.style.height = `${el.offsetHeight}px`
+  placeholder.style.flexShrink = "0"
+  placeholder.style.pointerEvents = "none"
+  el.insertAdjacentElement("beforebegin", placeholder)
 
-  // Chart hosts observe size — give them a couple frames to resize ECharts.
-  await nextFrame()
-  await nextFrame()
-  resizeEchartsIn(el)
-  await delay(150)
-
-  return () => {
+  const restore = () => {
     el.style.width = prev.width
     el.style.maxWidth = prev.maxWidth
     el.style.minWidth = prev.minWidth
@@ -237,8 +231,32 @@ async function expandForExport(
     el.style.opacity = prev.opacity
     el.style.pointerEvents = prev.pointerEvents
     el.style.transform = prev.transform
+    placeholder.remove()
     scrollerRestores()
     resizeEchartsIn(el)
+  }
+
+  el.style.position = "fixed"
+  el.style.left = "-12000px"
+  el.style.top = "0"
+  el.style.width = `${targetWidth}px`
+  el.style.maxWidth = `${targetWidth}px`
+  el.style.minWidth = `${targetWidth}px`
+  el.style.zIndex = "0"
+  el.style.opacity = "1"
+  el.style.pointerEvents = "none"
+  el.style.transform = "none"
+
+  try {
+    // Chart hosts observe size — give them a couple frames to resize ECharts.
+    await nextFrame()
+    await nextFrame()
+    resizeEchartsIn(el)
+    await delay(150)
+    return restore
+  } catch (error) {
+    restore()
+    throw error
   }
 }
 

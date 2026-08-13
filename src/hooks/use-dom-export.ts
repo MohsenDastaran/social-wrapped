@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
+import { flushSync } from "react-dom"
 
 import {
   downloadElementAsPng,
@@ -41,8 +42,10 @@ export function useDomExport<T extends HTMLElement = HTMLDivElement>(
       const node = ref.current
       if (!node || busyRef.current) return
       busyRef.current = true
-      setExporting(true)
-      setExportError(null)
+      flushSync(() => {
+        setExporting(true)
+        setExportError(null)
+      })
       try {
         await downloadElementAsPng(node, filename, {
           ...optionsRef.current,

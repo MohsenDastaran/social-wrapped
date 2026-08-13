@@ -7,6 +7,7 @@ import {
 } from "react"
 import { Download, Loader2 } from "lucide-react"
 
+import { AppLoader } from "@/components/app-loader"
 import { Button } from "@/components/ui/button"
 import { useDomExport } from "@/hooks/use-dom-export"
 import { cn } from "@/lib/utils"
@@ -141,21 +142,34 @@ export function WrapChartCard({
   })
 
   return (
-    <div
-      ref={ref}
-      data-export-name={exportName}
-      data-export-mode={resolvedCaptureMode}
-      data-export-min-width={exportDims.minWidth}
-      data-export-pixel-ratio={exportDims.pixelRatio}
-      {...(storyCaptureWidth
-        ? { "data-export-story-width": String(storyCaptureWidth) }
-        : {})}
-      {...(preserveStoryWidth ? { "data-export-preserve-width": "true" } : {})}
-      className={cn(
-        "relative flex min-h-0 flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10",
-        className
-      )}
-    >
+    <div className="relative min-h-0">
+      {exporting ? (
+        <div
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-xl bg-background/80 backdrop-blur-sm"
+          data-export-ignore
+          role="status"
+          aria-live="polite"
+          aria-label="Exporting chart"
+        >
+          <AppLoader size="md" fullscreen={false} label="Exporting" />
+          <p className="text-sm text-muted-foreground">Exporting…</p>
+        </div>
+      ) : null}
+      <div
+        ref={ref}
+        data-export-name={exportName}
+        data-export-mode={resolvedCaptureMode}
+        data-export-min-width={exportDims.minWidth}
+        data-export-pixel-ratio={exportDims.pixelRatio}
+        {...(storyCaptureWidth
+          ? { "data-export-story-width": String(storyCaptureWidth) }
+          : {})}
+        {...(preserveStoryWidth ? { "data-export-preserve-width": "true" } : {})}
+        className={cn(
+          "relative flex min-h-0 flex-col overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10",
+          className
+        )}
+      >
       <div className="flex shrink-0 flex-wrap items-start justify-between gap-2 px-3 pt-3 sm:gap-3 sm:px-4 sm:pt-4">
         <div className="min-w-0 flex-1 basis-[min(100%,12rem)] text-start">
           <h3 className="font-heading text-sm font-semibold tracking-tight">
@@ -211,6 +225,7 @@ export function WrapChartCard({
           {children}
         </SizedChartHost>
       )}
+    </div>
     </div>
   )
 }
