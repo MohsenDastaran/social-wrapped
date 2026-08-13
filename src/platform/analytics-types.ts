@@ -228,7 +228,7 @@ export type WrapAnalytics = {
   account: AnalyticsResult
   /** Deduped union of insight lists for drill-down lookup. */
   chats: ChatResult[]
-  /** Top 20 personal chats by lifetime volume. */
+  /** Top 50 personal chats by lifetime volume. */
   topContacts?: ChatResult[]
   /** Top 5 personal chats by last-90-day volume. */
   recentContacts?: ChatResult[]
