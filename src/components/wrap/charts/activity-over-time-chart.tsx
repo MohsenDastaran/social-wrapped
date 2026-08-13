@@ -55,6 +55,8 @@ export function ActivityOverTimeChart({
       : "monthly"
   )
   const [chartType, setChartType] = useState<ChartType>(defaultChartType)
+  const [sentVisible, setSentVisible] = useState(true)
+  const [receivedVisible, setReceivedVisible] = useState(true)
 
   // If data shrinks below 2 years (e.g. chat drill-down), drop yearly mode.
   const effectiveTimeMode: TimeMode =
@@ -104,6 +106,17 @@ export function ActivityOverTimeChart({
   const totalSent = data.reduce((s, d) => s + d.sent, 0)
   const totalReceived = data.reduce((s, d) => s + d.received, 0)
   const showReceived = totalReceived > 0
+  const plotSent = sentVisible
+  const plotReceived = showReceived && receivedVisible
+
+  const toggleSent = () => {
+    if (sentVisible && !plotReceived) return
+    setSentVisible((v) => !v)
+  }
+  const toggleReceived = () => {
+    if (receivedVisible && !plotSent) return
+    setReceivedVisible((v) => !v)
+  }
 
   if (series.yearly.length === 0 && series.monthly.length === 0) {
     return null
@@ -187,34 +200,32 @@ export function ActivityOverTimeChart({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] leading-none tabular-nums">
-            <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-              <span
-                className="size-1.5 shrink-0 rounded-full bg-[#047857] dark:bg-[#10b981]"
-                aria-hidden
-              />
-              <span className="font-medium text-foreground">
-                {fmt(totalSent)}
-              </span>
-              <span className="text-muted-foreground/80">{sentLabel}</span>
-            </span>
+          <div
+            className="flex items-center gap-2 text-[11px] leading-none tabular-nums"
+            role="group"
+            aria-label="Toggle series"
+          >
+            <SeriesToggle
+              active={plotSent}
+              disabled={plotSent && !plotReceived}
+              swatchClass="bg-[#047857] dark:bg-[#10b981]"
+              value={fmt(totalSent)}
+              label={sentLabel}
+              onClick={toggleSent}
+            />
             {showReceived ? (
               <>
                 <span className="text-border" aria-hidden>
                   /
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                  <span
-                    className="size-1.5 shrink-0 rounded-full bg-[#be123c] dark:bg-[#f43f5e]"
-                    aria-hidden
-                  />
-                  <span className="font-medium text-foreground">
-                    {fmt(totalReceived)}
-                  </span>
-                  <span className="text-muted-foreground/80">
-                    {receivedLabel}
-                  </span>
-                </span>
+                <SeriesToggle
+                  active={plotReceived}
+                  disabled={plotReceived && !plotSent}
+                  swatchClass="bg-[#be123c] dark:bg-[#f43f5e]"
+                  value={fmt(totalReceived)}
+                  label={receivedLabel}
+                  onClick={toggleReceived}
+                />
               </>
             ) : null}
           </div>
@@ -243,18 +254,17 @@ export function ActivityOverTimeChart({
                   height={56}
                   formatLabel={(value) => String(value)}
                 />
-                <EChartsAreaChart.Legend isClickable />
                 <EChartsAreaChart.Tooltip />
-                <EChartsAreaChart.Area
-                  dataKey="sent"
-                  variant="gradient"
-                  isClickable
-                />
-                {showReceived ? (
+                {plotSent ? (
+                  <EChartsAreaChart.Area
+                    dataKey="sent"
+                    variant="gradient"
+                  />
+                ) : null}
+                {plotReceived ? (
                   <EChartsAreaChart.Area
                     dataKey="received"
                     variant="gradient"
-                    isClickable
                   />
                 ) : null}
               </EChartsAreaChart>
@@ -264,7 +274,7 @@ export function ActivityOverTimeChart({
                 config={config}
                 className="h-full w-full p-3"
                 xDataKey="date"
-                stackType={showReceived ? "stacked" : undefined}
+                stackType={plotSent && plotReceived ? "stacked" : undefined}
                 enableMaxValueGlow
                 barRadius={6}
               >
@@ -277,18 +287,58 @@ export function ActivityOverTimeChart({
                   height={56}
                   formatLabel={(value) => String(value)}
                 />
-                <EChartsBarChart.Legend isClickable />
                 <EChartsBarChart.Tooltip />
-                {showReceived ? (
+                {plotReceived ? (
                   <EChartsBarChart.Bar dataKey="received" radius={6} />
                 ) : null}
-                <EChartsBarChart.Bar dataKey="sent" radius={6} />
+                {plotSent ? (
+                  <EChartsBarChart.Bar dataKey="sent" radius={6} />
+                ) : null}
               </EChartsBarChart>
             )}
           </div>
         )}
       </div>
     </WrapChartCard>
+  )
+}
+
+function SeriesToggle({
+  active,
+  disabled,
+  swatchClass,
+  value,
+  label,
+  onClick,
+}: {
+  active: boolean
+  disabled: boolean
+  swatchClass: string
+  value: string
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active}
+      aria-label={`${active ? "Hide" : "Show"} ${label}`}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-muted-foreground transition-opacity",
+        "hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+        active ? "opacity-100" : "opacity-35",
+        disabled ? "cursor-not-allowed" : "cursor-pointer"
+      )}
+    >
+      <span
+        className={cn("size-1.5 shrink-0 rounded-full", swatchClass)}
+        aria-hidden
+      />
+      <span className="font-medium text-foreground">{value}</span>
+      <span className="text-muted-foreground/80">{label}</span>
+    </button>
   )
 }
 
