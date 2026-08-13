@@ -338,9 +338,13 @@ function hideExcluded(
   root: HTMLElement,
   extraSelector?: string
 ): HiddenNode[] {
-  const selector = extraSelector
-    ? `[data-export-ignore], ${extraSelector}`
-    : "[data-export-ignore]"
+  const selector = [
+    "[data-export-ignore]",
+    "[data-story-capture-hide]",
+    extraSelector,
+  ]
+    .filter(Boolean)
+    .join(", ")
   return [...root.querySelectorAll<HTMLElement>(selector)].map((el) => {
     const visibility = el.style.visibility
     const display = el.style.display
@@ -548,6 +552,7 @@ function ringStrokeFromStyle(cs: CSSStyleDeclaration): string | null {
 function isExportIgnored(el: Element): boolean {
   return Boolean(
     el.closest("[data-export-ignore]") ||
+      el.closest("[data-story-capture-hide]") ||
       el.closest('[style*="visibility: hidden"]')
   )
 }
@@ -569,7 +574,7 @@ function paintDomSurfaces(
     if (el.tagName === "IMG" || el.tagName === "CANVAS" || el.tagName === "SVG") {
       continue
     }
-    if (el.closest("[data-export-ignore]")) continue
+    if (isExportIgnored(el)) continue
 
     const cs = getComputedStyle(el)
     if (isHidden(el, cs)) continue
@@ -672,7 +677,7 @@ async function paintSvgIcons(
   root: DOMRect
 ) {
   const svgs = [...element.querySelectorAll("svg")].filter((svg) => {
-    if (svg.closest("[data-export-ignore]")) return false
+    if (isExportIgnored(svg)) return false
     const parent = svg.parentElement
     if (parent) {
       const cs = getComputedStyle(parent)
@@ -731,7 +736,7 @@ function paintSvgTextElements(
   root: DOMRect
 ) {
   for (const textEl of element.querySelectorAll("svg text")) {
-    if (textEl.closest("[data-export-ignore]")) continue
+    if (isExportIgnored(textEl)) continue
     const content = textEl.textContent?.replace(/\s+/g, " ").trim() ?? ""
     if (!content) continue
 
@@ -782,7 +787,7 @@ function paintHtmlOverlays(
     if (el.tagName === "IMG" || el.tagName === "CANVAS" || el.tagName === "SVG") {
       continue
     }
-    if (el.closest("[data-export-ignore]")) continue
+    if (isExportIgnored(el)) continue
     if (el.hasAttribute("data-export-canvas-snap")) continue
 
     const cs = getComputedStyle(el)
@@ -829,7 +834,7 @@ function paintTextOverlays(
       parent &&
       text &&
       !parent.closest("svg") &&
-      !parent.closest("[data-export-ignore]")
+      !isExportIgnored(parent)
     ) {
       const cs = getComputedStyle(parent)
       if (!isHidden(parent, cs)) {

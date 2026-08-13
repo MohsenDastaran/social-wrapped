@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   AnimatedWordRenderer,
+  DefaultTooltipRenderer,
   WordCloud,
   type Word,
 } from "@isoterik/react-word-cloud"
@@ -240,6 +241,11 @@ function WordCloudCanvas({ words }: { words: Word[] }) {
           }
           fill={(_, index) => colors[index % colors.length]!}
           enableTooltip={!capturing}
+          renderTooltip={(data) => (
+            <div data-export-ignore data-story-capture-hide>
+              <DefaultTooltipRenderer data={data} />
+            </div>
+          )}
           svgProps={{
             width: "100%",
             height: "100%",

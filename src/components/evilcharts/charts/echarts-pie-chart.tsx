@@ -1356,11 +1356,13 @@ export function EChartsPieChart<TData extends Record<string, unknown>>({
           align={legendSlot.align}
           verticalAlign={legendSlot.verticalAlign}
           lines={legendSlot.lines}
-          selectedKey={null}
+          selectedKey={selectedSector}
           hoveredKey={null}
-          isClickable={false}
+          isClickable={legendSlot.isClickable}
           valueByKey={legendPercents}
-          onToggle={() => {}}
+          onToggle={(key) => {
+            selectSector(selectedSector === key ? null : key)
+          }}
           style={legendStyle}
         />
       )}
