@@ -1,3 +1,4 @@
+import { ContactBarRaceChart } from "@/components/wrap/charts/contact-bar-race-chart"
 import { chatDisplay } from "@/components/wrap/chat-display"
 import { fmt } from "@/components/wrap/chart-theme"
 import { Button } from "@/components/ui/button"
@@ -167,6 +168,10 @@ export function WrapTopContacts({
           onSelect={onSelect}
         />
       </div>
+
+      {directory.length > 1 ? (
+        <ContactBarRaceChart chats={directory} />
+      ) : null}
 
       {directory.length > 0 ? (
         <TopContactsList
