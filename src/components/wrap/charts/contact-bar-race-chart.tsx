@@ -2,7 +2,7 @@
  * Animated bar race of top contacts by cumulative messages.
  * One ECharts instance; frames are precomputed; playback pauses off-screen.
  */
-import { useEffect, useId, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import * as echarts from "echarts/core"
 import { BarChart } from "echarts/charts"
 import {
@@ -11,9 +11,10 @@ import {
   TooltipComponent,
 } from "echarts/components"
 import { CanvasRenderer } from "echarts/renderers"
-import { Pause, Play, RotateCcw } from "lucide-react"
+import { Download, Pause, Play, RotateCcw, X } from "lucide-react"
 import { useReducedMotion } from "motion/react"
 
+import { AppLoader } from "@/components/app-loader"
 import { Button } from "@/components/ui/button"
 import { chatDisplay } from "@/components/wrap/chat-display"
 import { fmt, PALETTES } from "@/components/wrap/chart-theme"
@@ -35,6 +36,12 @@ import {
   tooltipRow,
   tooltipShell,
 } from "@/components/evilcharts/ui/echarts-tooltip"
+import {
+  raceExportFps,
+  raceExportSize,
+  renderRaceMp4,
+} from "@/lib/render-race-video"
+import { saveBlob } from "@/lib/save-blob"
 
 echarts.use([
   BarChart,
@@ -77,11 +84,21 @@ export function ContactBarRaceChart({ chats }: ContactBarRaceChartProps) {
 
 function RaceCard({ race }: { race: RaceModel }) {
   const reduceMotion = useReducedMotion()
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+  const onCanvas = useCallback((node: HTMLCanvasElement | null) => {
+    canvasRef.current = node
+  }, [])
   const [inView, setInView] = useState(false)
   const [frameIndex, setFrameIndex] = useState(0)
   const [playing, setPlaying] = useState(() => !reduceMotion)
+  const [exporting, setExporting] = useState(false)
+  const [exportPhase, setExportPhase] = useState<"record" | "encode">("record")
+  const [exportProgress, setExportProgress] = useState(0)
+  const [exportError, setExportError] = useState<string | null>(null)
   const atEnd = frameIndex >= race.frames.length - 1
   const frame = race.frames[frameIndex] ?? race.frames[0]!
+  const paused = !playing && !exporting
 
   useEffect(() => {
     if (reduceMotion) {
@@ -94,7 +111,9 @@ function RaceCard({ race }: { race: RaceModel }) {
   }, [race, reduceMotion])
 
   useEffect(() => {
-    if (!playing || !inView || reduceMotion || atEnd) return
+    if (!playing || atEnd) return
+    if (reduceMotion && !exporting) return
+    if (!inView && !exporting) return
     const id = window.setTimeout(() => {
       setFrameIndex((i) => Math.min(i + 1, race.frames.length - 1))
     }, race.tickMs)
@@ -107,63 +126,189 @@ function RaceCard({ race }: { race: RaceModel }) {
     frameIndex,
     race.frames.length,
     race.tickMs,
+    exporting,
   ])
 
   useEffect(() => {
-    if (atEnd && playing) setPlaying(false)
-  }, [atEnd, playing])
+    if (atEnd && playing && !exporting) setPlaying(false)
+  }, [atEnd, playing, exporting])
+
+  useEffect(() => {
+    return () => abortRef.current?.abort()
+  }, [])
+
+  const cancelExport = () => {
+    abortRef.current?.abort()
+    abortRef.current = null
+    setExporting(false)
+    setExportProgress(0)
+    setExportError(null)
+    setPlaying(false)
+  }
+
+  const exportMp4 = async () => {
+    const canvas = canvasRef.current
+    if (!canvas || canvas.width < 2 || canvas.height < 2) {
+      setExportError("Chart canvas is not ready yet.")
+      setExporting(true)
+      return
+    }
+
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    setExportError(null)
+    setExportPhase("record")
+    setExportProgress(0.02)
+    setExporting(true)
+    setPlaying(false)
+    setFrameIndex(0)
+
+    const resumeIndex = frameIndex
+    const fill = opaqueBackground(canvas)
+
+    try {
+      await nextPaint()
+      await nextPaint()
+      await new Promise((resolve) => window.setTimeout(resolve, 80))
+      if (controller.signal.aborted) return
+
+      const liveCanvas = canvasRef.current ?? canvas
+      setPlaying(true)
+      const frames = await recordRaceFrames({
+        canvas: liveCanvas,
+        fill,
+        durationMs: Math.max(race.tickMs, (race.frames.length - 1) * race.tickMs + 240),
+        signal: controller.signal,
+        onProgress: (p) => setExportProgress(p * 0.5),
+      })
+      setPlaying(false)
+      setFrameIndex(race.frames.length - 1)
+      if (controller.signal.aborted) return
+      if (frames.length < 2) {
+        throw new Error("Could not capture the race animation")
+      }
+
+      setExportPhase("encode")
+      setExportProgress(0.5)
+      const size = raceExportSize(canvas.width, canvas.height)
+      const blob = await renderRaceMp4({
+        frames,
+        width: size.width,
+        height: size.height,
+        signal: controller.signal,
+        onProgress: (p) => setExportProgress(0.5 + p * 0.5),
+      })
+      if (controller.signal.aborted) return
+
+      const result = await saveBlob(blob, "contact-bar-race.mp4")
+      if (!result.ok && !result.cancelled) {
+        throw new Error(result.error)
+      }
+      setExporting(false)
+      setExportProgress(0)
+    } catch (error) {
+      if (
+        controller.signal.aborted ||
+        (error instanceof DOMException && error.name === "AbortError")
+      ) {
+        setExporting(false)
+        setExportProgress(0)
+        setFrameIndex(resumeIndex)
+        setPlaying(false)
+        return
+      }
+      console.error("[contact-race] MP4 export failed", error)
+      setExportError(
+        error instanceof Error ? error.message : "Video export failed"
+      )
+      setPlaying(false)
+      setFrameIndex(resumeIndex)
+    }
+  }
 
   return (
-    <WrapChartCard
-      title="Contact race"
-      description={`Cumulative messages by month · top ${fmt(race.racers.length)}`}
-      exportName="contact-bar-race"
-      exportSize="wide"
-      headerExtra={
-        <div className="flex items-center gap-1.5" data-export-ignore>
-          <p className="hidden text-[0.65rem] text-muted-foreground tabular-nums sm:block">
-            {frame.label}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            aria-label={
-              atEnd
-                ? "Replay contact race"
-                : playing
-                  ? "Pause race"
-                  : "Play race"
-            }
-            onClick={() => {
-              if (atEnd) {
+    <div className="relative">
+      <WrapChartCard
+        title="Contact race"
+        description={`Cumulative messages by month · top ${fmt(race.racers.length)}`}
+        exportName="contact-bar-race"
+        exportSize="wide"
+        hideExport
+        headerExtra={
+          <div className="flex items-center gap-1.5" data-export-ignore>
+            <p className="hidden text-[0.65rem] text-muted-foreground tabular-nums sm:block">
+              {frame.label}
+            </p>
+            {atEnd ? null : (
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                aria-label={playing ? "Pause race" : "Continue race"}
+                disabled={exporting}
+                onClick={() => setPlaying((p) => !p)}
+              >
+                {playing ? (
+                  <Pause data-icon="inline-start" />
+                ) : (
+                  <Play data-icon="inline-start" />
+                )}
+                {playing ? "Pause" : "Continue"}
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              aria-label="Replay contact race from the start"
+              disabled={exporting}
+              onClick={() => {
                 setFrameIndex(0)
                 setPlaying(true)
-                return
-              }
-              setPlaying((p) => !p)
-            }}
-          >
-            {atEnd ? (
+              }}
+            >
               <RotateCcw data-icon="inline-start" />
-            ) : playing ? (
-              <Pause data-icon="inline-start" />
-            ) : (
-              <Play data-icon="inline-start" />
-            )}
-            {atEnd ? "Replay" : playing ? "Pause" : "Play"}
-          </Button>
-        </div>
-      }
-      chartClassName="h-[32rem] sm:h-[40rem]"
-    >
-      <RacePlot
-        race={race}
-        frameIndex={frameIndex}
-        reduceMotion={Boolean(reduceMotion)}
-        onInViewChange={setInView}
-      />
-    </WrapChartCard>
+              Replay
+            </Button>
+            {paused ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                aria-label="Export contact race as MP4"
+                onClick={() => void exportMp4()}
+              >
+                <Download data-icon="inline-start" />
+                Export MP4
+              </Button>
+            ) : null}
+          </div>
+        }
+        chartClassName="h-[32rem] sm:h-[40rem]"
+      >
+        <RacePlot
+          race={race}
+          frameIndex={frameIndex}
+          reduceMotion={Boolean(reduceMotion) && !exporting}
+          onInViewChange={setInView}
+          onCanvas={onCanvas}
+        />
+      </WrapChartCard>
+      {exporting || exportError ? (
+        <RaceExportOverlay
+          phase={exportPhase}
+          progress={exportProgress}
+          error={exportError}
+          onCancel={cancelExport}
+          onRetry={() => {
+            setExportError(null)
+            void exportMp4()
+          }}
+        />
+      ) : null}
+    </div>
   )
 }
 
@@ -173,11 +318,13 @@ function RacePlot({
   frameIndex,
   reduceMotion,
   onInViewChange,
+  onCanvas,
 }: {
   race: RaceModel
   frameIndex: number
   reduceMotion: boolean
   onInViewChange: (inView: boolean) => void
+  onCanvas: (canvas: HTMLCanvasElement | null) => void
 }) {
   const { containerRef, chartRef, ready } = useSizedEcharts()
   const shellRef = useRef<HTMLDivElement>(null)
@@ -415,6 +562,11 @@ function RacePlot({
     seriesKeys,
   ])
 
+  useEffect(() => {
+    const el = containerRef.current
+    onCanvas(el?.querySelector("canvas") ?? null)
+  }, [containerRef, ready, onCanvas])
+
   return (
     <div
       ref={shellRef}
@@ -425,6 +577,159 @@ function RacePlot({
       <div ref={containerRef} className="absolute inset-0 min-h-0" />
     </div>
   )
+}
+
+function RaceExportOverlay({
+  phase,
+  progress,
+  error,
+  onCancel,
+  onRetry,
+}: {
+  phase: "record" | "encode"
+  progress: number
+  error: string | null
+  onCancel: () => void
+  onRetry: () => void
+}) {
+  const progressPct = Math.round(Math.max(progress, 0) * 100)
+  return (
+    <div
+      className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-[#041512]/95 px-6 backdrop-blur-sm"
+      role="status"
+      aria-label={error ? "Export failed" : "Exporting video"}
+      aria-busy={!error}
+    >
+      <button
+        type="button"
+        onClick={onCancel}
+        className="absolute top-3 end-3 flex size-8 items-center justify-center rounded-full bg-white text-black shadow-lg ring-2 ring-white/80"
+        aria-label="Cancel export"
+      >
+        <X className="size-4" strokeWidth={2.5} />
+      </button>
+
+      <div className="flex w-full max-w-xs flex-col items-center gap-4 text-center text-white">
+        {error ? (
+          <>
+            <p className="font-heading text-lg font-semibold tracking-tight">
+              Export failed
+            </p>
+            <p className="text-sm text-white/70">{error}</p>
+            <div className="flex w-full flex-col gap-2">
+              <button
+                type="button"
+                onClick={onRetry}
+                className="rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-emerald-950"
+              >
+                Try again
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="rounded-xl bg-white/10 px-4 py-2.5 text-sm font-medium text-white ring-1 ring-white/15"
+              >
+                Close
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <AppLoader
+              size="md"
+              fullscreen={false}
+              label={
+                phase === "record" ? "Recording race" : "Rendering video"
+              }
+            />
+            <div>
+              <p className="font-heading text-lg font-semibold tracking-tight">
+                {phase === "record"
+                  ? "Recording your race"
+                  : "Rendering your video"}
+              </p>
+              <p className="mt-1 text-sm text-white/70">
+                Keep this tab open — encoding runs in your browser.
+              </p>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/15">
+              <div
+                className="h-full rounded-full bg-linear-to-r from-emerald-300 to-teal-400 transition-[width] duration-300"
+                style={{ width: `${Math.max(progressPct, 4)}%` }}
+              />
+            </div>
+            <p className="text-sm tabular-nums text-white/55">{progressPct}%</p>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function nextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  })
+}
+
+function opaqueBackground(canvas: HTMLCanvasElement): string {
+  let el: HTMLElement | null = canvas
+  while (el) {
+    const bg = getComputedStyle(el).backgroundColor
+    if (bg && bg !== "transparent" && !bg.endsWith(", 0)") && bg !== "rgba(0, 0, 0, 0)") {
+      return bg
+    }
+    el = el.parentElement
+  }
+  return "#0c0a09"
+}
+
+async function recordRaceFrames(options: {
+  canvas: HTMLCanvasElement
+  fill: string
+  durationMs: number
+  signal: AbortSignal
+  onProgress: (progress: number) => void
+}): Promise<string[]> {
+  const fps = raceExportFps()
+  const size = raceExportSize(options.canvas.width, options.canvas.height)
+  const offscreen = document.createElement("canvas")
+  offscreen.width = size.width
+  offscreen.height = size.height
+  const ctx = offscreen.getContext("2d")
+  if (!ctx) throw new Error("Canvas unsupported")
+
+  const frames: string[] = []
+  const interval = 1000 / fps
+  const started = performance.now()
+  let lastCapture = started - interval
+
+  await new Promise<void>((resolve, reject) => {
+    const tick = (now: number) => {
+      if (options.signal.aborted) {
+        reject(new DOMException("Aborted", "AbortError"))
+        return
+      }
+      if (now - lastCapture >= interval - 2) {
+        ctx.fillStyle = options.fill
+        ctx.fillRect(0, 0, size.width, size.height)
+        ctx.drawImage(options.canvas, 0, 0, size.width, size.height)
+        frames.push(offscreen.toDataURL("image/jpeg", 0.82))
+        lastCapture = now
+        options.onProgress(
+          Math.min(1, (now - started) / Math.max(options.durationMs, 1))
+        )
+      }
+      if (now - started >= options.durationMs) {
+        resolve()
+        return
+      }
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })
+
+  return frames
 }
 
 function racerKey(id: number): string {

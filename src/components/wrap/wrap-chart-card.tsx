@@ -58,6 +58,8 @@ export type WrapChartCardProps = {
   captureMode?: "chart" | "dom"
   /** Extra controls next to the export button (e.g. filters). */
   headerExtra?: ReactNode
+  /** Hide the default PNG export — the card supplies its own (e.g. MP4). */
+  hideExport?: boolean
   className?: string
   chartClassName?: string
   children: ReactNode
@@ -122,6 +124,7 @@ export function WrapChartCard({
   layout = "chart",
   captureMode,
   headerExtra,
+  hideExport = false,
   className,
   chartClassName,
   children,
@@ -173,22 +176,24 @@ export function WrapChartCard({
         </div>
         <div className="ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1.5">
           {headerExtra}
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            data-export-ignore
-            disabled={exporting}
-            onClick={() => void exportPng(`${exportName}.png`)}
-            aria-label={`Export ${title}`}
-          >
-            {exporting ? (
-              <Loader2 data-icon="inline-start" className="animate-spin" />
-            ) : (
-              <Download data-icon="inline-start" />
-            )}
-            {exporting ? "Exporting…" : "Export"}
-          </Button>
+          {hideExport ? null : (
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              data-export-ignore
+              disabled={exporting}
+              onClick={() => void exportPng(`${exportName}.png`)}
+              aria-label={`Export ${title}`}
+            >
+              {exporting ? (
+                <Loader2 data-icon="inline-start" className="animate-spin" />
+              ) : (
+                <Download data-icon="inline-start" />
+              )}
+              {exporting ? "Exporting…" : "Export"}
+            </Button>
+          )}
         </div>
       </div>
       {layout === "flow" ? (
