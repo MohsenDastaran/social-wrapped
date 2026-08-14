@@ -14,13 +14,13 @@ import { PlatformSearchInput } from "@/components/platform-search-input"
 import { PreviewDetailsCard } from "@/components/uitripled/preview-details-card-shadcnui"
 import { Button } from "@/components/ui/button"
 import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
-import { listWrapSummaries } from "@/lib/wrap-history"
 
 const TRUST_ALERT_KEY = "social-wrapped:privacy-trust-alert"
 const TRUST_ALERT_MAX_PRIVACY_CLICKS = 2
-const HOME_VISIT_KEY = "social-wrapped:home-visit-count"
-const HOME_VISIT_SESSION_KEY = "social-wrapped:home-visit-session"
+const ONBOARDING_VIEWS_KEY = "social-wrapped:home-onboarding-views"
+const ONBOARDING_SESSION_KEY = "social-wrapped:home-onboarding-session"
 const GETTING_STARTED_DISMISS_KEY = "social-wrapped:getting-started-dismissed"
+const ONBOARDING_MAX_VIEWS = 2
 
 type TrustAlertState = {
   privacyClicks: number
@@ -54,9 +54,9 @@ function isTrustAlertVisible(state: TrustAlertState): boolean {
   )
 }
 
-function readHomeVisitCount(): number {
+function readOnboardingViews(): number {
   try {
-    const raw = localStorage.getItem(HOME_VISIT_KEY)
+    const raw = localStorage.getItem(ONBOARDING_VIEWS_KEY)
     const n = raw ? Number.parseInt(raw, 10) : 0
     return Number.isFinite(n) && n > 0 ? n : 0
   } catch {
@@ -64,8 +64,8 @@ function readHomeVisitCount(): number {
   }
 }
 
-function writeHomeVisitCount(count: number) {
-  localStorage.setItem(HOME_VISIT_KEY, String(count))
+function writeOnboardingViews(count: number) {
+  localStorage.setItem(ONBOARDING_VIEWS_KEY, String(count))
 }
 
 function isGettingStartedDismissed(): boolean {
@@ -80,24 +80,19 @@ function dismissGettingStarted() {
   localStorage.setItem(GETTING_STARTED_DISMISS_KEY, "1")
 }
 
-/** Count at most one home visit per browser session. */
-function bumpHomeVisitCount(hasExistingWraps: boolean): number {
+/** Count at most one home view per browser session. */
+function bumpOnboardingViews(): number {
   try {
-    if (sessionStorage.getItem(HOME_VISIT_SESSION_KEY) === "1") {
-      return readHomeVisitCount()
+    if (sessionStorage.getItem(ONBOARDING_SESSION_KEY) === "1") {
+      return readOnboardingViews()
     }
-    sessionStorage.setItem(HOME_VISIT_SESSION_KEY, "1")
+    sessionStorage.setItem(ONBOARDING_SESSION_KEY, "1")
   } catch {
-    // Private mode: still bump so first vs second load can differ.
+    // Private mode: still bump so first vs later loads can differ.
   }
 
-  const current = readHomeVisitCount()
-  if (current === 0 && hasExistingWraps) {
-    writeHomeVisitCount(2)
-    return 2
-  }
-  const next = current + 1
-  writeHomeVisitCount(next)
+  const next = readOnboardingViews() + 1
+  writeOnboardingViews(next)
   return next
 }
 
@@ -135,21 +130,10 @@ export function HomePage() {
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-    void listWrapSummaries().then((wraps) => {
-      if (cancelled) return
-      const visit = bumpHomeVisitCount(wraps.length > 0)
-      const firstVisit = visit === 1
-      setShowGettingStarted(
-        firstVisit && wraps.length === 0 && !isGettingStartedDismissed()
-      )
-      setShowTrustAlert(
-        !firstVisit && isTrustAlertVisible(readTrustAlertState())
-      )
-    })
-    return () => {
-      cancelled = true
-    }
+    const views = bumpOnboardingViews()
+    const inOnboarding = views <= ONBOARDING_MAX_VIEWS
+    setShowGettingStarted(inOnboarding && !isGettingStartedDismissed())
+    setShowTrustAlert(inOnboarding && isTrustAlertVisible(readTrustAlertState()))
   }, [])
 
   function dismissTrustAlert() {
