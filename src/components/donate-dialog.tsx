@@ -22,52 +22,60 @@ import { Label } from "@/components/ui/label"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { cn } from "@/lib/utils"
 
-/** Replace addresses, Trust Wallet links, and optional QR images before shipping. */
 const DONATE_WALLETS = [
   {
     id: "btc",
     ticker: "BTC",
     name: "Bitcoin",
+    network: "Bitcoin",
     address: "bc1q7xxhed3j8k8d3x0tzz4rvwh6nrpl05856utmc6",
     trustWalletUrl:
       "https://link.trustwallet.com/send?coin=0&address=bc1q7xxhed3j8k8d3x0tzz4rvwh6nrpl05856utmc6",
-    qrSrc: "",
   },
   {
     id: "eth",
     ticker: "ETH",
     name: "Ethereum",
+    network: "Ethereum",
     address: "0xA9C3daE9306aD99D735B27478E9Cfb804830a1eC",
     trustWalletUrl:
       "https://link.trustwallet.com/send?coin=60&address=0xA9C3daE9306aD99D735B27478E9Cfb804830a1eC",
-    qrSrc: "",
   },
   {
     id: "usdt",
     ticker: "USDT",
     name: "Tether",
+    network: "Ethereum",
     address: "0xA9C3daE9306aD99D735B27478E9Cfb804830a1eC",
     trustWalletUrl:
       "https://link.trustwallet.com/send?coin=60&address=0xA9C3daE9306aD99D735B27478E9Cfb804830a1eC&token_id=0xdAC17F958D2ee523a2206206994597C13D831ec7",
-    qrSrc: "",
+  },
+  {
+    id: "usdt",
+    ticker: "USDT",
+    name: "Tether",
+    network: "TRC-20",
+    address: "TLgV4aKQ2Gjx4M3hY8t8N3F1ENh7XRhok1",
+    trustWalletUrl:
+      "https://link.trustwallet.com/send?coin=195&address=TLgV4aKQ2Gjx4M3hY8t8N3F1ENh7XRhok1&token_id=TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
   },
   {
     id: "sol",
     ticker: "SOL",
     name: "Solana",
+    network: "Solana",
     address: "6R2R1YfhaFuPpH2hzyvRtLD9WJ9DDcJJKXn5GhUNcNzR",
     trustWalletUrl:
       "https://link.trustwallet.com/send?coin=501&address=6R2R1YfhaFuPpH2hzyvRtLD9WJ9DDcJJKXn5GhUNcNzR",
-    qrSrc: "",
   },
   {
     id: "bnb",
     ticker: "BNB",
     name: "BNB",
+    network: "BNB Smart Chain",
     address: "0xA9C3daE9306aD99D735B27478E9Cfb804830a1eC",
     trustWalletUrl:
       "https://link.trustwallet.com/send?coin=20000714&address=0xA9C3daE9306aD99D735B27478E9Cfb804830a1eC",
-    qrSrc: "",
   },
 ] as const
 
@@ -144,9 +152,9 @@ export function DonateDialog({
               <ToggleGroupItem
                 key={item.id}
                 value={item.id}
-                aria-label={item.name}
+                aria-label={`${item.name} · ${item.network}`}
                 className={cn(
-                  "col-span-2 flex h-auto min-h-20 w-full flex-col items-center justify-center rounded-xl px-1 py-2.5 whitespace-normal sm:size-20 sm:min-h-20 sm:w-20 sm:py-0",
+                  "col-span-2 flex h-auto min-h-20 w-full flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2.5 whitespace-normal sm:h-24 sm:min-h-24 sm:w-19 sm:py-2",
                   index === 3 && "max-sm:col-start-2"
                 )}
               >
@@ -156,24 +164,21 @@ export function DonateDialog({
                   draggable={false}
                   className="size-9 object-contain sm:size-8"
                 />
-                <span className="w-full truncate text-center text-xs leading-none text-muted-foreground">
-                  {item.name}
+                <span className="flex w-full items-baseline justify-between gap-1">
+                  <span className="truncate text-xs leading-none">
+                    {item.ticker}
+                  </span>
+                  <span className="shrink-0 text-[0.625rem] leading-none text-muted-foreground">
+                    {item.network}
+                  </span>
                 </span>
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
           <FieldDescription>
-            Send {wallet.name} ({wallet.ticker}) to the address below.
+            Send {wallet.ticker} on {wallet.network}.
           </FieldDescription>
         </Field>
-
-        {wallet.qrSrc ? (
-          <img
-            src={wallet.qrSrc}
-            alt={`${wallet.name} payment QR code`}
-            className="mx-auto size-36 rounded-xl object-contain ring-1 ring-foreground/10 sm:size-40"
-          />
-        ) : null}
 
         <div className="flex items-center gap-2">
           <div className="grid flex-1 gap-2">
