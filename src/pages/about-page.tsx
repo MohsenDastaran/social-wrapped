@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react"
 import { ArrowUpRight, Code2, UserRound } from "lucide-react"
 
-import { DataSafetyDialog } from "@/components/data-safety-dialog"
+import { DonateDialog } from "@/components/donate-dialog"
 import {
   AnimatedTextRoller,
   type AnimatedTextItem,
@@ -95,7 +95,7 @@ export function AboutPage() {
         />
 
         <div className="mt-8 flex w-full max-w-lg flex-col items-center gap-4">
-          <DataSafetyDialog />
+          <DonateDialog />
 
           <div className="flex flex-wrap items-center justify-center gap-3">
             <CraftButton
