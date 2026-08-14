@@ -189,7 +189,7 @@ export function CircadianPolarChart({
                   legendVisible || items.length > 1
                     ? `${p.marker ?? ""} ${p.seriesName ?? ""}: `
                     : `${p.marker ?? ""} `
-                return `${label}<b>${p.value ?? 0}</b> messages`
+                return `${label}<b>${p.value ?? 0}</b>`
               })
               .join("<br/>")
             return head + rows
