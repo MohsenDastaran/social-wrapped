@@ -1,0 +1,22 @@
+{
+  "name": "Social Wrapped",
+  "short_name": "Social Wrapped",
+  "icons": [
+    {
+      "src": "/social-wrapped.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/social-wrapped.png",
+      "type": "image/png",
+      "sizes": "880x880",
+      "purpose": "any"
+    }
+  ],
+  "display": "standalone",
+  "start_url": "/",
+  "background_color": "#000000",
+  "theme_color": "#0a0a0a"
+}
