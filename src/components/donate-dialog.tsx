@@ -28,40 +28,45 @@ const DONATE_WALLETS = [
     id: "btc",
     ticker: "BTC",
     name: "Bitcoin",
-    address: "YOUR_BTC_ADDRESS",
-    trustWalletUrl: "",
+    address: "bc1q7xxhed3j8k8d3x0tzz4rvwh6nrpl05856utmc6",
+    trustWalletUrl:
+      "https://link.trustwallet.com/send?coin=0&address=bc1q7xxhed3j8k8d3x0tzz4rvwh6nrpl05856utmc6",
     qrSrc: "",
   },
   {
     id: "eth",
     ticker: "ETH",
     name: "Ethereum",
-    address: "YOUR_ETH_ADDRESS",
-    trustWalletUrl: "",
+    address: "0xA9C3daE9306aD99D735B27478E9Cfb804830a1eC",
+    trustWalletUrl:
+      "https://link.trustwallet.com/send?coin=60&address=0xA9C3daE9306aD99D735B27478E9Cfb804830a1eC",
     qrSrc: "",
   },
   {
     id: "usdt",
     ticker: "USDT",
     name: "Tether",
-    address: "YOUR_USDT_ADDRESS",
-    trustWalletUrl: "",
+    address: "0xA9C3daE9306aD99D735B27478E9Cfb804830a1eC",
+    trustWalletUrl:
+      "https://link.trustwallet.com/send?coin=60&address=0xA9C3daE9306aD99D735B27478E9Cfb804830a1eC&token_id=0xdAC17F958D2ee523a2206206994597C13D831ec7",
     qrSrc: "",
   },
   {
     id: "sol",
     ticker: "SOL",
     name: "Solana",
-    address: "YOUR_SOL_ADDRESS",
-    trustWalletUrl: "",
+    address: "6R2R1YfhaFuPpH2hzyvRtLD9WJ9DDcJJKXn5GhUNcNzR",
+    trustWalletUrl:
+      "https://link.trustwallet.com/send?coin=501&address=6R2R1YfhaFuPpH2hzyvRtLD9WJ9DDcJJKXn5GhUNcNzR",
     qrSrc: "",
   },
   {
     id: "bnb",
     ticker: "BNB",
     name: "BNB",
-    address: "YOUR_BNB_ADDRESS",
-    trustWalletUrl: "",
+    address: "0xA9C3daE9306aD99D735B27478E9Cfb804830a1eC",
+    trustWalletUrl:
+      "https://link.trustwallet.com/send?coin=20000714&address=0xA9C3daE9306aD99D735B27478E9Cfb804830a1eC",
     qrSrc: "",
   },
 ] as const
