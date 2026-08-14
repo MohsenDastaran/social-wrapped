@@ -1,10 +1,9 @@
 import { useCallback, useState, type ReactElement } from "react"
-import { Check, Heart, Copy } from "lucide-react"
+import { ArrowUpRight, Check, Copy, Heart, Wallet } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -12,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import {
   InputGroup,
   InputGroupAddon,
@@ -20,38 +20,49 @@ import {
 } from "@/components/ui/input-group"
 import { Label } from "@/components/ui/label"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { cn } from "@/lib/utils"
 
-/** Replace these with your live receive addresses before shipping. */
+/** Replace addresses, Trust Wallet links, and optional QR images before shipping. */
 const DONATE_WALLETS = [
   {
     id: "btc",
     ticker: "BTC",
     name: "Bitcoin",
     address: "YOUR_BTC_ADDRESS",
+    trustWalletUrl: "",
+    qrSrc: "",
   },
   {
     id: "eth",
     ticker: "ETH",
     name: "Ethereum",
     address: "YOUR_ETH_ADDRESS",
+    trustWalletUrl: "",
+    qrSrc: "",
   },
   {
     id: "usdt",
     ticker: "USDT",
     name: "Tether",
     address: "YOUR_USDT_ADDRESS",
+    trustWalletUrl: "",
+    qrSrc: "",
   },
   {
     id: "sol",
     ticker: "SOL",
     name: "Solana",
     address: "YOUR_SOL_ADDRESS",
+    trustWalletUrl: "",
+    qrSrc: "",
   },
   {
     id: "bnb",
     ticker: "BNB",
     name: "BNB",
     address: "YOUR_BNB_ADDRESS",
+    trustWalletUrl: "",
+    qrSrc: "",
   },
 ] as const
 
@@ -98,7 +109,7 @@ export function DonateDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger ? <DialogTrigger render={trigger} /> : null}
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Donate</DialogTitle>
           <DialogDescription>
@@ -107,32 +118,57 @@ export function DonateDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ToggleGroup
-          value={[walletId]}
-          onValueChange={(groupValue) => {
-            const next = groupValue[0]
-            if (DONATE_WALLETS.some((item) => item.id === next)) {
-              setWalletId(next as WalletId)
-              setCopied(false)
-            }
-          }}
-          variant="outline"
-          spacing={0}
-          size="sm"
-          className="w-full"
-          aria-label="Cryptocurrency"
-        >
-          {DONATE_WALLETS.map((item) => (
-            <ToggleGroupItem
-              key={item.id}
-              value={item.id}
-              aria-label={item.name}
-              className="flex-1 px-2"
-            >
-              {item.ticker}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+        <Field>
+          <FieldLabel>Cryptocurrency</FieldLabel>
+          <ToggleGroup
+            value={[walletId]}
+            onValueChange={(groupValue) => {
+              const next = groupValue[0]
+              if (DONATE_WALLETS.some((item) => item.id === next)) {
+                setWalletId(next as WalletId)
+                setCopied(false)
+              }
+            }}
+            variant="outline"
+            spacing={2}
+            size="lg"
+            className="grid w-full grid-cols-6 sm:flex sm:flex-wrap sm:justify-center"
+            aria-label="Cryptocurrency"
+          >
+            {DONATE_WALLETS.map((item, index) => (
+              <ToggleGroupItem
+                key={item.id}
+                value={item.id}
+                aria-label={item.name}
+                className={cn(
+                  "col-span-2 flex h-auto min-h-20 w-full flex-col items-center justify-center rounded-xl px-1 py-2.5 whitespace-normal sm:size-20 sm:min-h-20 sm:w-20 sm:py-0",
+                  index === 3 && "max-sm:col-start-2"
+                )}
+              >
+                <img
+                  src={`/images/crypto/${item.id}.svg`}
+                  alt=""
+                  draggable={false}
+                  className="size-9 object-contain sm:size-8"
+                />
+                <span className="w-full truncate text-center text-xs leading-none text-muted-foreground">
+                  {item.name}
+                </span>
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          <FieldDescription>
+            Send {wallet.name} ({wallet.ticker}) to the address below.
+          </FieldDescription>
+        </Field>
+
+        {wallet.qrSrc ? (
+          <img
+            src={wallet.qrSrc}
+            alt={`${wallet.name} payment QR code`}
+            className="mx-auto size-36 rounded-xl object-contain ring-1 ring-foreground/10 sm:size-40"
+          />
+        ) : null}
 
         <div className="flex items-center gap-2">
           <div className="grid flex-1 gap-2">
@@ -158,6 +194,26 @@ export function DonateDialog({
             </InputGroup>
           </div>
         </div>
+
+        <DialogFooter className="sm:justify-stretch">
+          <Button
+            className="w-full"
+            disabled={!wallet.trustWalletUrl}
+            render={
+              wallet.trustWalletUrl ? (
+                <a
+                  href={wallet.trustWalletUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                />
+              ) : undefined
+            }
+          >
+            <Wallet data-icon="inline-start" />
+            Pay with Trust Wallet
+            <ArrowUpRight data-icon="inline-end" />
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
