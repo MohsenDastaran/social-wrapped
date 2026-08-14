@@ -44,39 +44,38 @@ jobs:
     steps:
       - name: Resolve release
         id: resolve
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const event = context.eventName
-            let tag = ''
-            let releaseId = ''
-
-            if (event === 'release') {
-              tag = context.payload.release.tag_name
-              releaseId = String(context.payload.release.id)
-            } else {
-              tag = (context.payload.inputs?.tag || '').trim()
-              if (!tag) throw new Error('workflow_dispatch requires inputs.tag')
-              const { data: release } = await github.rest.repos.getReleaseByTag({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag,
-              })
-              releaseId = String(release.id)
-            }
-
-            // v0.2.5 / 0.2.5-beta.1 → strip one leading v for Tauri / npm version fields
-            const version = tag.replace(/^v/i, '')
-            if (!/^\d+\.\d+\.\d+/.test(version)) {
-              throw new Error(
-                `Tag must look like vX.Y.Z (got tag=${tag}, version=${version})`
-              )
-            }
-
-            core.info(`tag=${tag} version=${version} release_id=${releaseId}`)
-            core.setOutput('tag', tag)
-            core.setOutput('version', version)
-            core.setOutput('release_id', releaseId)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_ID_FROM_EVENT: ${{ github.event.release.id }}
+          DISPATCH_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "release" ]; then
+            TAG="$RELEASE_TAG"
+            RELEASE_ID="$RELEASE_ID_FROM_EVENT"
+          else
+            TAG="${DISPATCH_TAG#"${DISPATCH_TAG%%[![:space:]]*}"}"
+            TAG="${TAG%"${TAG##*[![:space:]]}"}"
+            if [ -z "$TAG" ]; then
+              echo "::error::workflow_dispatch requires inputs.tag"
+              exit 1
+            fi
+            RELEASE_ID=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq .id)
+          fi
+          VERSION="${TAG#v}"
+          VERSION="${VERSION#V}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "::error::Tag must look like vX.Y.Z (got tag=${TAG}, version=${VERSION})"
+            exit 1
+          fi
+          {
+            echo "tag=${TAG}"
+            echo "version=${VERSION}"
+            echo "release_id=${RELEASE_ID}"
+          } >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG} version=${VERSION} release_id=${RELEASE_ID}"
 
   build-tauri:
     needs: meta
@@ -179,7 +178,7 @@ jobs:
 
       - name: Setup Android SDK
         if: matrix.mobile == 'android'
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install Android platform / build-tools
         if: matrix.mobile == 'android'
@@ -237,33 +236,34 @@ jobs:
         run: |
           set -euo pipefail
           echo "Using release version: $VERSION"
-          node <<'NODE'
-          const fs = require('fs')
+          cat > "$RUNNER_TEMP/sync-release-version.js" <<'BUN'
+          const fs = require("fs")
           const version = process.env.VERSION
-          if (!version) throw new Error('VERSION env is empty')
+          if (!version) throw new Error("VERSION env is empty")
 
-          const pkgPath = 'package.json'
-          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
+          const pkgPath = "package.json"
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"))
           pkg.version = version
-          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n")
 
-          const tauriPath = 'src-tauri/tauri.conf.json'
-          const tauri = JSON.parse(fs.readFileSync(tauriPath, 'utf8'))
+          const tauriPath = "src-tauri/tauri.conf.json"
+          const tauri = JSON.parse(fs.readFileSync(tauriPath, "utf8"))
           tauri.version = version
-          fs.writeFileSync(tauriPath, JSON.stringify(tauri, null, 2) + '\n')
+          fs.writeFileSync(tauriPath, JSON.stringify(tauri, null, 2) + "\n")
 
-          const cargoPath = 'Cargo.toml'
-          let cargo = fs.readFileSync(cargoPath, 'utf8')
+          const cargoPath = "Cargo.toml"
+          const cargo = fs.readFileSync(cargoPath, "utf8")
           const next = cargo.replace(
             /(\[workspace\.package\][\s\S]*?^version\s*=\s*")[^"]+(")/m,
             `$1${version}$2`
           )
           if (next === cargo) {
-            throw new Error('Could not update [workspace.package] version in Cargo.toml')
+            throw new Error("Could not update [workspace.package] version in Cargo.toml")
           }
           fs.writeFileSync(cargoPath, next)
           console.log(`Synced package.json, tauri.conf.json, Cargo.toml → ${version}`)
-          NODE
+          BUN
+          bun "$RUNNER_TEMP/sync-release-version.js"
 
       - name: Build and upload to release
         uses: tauri-apps/tauri-action@v1
@@ -276,6 +276,7 @@ jobs:
           args: ${{ matrix.args }}
           mobile: ${{ matrix.mobile }}
           releaseAssetNamePattern: ${{ matrix.asset_pattern }}
+          tauriScript: bun tauri
 
   # Rename Linux bundles (and any leftovers) so the sort key sits after the version.
   # Still run when some matrix builds fail (e.g. a flaky macOS runner) so
@@ -287,131 +288,148 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Normalize asset names for display order
-        uses: actions/github-script@v7
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ needs.meta.outputs.release_id }}
           VERSION: ${{ needs.meta.outputs.version }}
-        with:
-          script: |
-            const release_id = Number(process.env.RELEASE_ID)
-            const version = process.env.VERSION
-            const { data: assets } = await github.rest.repos.listReleaseAssets({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id,
-              per_page: 100,
+        run: |
+          cat > "$RUNNER_TEMP/order-release-assets.js" <<'BUN'
+          const token = process.env.GITHUB_TOKEN
+          const releaseId = process.env.RELEASE_ID
+          const version = process.env.VERSION
+          const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/")
+
+          async function gh(path, { method = "GET", body } = {}) {
+            const res = await fetch(`https://api.github.com${path}`, {
+              method,
+              headers: {
+                Accept: "application/vnd.github+json",
+                Authorization: `Bearer ${token}`,
+                "X-GitHub-Api-Version": "2022-11-28",
+                ...(body ? { "Content-Type": "application/json" } : {}),
+              },
+              body: body ? JSON.stringify(body) : undefined,
             })
-
-            // After version: 01-android-*, 02-windows, 03-macos, 04/05/06-linux-*
-            const SORT_AFTER_VERSION =
-              /_\d{2}-(?:android|windows|macos|linux)(?:[-_]|$)/i
-
-            function sortKeyFor(name) {
-              const bare = name.replace(/\.sig$/i, '').toLowerCase()
-              if (bare.endsWith('.apk') || bare.endsWith('.aab')) {
-                return bare.includes('arm64') || bare.includes('aarch64')
-                  ? '01-android-arm64'
-                  : '01-android-universal'
-              }
-              if (bare.endsWith('.msi') || bare.endsWith('.exe')) {
-                return '02-windows'
-              }
-              if (
-                bare.endsWith('.dmg') ||
-                bare.endsWith('.app') ||
-                bare.includes('.app.tar')
-              ) {
-                return '03-macos'
-              }
-              if (bare.endsWith('.deb')) return '04-linux-deb'
-              if (bare.endsWith('.rpm')) return '05-linux-rpm'
-              if (bare.endsWith('.appimage')) return '06-linux-appimage'
-              return '99-other'
+            if (!res.ok) {
+              throw new Error(
+                `${method} ${path} → ${res.status} ${await res.text()}`
+              )
             }
+            return res.status === 204 ? null : res.json()
+          }
 
-            function stripLegacyLeadingPrefix(name) {
-              // Old scheme: 01a-name… / 02-name…
-              return name.replace(/^\d{2}[a-z]?-/, '')
+          const assets = await gh(
+            `/repos/${owner}/${repo}/releases/${releaseId}/assets?per_page=100`
+          )
+
+          const SORT_AFTER_VERSION =
+            /_\d{2}-(?:android|windows|macos|linux)(?:[-_]|$)/i
+
+          function sortKeyFor(name) {
+            const bare = name.replace(/\.sig$/i, "").toLowerCase()
+            if (bare.endsWith(".apk") || bare.endsWith(".aab")) {
+              return bare.includes("arm64") || bare.includes("aarch64")
+                ? "01-android-arm64"
+                : "01-android-universal"
             }
-
-            function insertSortKeyAfterVersion(name, sortKey) {
-              if (SORT_AFTER_VERSION.test(name)) return name
-
-              // Prefer exact release version from the tag.
-              if (version) {
-                const needle = `_${version}_`
-                const idx = name.indexOf(needle)
-                if (idx !== -1) {
-                  const after = name.slice(idx + needle.length)
-                  // Drop a leftover numeric mid-key if present.
-                  const cleaned = after.replace(/^\d{2}[a-z]?[-_]/, '')
-                  return (
-                    name.slice(0, idx + needle.length) +
-                    sortKey +
-                    (cleaned ? `_${cleaned}` : '')
-                  )
-                }
-                // name_version.ext (no arch segment)
-                const dotted = `_${version}.`
-                const dIdx = name.indexOf(dotted)
-                if (dIdx !== -1) {
-                  return (
-                    name.slice(0, dIdx + 1 + version.length) +
-                    `_${sortKey}` +
-                    name.slice(dIdx + 1 + version.length)
-                  )
-                }
-              }
-
-              // Fallback: first semver-looking segment.
-              const m = name.match(/^(.*?_)(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]*)?)(_|\.|$)(.*)$/)
-              if (!m) return `${name.replace(/(\.[^.]+)$/, `_${sortKey}$1`)}`
-              const [, prefix, ver, sep, rest] = m
-              if (sep === '_') {
-                const cleaned = rest.replace(/^\d{2}[a-z]?[-_]/, '')
-                return `${prefix}${ver}_${sortKey}${cleaned ? `_${cleaned}` : ''}`
-              }
-              return `${prefix}${ver}_${sortKey}${sep}${rest}`
+            if (bare.endsWith(".msi") || bare.endsWith(".exe")) {
+              return "02-windows"
             }
+            if (
+              bare.endsWith(".dmg") ||
+              bare.endsWith(".app") ||
+              bare.includes(".app.tar")
+            ) {
+              return "03-macos"
+            }
+            if (bare.endsWith(".deb")) return "04-linux-deb"
+            if (bare.endsWith(".rpm")) return "05-linux-rpm"
+            if (bare.endsWith(".appimage")) return "06-linux-appimage"
+            return "99-other"
+          }
 
-            // Tauri/rpmbuild emits name-version-release.arch.rpm (hyphens).
-            // GitHub sorts '-' before '_', so those float above every other asset
-            // unless rewritten to name_version_05-linux-rpm_arch.rpm.
-            function normalizeHyphenatedRpm(name) {
-              const sig = /\.sig$/i.test(name) ? '.sig' : ''
-              const core = name.replace(/\.sig$/i, '')
-              if (!/\.rpm$/i.test(core)) return null
+          function stripLegacyLeadingPrefix(name) {
+            return name.replace(/^\d{2}[a-z]?-/, "")
+          }
 
-              const escaped = version.replace(/\./g, '\\.')
-              const m = core.match(
-                new RegExp(
-                  `^(.*?)-${escaped}-(\\d+)\\.(.+?)(?:_\\d{2}-linux-rpm)?\\.rpm$`,
-                  'i'
+          function insertSortKeyAfterVersion(name, sortKey) {
+            if (SORT_AFTER_VERSION.test(name)) return name
+
+            if (version) {
+              const needle = `_${version}_`
+              const idx = name.indexOf(needle)
+              if (idx !== -1) {
+                const after = name.slice(idx + needle.length)
+                const cleaned = after.replace(/^\d{2}[a-z]?[-_]/, "")
+                return (
+                  name.slice(0, idx + needle.length) +
+                  sortKey +
+                  (cleaned ? `_${cleaned}` : "")
                 )
-              )
-              if (!m) return null
-              const pkg = m[1]
-              const arch = m[3]
-              return `${pkg}_${version}_05-linux-rpm_${arch}.rpm${sig}`
+              }
+              const dotted = `_${version}.`
+              const dIdx = name.indexOf(dotted)
+              if (dIdx !== -1) {
+                return (
+                  name.slice(0, dIdx + 1 + version.length) +
+                  `_${sortKey}` +
+                  name.slice(dIdx + 1 + version.length)
+                )
+              }
             }
 
-            function desiredName(name) {
-              const stripped = stripLegacyLeadingPrefix(name)
-              return (
-                normalizeHyphenatedRpm(stripped) ??
-                insertSortKeyAfterVersion(stripped, sortKeyFor(stripped))
-              )
+            const m = name.match(
+              /^(.*?_)(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]*)?)(_|\.|$)(.*)$/
+            )
+            if (!m) return `${name.replace(/(\.[^.]+)$/, `_${sortKey}$1`)}`
+            const [, prefix, ver, sep, rest] = m
+            if (sep === "_") {
+              const cleaned = rest.replace(/^\d{2}[a-z]?[-_]/, "")
+              return `${prefix}${ver}_${sortKey}${cleaned ? `_${cleaned}` : ""}`
             }
+            return `${prefix}${ver}_${sortKey}${sep}${rest}`
+          }
 
-            for (const asset of assets) {
-              const next = desiredName(asset.name)
-              if (next === asset.name) continue
-              core.info(`${asset.name} → ${next}`)
-              await github.rest.repos.updateReleaseAsset({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                asset_id: asset.id,
-                name: next,
-              })
-            }
+          function normalizeHyphenatedRpm(name) {
+            const sig = /\.sig$/i.test(name) ? ".sig" : ""
+            const core = name.replace(/\.sig$/i, "")
+            if (!/\.rpm$/i.test(core)) return null
+
+            const escaped = version.replace(/\./g, "\\.")
+            const m = core.match(
+              new RegExp(
+                `^(.*?)-${escaped}-(\\d+)\\.(.+?)(?:_\\d{2}-linux-rpm)?\\.rpm$`,
+                "i"
+              )
+            )
+            if (!m) return null
+            const pkg = m[1]
+            const arch = m[3]
+            return `${pkg}_${version}_05-linux-rpm_${arch}.rpm${sig}`
+          }
+
+          function desiredName(name) {
+            const stripped = stripLegacyLeadingPrefix(name)
+            return (
+              normalizeHyphenatedRpm(stripped) ??
+              insertSortKeyAfterVersion(stripped, sortKeyFor(stripped))
+            )
+          }
+
+          for (const asset of assets) {
+            const next = desiredName(asset.name)
+            if (next === asset.name) continue
+            console.log(`${asset.name} → ${next}`)
+            await gh(`/repos/${owner}/${repo}/releases/assets/${asset.id}`, {
+              method: "PATCH",
+              body: { name: next },
+            })
+          }
+          BUN
+          bun "$RUNNER_TEMP/order-release-assets.js"
