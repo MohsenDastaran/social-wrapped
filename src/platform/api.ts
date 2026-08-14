@@ -41,3 +41,12 @@ export async function loadTelegramMock(): Promise<string> {
   const wasm = await getWasm()
   return wasm.load_telegram_mock()
 }
+
+/** Two-year seeded Telegram `result.json` generated in Rust. */
+export async function generateTelegramDemoJson(): Promise<string> {
+  if (isTauri()) {
+    return invoke<string>("generate_telegram_demo_json")
+  }
+  const wasm = await getWasm()
+  return wasm.generate_telegram_demo_json()
+}

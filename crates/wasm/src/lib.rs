@@ -7,6 +7,13 @@ pub fn greet(name: &str) -> String {
     app_core::greet(name)
 }
 
+/// Seeded two-year Telegram Desktop `result.json` for the getting-started demo.
+#[wasm_bindgen]
+pub fn generate_telegram_demo_json() -> Result<String, JsValue> {
+    app_core::mock::telegram_demo::generate_export_json()
+        .map_err(|error| JsValue::from_str(&error.to_string()))
+}
+
 /// Fetches the Telegram mock export from the Vite dev server and returns a summary.
 #[wasm_bindgen]
 pub async fn load_telegram_mock() -> Result<String, JsValue> {

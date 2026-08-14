@@ -9,6 +9,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::greet::greet,
             commands::telegram_mock::load_telegram_mock,
+            commands::telegram_mock::generate_telegram_demo_json,
             commands::telegram_import::summarize_telegram_bytes,
         ])
         .run(tauri::generate_context!())

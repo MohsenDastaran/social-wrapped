@@ -4,7 +4,6 @@ import {
   AnimatePresence,
   motion,
   useReducedMotion,
-  type Transition,
   type Variants,
 } from "framer-motion"
 import { ArrowUpRight, Play, Sparkles, Star, XIcon } from "lucide-react"
@@ -67,11 +66,6 @@ export function PreviewDetailsCard({
     [shouldReduceMotion]
   )
 
-  const hoverMotion = shouldReduceMotion ? undefined : { scale: 1.02, y: -2 }
-  const hoverTransition = shouldReduceMotion
-    ? { duration: 0 }
-    : { type: "spring", stiffness: 420, damping: 34, mass: 0.7 }
-
   return (
     <section
       aria-labelledby={`${previewId}-title`}
@@ -79,10 +73,7 @@ export function PreviewDetailsCard({
     >
       <div className="relative w-full">
         <motion.div
-          className="group relative inline-flex w-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 px-5 py-5 text-[var(--muted-foreground)] shadow-[0_25px_70px_-20px_rgba(15,23,42,0.5)] backdrop-blur-2xl transition-colors duration-300 hover:border-border focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none sm:px-7 sm:py-6"
-          layout
-          whileHover={hoverMotion}
-          transition={hoverTransition as Transition}
+          className="relative flex w-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 px-5 py-5 text-[var(--muted-foreground)] shadow-[0_25px_70px_-20px_rgba(15,23,42,0.5)] backdrop-blur-2xl sm:px-7 sm:py-6"
         >
           <div className="flex items-center justify-between text-xs tracking-[0.32em] uppercase">
             <span className="inline-flex items-center gap-2 text-[var(--muted-foreground)]/70">

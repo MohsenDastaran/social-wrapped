@@ -187,7 +187,7 @@ export function HomePage() {
         {showGettingStarted ? (
           <motion.div
             key="getting-started-popup"
-            className="fixed z-40 w-[min(calc(100%-2rem),22rem)] inset-e-4 bottom-24 max-h-[min(70dvh,36rem)] overflow-y-auto md:bottom-6"
+            className="fixed z-40 w-[min(calc(100%-2rem),22rem)] inset-e-4 bottom-24 max-h-[min(70dvh,36rem)] overflow-x-hidden overflow-y-auto md:bottom-6"
             initial={
               reduceMotion
                 ? { opacity: 0 }

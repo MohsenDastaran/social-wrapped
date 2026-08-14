@@ -216,11 +216,18 @@ export function PlatformImportView({
     if (searchParams.get("demo") !== "1") return
     telegramDemoImportStarted = true
     setSearchParams({}, { replace: true })
-    const file = buildTelegramDemoFile()
-    setFiles([file])
-    void runAnalyze([file], TELEGRAM_DEMO_FILE_NAME).finally(() => {
-      telegramDemoImportStarted = false
-    })
+    void (async () => {
+      try {
+        const file = await buildTelegramDemoFile()
+        setFiles([file])
+        await runAnalyze([file], TELEGRAM_DEMO_FILE_NAME)
+      } catch (err) {
+        setError(formatInvokeError(err))
+        setProgress(null)
+      } finally {
+        telegramDemoImportStarted = false
+      }
+    })()
     // Run once when the Telegram import page is opened with ?demo=1.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [platform.id, searchParams, setSearchParams])

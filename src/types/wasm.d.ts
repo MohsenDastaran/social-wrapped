@@ -8,6 +8,7 @@ type WasmModuleExports = {
   default: () => Promise<void>
   greet: (name: string) => string
   load_telegram_mock: () => Promise<string>
+  generate_telegram_demo_json: () => string
   summarize_telegram_bytes: (data: Uint8Array) => string
   summarize_telegram_bytes_with_progress: (
     data: Uint8Array,
@@ -77,6 +78,7 @@ declare module "@/wasm-pkg/social_wrapped_wasm" {
   export default init
   export const greet: WasmModuleExports["greet"]
   export const load_telegram_mock: WasmModuleExports["load_telegram_mock"]
+  export const generate_telegram_demo_json: WasmModuleExports["generate_telegram_demo_json"]
   export const summarize_telegram_bytes: WasmModuleExports["summarize_telegram_bytes"]
   export const summarize_telegram_bytes_with_progress: WasmModuleExports["summarize_telegram_bytes_with_progress"]
   export const analyze_telegram_bytes_with_progress: WasmModuleExports["analyze_telegram_bytes_with_progress"]
@@ -104,6 +106,7 @@ declare module "@/wasm-pkg/social_wrapped_wasm.js" {
   export default init
   export const greet: WasmModuleExports["greet"]
   export const load_telegram_mock: WasmModuleExports["load_telegram_mock"]
+  export const generate_telegram_demo_json: WasmModuleExports["generate_telegram_demo_json"]
   export const summarize_telegram_bytes: WasmModuleExports["summarize_telegram_bytes"]
   export const summarize_telegram_bytes_with_progress: WasmModuleExports["summarize_telegram_bytes_with_progress"]
   export const analyze_telegram_bytes_with_progress: WasmModuleExports["analyze_telegram_bytes_with_progress"]
@@ -131,6 +134,7 @@ declare module "../wasm-pkg/social_wrapped_wasm.js" {
   export default init
   export const greet: WasmModuleExports["greet"]
   export const load_telegram_mock: WasmModuleExports["load_telegram_mock"]
+  export const generate_telegram_demo_json: WasmModuleExports["generate_telegram_demo_json"]
   export const summarize_telegram_bytes: WasmModuleExports["summarize_telegram_bytes"]
   export const summarize_telegram_bytes_with_progress: WasmModuleExports["summarize_telegram_bytes_with_progress"]
   export const analyze_telegram_bytes_with_progress: WasmModuleExports["analyze_telegram_bytes_with_progress"]
