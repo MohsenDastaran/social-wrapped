@@ -354,7 +354,7 @@ function HeatmapCanvas({
             const v = params.value
             if (!v) return ""
             const n = v[1] ?? 0
-            return `${formatLongDate(v[0])}<br/><b>${n.toLocaleString()}</b> message${n === 1 ? "" : "s"}`
+            return `${formatLongDate(v[0])}<br/><b>${n.toLocaleString()}</b>`
           },
           backgroundColor: isDark ? "#1e293b" : "#ffffff",
           borderColor: isDark ? "#334155" : "#e2e8f0",
