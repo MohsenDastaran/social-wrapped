@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { ArrowUpRight, ShieldCheck, XIcon } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { Link } from "react-router"
+import { Link, useNavigate } from "react-router"
 
 import { Hero } from "@/components/hero"
 import { PlatformImportCard } from "@/components/platform-guide-card"
@@ -11,11 +11,16 @@ import {
   AlertTitle,
 } from "@/components/reui/alert"
 import { PlatformSearchInput } from "@/components/platform-search-input"
+import { PreviewDetailsCard } from "@/components/uitripled/preview-details-card-shadcnui"
 import { Button } from "@/components/ui/button"
 import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
+import { listWrapSummaries } from "@/lib/wrap-history"
 
 const TRUST_ALERT_KEY = "social-wrapped:privacy-trust-alert"
 const TRUST_ALERT_MAX_PRIVACY_CLICKS = 2
+const HOME_VISIT_KEY = "social-wrapped:home-visit-count"
+const HOME_VISIT_SESSION_KEY = "social-wrapped:home-visit-session"
+const GETTING_STARTED_DISMISS_KEY = "social-wrapped:getting-started-dismissed"
 
 type TrustAlertState = {
   privacyClicks: number
@@ -49,11 +54,58 @@ function isTrustAlertVisible(state: TrustAlertState): boolean {
   )
 }
 
+function readHomeVisitCount(): number {
+  try {
+    const raw = localStorage.getItem(HOME_VISIT_KEY)
+    const n = raw ? Number.parseInt(raw, 10) : 0
+    return Number.isFinite(n) && n > 0 ? n : 0
+  } catch {
+    return 0
+  }
+}
+
+function writeHomeVisitCount(count: number) {
+  localStorage.setItem(HOME_VISIT_KEY, String(count))
+}
+
+function isGettingStartedDismissed(): boolean {
+  try {
+    return localStorage.getItem(GETTING_STARTED_DISMISS_KEY) === "1"
+  } catch {
+    return false
+  }
+}
+
+function dismissGettingStarted() {
+  localStorage.setItem(GETTING_STARTED_DISMISS_KEY, "1")
+}
+
+/** Count at most one home visit per browser session. */
+function bumpHomeVisitCount(hasExistingWraps: boolean): number {
+  try {
+    if (sessionStorage.getItem(HOME_VISIT_SESSION_KEY) === "1") {
+      return readHomeVisitCount()
+    }
+    sessionStorage.setItem(HOME_VISIT_SESSION_KEY, "1")
+  } catch {
+    // Private mode: still bump so first vs second load can differ.
+  }
+
+  const current = readHomeVisitCount()
+  if (current === 0 && hasExistingWraps) {
+    writeHomeVisitCount(2)
+    return 2
+  }
+  const next = current + 1
+  writeHomeVisitCount(next)
+  return next
+}
+
 export function HomePage() {
+  const navigate = useNavigate()
   const [query, setQuery] = useState("")
-  const [showTrustAlert, setShowTrustAlert] = useState(() =>
-    isTrustAlertVisible(readTrustAlertState())
-  )
+  const [showTrustAlert, setShowTrustAlert] = useState(false)
+  const [showGettingStarted, setShowGettingStarted] = useState(false)
   const reduceMotion = useReducedMotion()
   const filteredPlatforms = useMemo(() => {
     const search = query.trim().toLowerCase()
@@ -82,6 +134,24 @@ export function HomePage() {
     return () => cancelAnimationFrame(frameId)
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    void listWrapSummaries().then((wraps) => {
+      if (cancelled) return
+      const visit = bumpHomeVisitCount(wraps.length > 0)
+      const firstVisit = visit === 1
+      setShowGettingStarted(
+        firstVisit && wraps.length === 0 && !isGettingStartedDismissed()
+      )
+      setShowTrustAlert(
+        !firstVisit && isTrustAlertVisible(readTrustAlertState())
+      )
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   function dismissTrustAlert() {
     writeTrustAlertState({
       ...readTrustAlertState(),
@@ -104,9 +174,43 @@ export function HomePage() {
     }
   }
 
+  function handleDismissGettingStarted() {
+    dismissGettingStarted()
+    setShowGettingStarted(false)
+  }
+
   return (
     <div className="flex w-full max-w-4xl flex-col items-stretch text-start">
       <Hero />
+
+      <AnimatePresence>
+        {showGettingStarted ? (
+          <motion.div
+            key="getting-started-popup"
+            className="fixed z-40 w-[min(calc(100%-2rem),22rem)] inset-e-4 bottom-24 max-h-[min(70dvh,36rem)] overflow-y-auto md:bottom-6"
+            initial={
+              reduceMotion
+                ? { opacity: 0 }
+                : { opacity: 0, y: 28, x: 16, scale: 0.96 }
+            }
+            animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
+            exit={
+              reduceMotion
+                ? { opacity: 0 }
+                : { opacity: 0, y: 16, x: 12, scale: 0.96 }
+            }
+            transition={{
+              duration: 0.45,
+              ease: [0.19, 1, 0.22, 1],
+            }}
+          >
+            <PreviewDetailsCard
+              onTryDemo={() => navigate("/import/telegram?demo=1")}
+              onDismiss={handleDismissGettingStarted}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <section
         id="platforms"

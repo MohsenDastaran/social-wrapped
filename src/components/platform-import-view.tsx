@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useId,
   useRef,
   useState,
@@ -6,7 +7,7 @@ import {
   type DragEvent,
 } from "react"
 import { ArrowLeft, CircleHelp, FileUp, Upload, X } from "lucide-react"
-import { Link, useNavigate } from "react-router"
+import { Link, useNavigate, useSearchParams } from "react-router"
 
 import { AppLoader } from "@/components/app-loader"
 import LightRays from "@/components/LightRays"
@@ -21,10 +22,16 @@ import {
   platformLogoViewTransitionName,
   type PlatformConfig,
 } from "@/lib/platforms"
+import {
+  buildTelegramDemoFile,
+  TELEGRAM_DEMO_FILE_NAME,
+} from "@/lib/telegram-demo-export"
 import { cn } from "@/lib/utils"
 import { saveWrap, wrapEntryPath } from "@/lib/wrap-history"
 import { formatInvokeError } from "@/platform/api"
 import { importPlatformFiles, type ImportProgress } from "@/platform/import"
+
+let telegramDemoImportStarted = false
 
 export type PlatformImportViewProps = {
   platform: PlatformConfig
@@ -83,6 +90,7 @@ export function PlatformImportView({
   className,
 }: PlatformImportViewProps) {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const inputId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
   const multi = allowsMultiple(platform.id)
@@ -137,10 +145,10 @@ export function PlatformImportView({
     })
   }
 
-  async function handleAnalyze() {
-    if (!files.length) return
+  async function runAnalyze(selected: File[], displayName?: string) {
+    if (!selected.length) return
     setError("")
-    const totalSize = files.reduce((s, f) => s + f.size, 0)
+    const totalSize = selected.reduce((s, f) => s + f.size, 0)
     setProgress({
       phase: "reading",
       percent: 0,
@@ -161,7 +169,7 @@ export function PlatformImportView({
         appleMusicInsights,
       } = await importPlatformFiles(
         platform,
-        files,
+        selected,
         setProgress,
         platform.id === "whatsapp" ||
           platform.id === "instagram" ||
@@ -173,11 +181,12 @@ export function PlatformImportView({
       const wrap = await saveWrap({
         platformId: platform.id,
         fileName:
-          files.length === 1
-            ? files[0].name
+          displayName ??
+          (selected.length === 1
+            ? selected[0].name
             : platform.id === "spotify"
-              ? `${files.length} Spotify files`
-              : `${files.length} Takeout ZIPs`,
+              ? `${selected.length} Spotify files`
+              : `${selected.length} Takeout ZIPs`),
         analytics,
         instagramSocial,
         googleInsights,
@@ -187,7 +196,7 @@ export function PlatformImportView({
         tiktokInsights,
         spotifyInsights,
         appleMusicInsights,
-        archiveBlob: platform.id === "x" && files[0] ? files[0] : undefined,
+        archiveBlob: platform.id === "x" && selected[0] ? selected[0] : undefined,
       })
       navigate(wrapEntryPath(wrap), { replace: true })
     } catch (err) {
@@ -196,6 +205,25 @@ export function PlatformImportView({
       setIdentityPrompt(null)
     }
   }
+
+  function handleAnalyze() {
+    void runAnalyze(files)
+  }
+
+  useEffect(() => {
+    if (telegramDemoImportStarted) return
+    if (platform.id !== "telegram") return
+    if (searchParams.get("demo") !== "1") return
+    telegramDemoImportStarted = true
+    setSearchParams({}, { replace: true })
+    const file = buildTelegramDemoFile()
+    setFiles([file])
+    void runAnalyze([file], TELEGRAM_DEMO_FILE_NAME).finally(() => {
+      telegramDemoImportStarted = false
+    })
+    // Run once when the Telegram import page is opened with ?demo=1.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [platform.id, searchParams, setSearchParams])
 
   const progressHint =
     platform.id === "whatsapp"
