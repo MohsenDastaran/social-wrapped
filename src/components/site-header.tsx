@@ -1,5 +1,6 @@
 import { NavLink } from "react-router"
 
+import { BrandLogo } from "@/components/brand-logo"
 import { ModeToggle } from "@/components/mode-toggle"
 import { MorphNavMenu } from "@/components/ui/animated/morph-nav-menu"
 
@@ -9,9 +10,10 @@ export function SiteHeader() {
       <div className="relative mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
         <NavLink
           to="/"
-          className="relative z-10 text-sm font-semibold tracking-tight"
+          className="relative z-10 flex items-center gap-2 text-sm font-semibold tracking-tight"
           end
         >
+          <BrandLogo title="Social Wrapped" />
           Social Wrapped
         </NavLink>
 
