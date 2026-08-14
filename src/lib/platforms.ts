@@ -202,9 +202,9 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     accentClass: "border-green-500/50",
     gradientClass:
       "from-green-500/25 via-lime-400/10 to-transparent dark:from-green-400/20 dark:via-lime-500/5",
-    summary: "Download your listening history and library as JSON.",
+    summary: "Download your listening history and library as ZIP.",
     exportPath: "Account → Privacy settings → Download your data",
-    formats: "JSON ZIP",
+    formats: "ZIP",
     extractable:
       "Streaming history, top artists/tracks, listening time, and profile details.",
     steps: [
@@ -214,9 +214,9 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     ],
     importTitle: "Import Spotify data",
     importDescription:
-      "Upload your Spotify Account Data ZIP, or StreamingHistory / Streaming_History JSON file(s). We analyze listening history on your device.",
-    acceptedFiles: [".zip", ".json"],
-    accept: ".zip,.json,application/zip,application/json",
+      "Upload your Spotify Account Data ZIP. We analyze listening history on your device.",
+    acceptedFiles: [".zip"],
+    accept: ".zip,application/zip",
   },
   {
     id: "apple-music",

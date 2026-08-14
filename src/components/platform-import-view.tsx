@@ -196,7 +196,8 @@ export function PlatformImportView({
         tiktokInsights,
         spotifyInsights,
         appleMusicInsights,
-        archiveBlob: platform.id === "x" && selected[0] ? selected[0] : undefined,
+        archiveBlob:
+          platform.id === "x" && selected[0] ? selected[0] : undefined,
       })
       navigate(wrapEntryPath(wrap), { replace: true })
     } catch (err) {
@@ -390,11 +391,7 @@ export function PlatformImportView({
           ) : null}
           <p className="mt-3 text-xs font-medium text-muted-foreground">
             Accepted: {acceptedFiles.join(", ")}
-            {multi
-              ? platform.id === "spotify"
-                ? " · multiple JSON files OK"
-                : " · multiple ZIPs OK"
-              : null}
+            {multi ? " · multiple ZIPs OK" : null}
           </p>
         </header>
 
