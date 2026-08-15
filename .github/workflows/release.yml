@@ -8,6 +8,8 @@
 #   _03-macos → _04-linux-deb → _05-linux-rpm → _06-linux-appimage
 # RPM bundles arrive as name-version-release.arch.rpm (hyphens); order-assets
 # rewrites them to the underscore scheme so they sit with .deb, not at the top.
+# download-table then writes an OS/Arch badge table into the release body
+# (only platforms that actually uploaded; no store listings we don't have).
 # Version in filenames comes from the release tag (e.g. v0.2.5 → 0.2.5), not package.json.
 
 name: Release
@@ -433,3 +435,315 @@ jobs:
           }
           BUN
           bun "$RUNNER_TEMP/order-release-assets.js"
+
+  # Badge table in the GitHub Release body, linking the assets that exist.
+  download-table:
+    needs: [meta, order-assets]
+    if: ${{ always() && !cancelled() && needs.meta.result == 'success' && needs.order-assets.result == 'success' }}
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Write OS / Arch download table
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.meta.outputs.release_id }}
+          TAG: ${{ needs.meta.outputs.tag }}
+        run: |
+          cat > "$RUNNER_TEMP/release-download-table.js" <<'BUN'
+          const token = process.env.GITHUB_TOKEN
+          const releaseId = process.env.RELEASE_ID
+          const tag = process.env.TAG
+          const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/")
+
+          const MARKER_START = "<!-- download-table:start -->"
+          const MARKER_END = "<!-- download-table:end -->"
+
+          async function gh(path, { method = "GET", body } = {}) {
+            const res = await fetch(`https://api.github.com${path}`, {
+              method,
+              headers: {
+                Accept: "application/vnd.github+json",
+                Authorization: `Bearer ${token}`,
+                "X-GitHub-Api-Version": "2022-11-28",
+                ...(body ? { "Content-Type": "application/json" } : {}),
+              },
+              body: body ? JSON.stringify(body) : undefined,
+            })
+            if (!res.ok) {
+              throw new Error(
+                `${method} ${path} → ${res.status} ${await res.text()}`
+              )
+            }
+            return res.status === 204 ? null : res.json()
+          }
+
+          function isSig(name) {
+            return /\.sig$/i.test(name)
+          }
+
+          function lower(name) {
+            return name.toLowerCase()
+          }
+
+          function archLabel(name) {
+            const n = lower(name)
+            if (/aarch64|arm64/.test(n)) return "ARMv8"
+            if (/armv7|armeabi|armhf/.test(n)) return "ARMv7"
+            if (/x86_64|amd64|x64|win64/.test(n)) return "x64"
+            if (/i686|\bx86\b/.test(n)) return "x86"
+            return "x64"
+          }
+
+          function macLabel(name) {
+            const n = lower(name)
+            if (/aarch64|arm64/.test(n)) return "Apple silicon"
+            if (/x86_64|x64/.test(n)) return "Intel"
+            return "Disk image"
+          }
+
+          function linuxArch(name) {
+            const n = lower(name)
+            if (/aarch64|arm64/.test(n)) return "ARM64"
+            if (/armv7|armhf/.test(n)) return "ARMv7"
+            return "x64"
+          }
+
+          function findAll(assets, pred) {
+            return assets.filter(
+              (a) => !isSig(a.name) && pred(lower(a.name), a.name)
+            )
+          }
+
+          function shield({
+            label,
+            message,
+            color,
+            labelColor,
+            logo,
+            logoColor = "white",
+          }) {
+            const q = new URLSearchParams({
+              label,
+              message,
+              color,
+              logo,
+              logoColor,
+            })
+            if (labelColor) q.set("labelColor", labelColor)
+            return `https://img.shields.io/static/v1?${q.toString()}`
+          }
+
+          function badge(asset, opts) {
+            const src = shield(opts)
+            const alt = `${opts.label} ${opts.message}`.replaceAll("|", "").replace(/\s+/g, " ").trim()
+            return `<a href="${asset.browser_download_url}"><img alt="${alt}" src="${src}" /></a>`
+          }
+
+          function joinBadges(items) {
+            return items.filter(Boolean).join(" ")
+          }
+
+          function sortBy(assets, score) {
+            return [...assets].sort((a, b) => score(a.name) - score(b.name))
+          }
+
+          async function main() {
+          const release = await gh(`/repos/${owner}/${repo}/releases/${releaseId}`)
+          const assets = await gh(
+            `/repos/${owner}/${repo}/releases/${releaseId}/assets?per_page=100`
+          )
+
+          const androidApks = sortBy(
+            findAll(assets, (n) => n.endsWith(".apk")),
+            (name) => {
+              const n = lower(name)
+              if (n.includes("universal")) return 0
+              if (/aarch64|arm64/.test(n)) return 1
+              if (/armv7|armeabi|armhf/.test(n)) return 2
+              return 3
+            }
+          )
+          const winExes = findAll(assets, (n) => n.endsWith(".exe"))
+          const winMsis = findAll(assets, (n) => n.endsWith(".msi"))
+          const macDmgs = sortBy(
+            findAll(assets, (n) => n.endsWith(".dmg")),
+            (name) => {
+              const label = macLabel(name)
+              if (label === "Apple silicon") return 0
+              if (label === "Intel") return 1
+              return 2
+            }
+          )
+          const linuxAppImages = findAll(assets, (n) => n.endsWith(".appimage"))
+          const linuxDebs = findAll(assets, (n) => n.endsWith(".deb"))
+          const linuxRpms = findAll(assets, (n) => n.endsWith(".rpm"))
+
+          const rows = []
+
+          if (androidApks.length) {
+            const badges = androidApks.map((asset) => {
+              const n = lower(asset.name)
+              const message = n.includes("universal")
+                ? "APK | Universal"
+                : `APK | ${archLabel(asset.name)}`
+              return badge(asset, {
+                label: "Android",
+                message,
+                color: "3DDC84",
+                labelColor: "1B5E20",
+                logo: "android",
+              })
+            })
+            rows.push({
+              os: joinBadges(badges),
+              compat: "8.0 or later",
+            })
+          }
+
+          if (winExes.length || winMsis.length) {
+            const badges = [
+              ...winExes.map((asset) =>
+                badge(asset, {
+                  label: "Windows",
+                  message: "Installer",
+                  color: "00A4EF",
+                  labelColor: "0078D4",
+                  logo: "windows",
+                })
+              ),
+              ...winMsis.map((asset) =>
+                badge(asset, {
+                  label: "Windows",
+                  message: "MSI",
+                  color: "00A4EF",
+                  labelColor: "0078D4",
+                  logo: "windows",
+                })
+              ),
+            ]
+            rows.push({
+              os: joinBadges(badges),
+              compat: "10 or later",
+            })
+          }
+
+          if (macDmgs.length) {
+            const badges = macDmgs.map((asset) =>
+              badge(asset, {
+                label: "macOS",
+                message: macLabel(asset.name),
+                color: "6e7681",
+                labelColor: "ffffff",
+                logo: "apple",
+                logoColor: "000000",
+              })
+            )
+            const arches = macDmgs.map((a) => macLabel(a.name))
+            const hasSilicon = arches.includes("Apple silicon")
+            const hasIntel = arches.includes("Intel")
+            const chip =
+              hasSilicon && hasIntel
+                ? "Intel and Apple silicon"
+                : hasSilicon
+                  ? "Apple silicon"
+                  : hasIntel
+                    ? "Intel"
+                    : ""
+            rows.push({
+              os: joinBadges(badges),
+              compat: chip
+                ? `10.15 or later<br>${chip}`
+                : "10.15 or later",
+            })
+          }
+
+          if (linuxAppImages.length || linuxDebs.length || linuxRpms.length) {
+            const badges = [
+              ...linuxAppImages.map((asset) =>
+                badge(asset, {
+                  label: "Linux",
+                  message: `AppImage ${linuxArch(asset.name)}`,
+                  color: "E95420",
+                  labelColor: "C74715",
+                  logo: "linux",
+                })
+              ),
+              ...linuxDebs.map((asset) =>
+                badge(asset, {
+                  label: "Linux",
+                  message: `DEB ${linuxArch(asset.name)}`,
+                  color: "E95420",
+                  labelColor: "C74715",
+                  logo: "debian",
+                })
+              ),
+              ...linuxRpms.map((asset) =>
+                badge(asset, {
+                  label: "Linux",
+                  message: `RPM ${linuxArch(asset.name)}`,
+                  color: "E95420",
+                  labelColor: "C74715",
+                  logo: "fedora",
+                })
+              ),
+            ]
+            rows.push({
+              os: joinBadges(badges),
+              compat:
+                "Ubuntu 22.04+<br>Debian 12+<br>Fedora 39+<br><sub>* Requires webkit2gtk 4.1 (GTK 3)</sub>",
+            })
+          }
+
+          if (!rows.length) {
+            console.log("No installer assets found; leaving release body unchanged.")
+            return
+          }
+
+          const table = [
+            "## Downloads",
+            "",
+            "<table>",
+            "<thead><tr><th align=\"left\">OS / Arch</th><th align=\"left\">Compatibility</th></tr></thead>",
+            "<tbody>",
+            ...rows.map(
+              (row) =>
+                `<tr><td>${row.os}</td><td>${row.compat}</td></tr>`
+            ),
+            "</tbody>",
+            "</table>",
+          ].join("\n")
+
+          const block = `${MARKER_START}\n${table}\n${MARKER_END}`
+          const existing = release.body || ""
+          let next
+          if (existing.includes(MARKER_START) && existing.includes(MARKER_END)) {
+            next = existing.replace(
+              new RegExp(`${MARKER_START}[\\s\\S]*?${MARKER_END}`),
+              block
+            )
+          } else {
+            const trimmed = existing.trim()
+            next = trimmed ? `${block}\n\n${trimmed}` : block
+          }
+
+          if (next === existing) {
+            console.log("Release download table already up to date.")
+            return
+          }
+
+          await gh(`/repos/${owner}/${repo}/releases/${releaseId}`, {
+            method: "PATCH",
+            body: { body: next },
+          })
+          console.log(`Updated download table on ${tag} (${rows.length} platform row(s)).`)
+          }
+
+          await main()
+          BUN
+          bun "$RUNNER_TEMP/release-download-table.js"

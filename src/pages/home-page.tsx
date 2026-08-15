@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { ArrowUpRight, ShieldCheck, XIcon } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { Link, useNavigate } from "react-router"
+import { Link } from "react-router"
 
 import { Hero } from "@/components/hero"
 import { PlatformImportCard } from "@/components/platform-guide-card"
@@ -11,16 +11,17 @@ import {
   AlertTitle,
 } from "@/components/reui/alert"
 import { PlatformSearchInput } from "@/components/platform-search-input"
-import { PreviewDetailsCard } from "@/components/uitripled/preview-details-card-shadcnui"
 import { Button } from "@/components/ui/button"
+import {
+  ONBOARDING_MAX_VIEWS,
+  bumpOnboardingViews,
+  isGettingStartedDismissed,
+  showGettingStarted,
+} from "@/lib/getting-started"
 import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
 
 const TRUST_ALERT_KEY = "social-wrapped:privacy-trust-alert"
 const TRUST_ALERT_MAX_PRIVACY_CLICKS = 2
-const ONBOARDING_VIEWS_KEY = "social-wrapped:home-onboarding-views"
-const ONBOARDING_SESSION_KEY = "social-wrapped:home-onboarding-session"
-const GETTING_STARTED_DISMISS_KEY = "social-wrapped:getting-started-dismissed"
-const ONBOARDING_MAX_VIEWS = 2
 
 type TrustAlertState = {
   privacyClicks: number
@@ -54,53 +55,9 @@ function isTrustAlertVisible(state: TrustAlertState): boolean {
   )
 }
 
-function readOnboardingViews(): number {
-  try {
-    const raw = localStorage.getItem(ONBOARDING_VIEWS_KEY)
-    const n = raw ? Number.parseInt(raw, 10) : 0
-    return Number.isFinite(n) && n > 0 ? n : 0
-  } catch {
-    return 0
-  }
-}
-
-function writeOnboardingViews(count: number) {
-  localStorage.setItem(ONBOARDING_VIEWS_KEY, String(count))
-}
-
-function isGettingStartedDismissed(): boolean {
-  try {
-    return localStorage.getItem(GETTING_STARTED_DISMISS_KEY) === "1"
-  } catch {
-    return false
-  }
-}
-
-function dismissGettingStarted() {
-  localStorage.setItem(GETTING_STARTED_DISMISS_KEY, "1")
-}
-
-/** Count at most one home view per browser session. */
-function bumpOnboardingViews(): number {
-  try {
-    if (sessionStorage.getItem(ONBOARDING_SESSION_KEY) === "1") {
-      return readOnboardingViews()
-    }
-    sessionStorage.setItem(ONBOARDING_SESSION_KEY, "1")
-  } catch {
-    // Private mode: still bump so first vs later loads can differ.
-  }
-
-  const next = readOnboardingViews() + 1
-  writeOnboardingViews(next)
-  return next
-}
-
 export function HomePage() {
-  const navigate = useNavigate()
   const [query, setQuery] = useState("")
   const [showTrustAlert, setShowTrustAlert] = useState(false)
-  const [showGettingStarted, setShowGettingStarted] = useState(false)
   const reduceMotion = useReducedMotion()
   const filteredPlatforms = useMemo(() => {
     const search = query.trim().toLowerCase()
@@ -132,7 +89,9 @@ export function HomePage() {
   useEffect(() => {
     const views = bumpOnboardingViews()
     const inOnboarding = views <= ONBOARDING_MAX_VIEWS
-    setShowGettingStarted(inOnboarding && !isGettingStartedDismissed())
+    if (inOnboarding && !isGettingStartedDismissed()) {
+      showGettingStarted()
+    }
     setShowTrustAlert(inOnboarding && isTrustAlertVisible(readTrustAlertState()))
   }, [])
 
@@ -158,43 +117,9 @@ export function HomePage() {
     }
   }
 
-  function handleDismissGettingStarted() {
-    dismissGettingStarted()
-    setShowGettingStarted(false)
-  }
-
   return (
     <div className="flex w-full max-w-4xl flex-col items-stretch text-start">
       <Hero />
-
-      <AnimatePresence>
-        {showGettingStarted ? (
-          <motion.div
-            key="getting-started-popup"
-            className="fixed z-40 w-[min(calc(100%-2rem),22rem)] inset-e-4 bottom-24 max-h-[min(70dvh,36rem)] overflow-x-hidden overflow-y-auto md:bottom-6"
-            initial={
-              reduceMotion
-                ? { opacity: 0 }
-                : { opacity: 0, y: 28, x: 16, scale: 0.96 }
-            }
-            animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
-            exit={
-              reduceMotion
-                ? { opacity: 0 }
-                : { opacity: 0, y: 16, x: 12, scale: 0.96 }
-            }
-            transition={{
-              duration: 0.45,
-              ease: [0.19, 1, 0.22, 1],
-            }}
-          >
-            <PreviewDetailsCard
-              onTryDemo={() => navigate("/import/telegram?demo=1")}
-              onDismiss={handleDismissGettingStarted}
-            />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
 
       <section
         id="platforms"
