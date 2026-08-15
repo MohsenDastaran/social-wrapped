@@ -1,4 +1,4 @@
-import { HandHeart } from "lucide-react"
+import { CircleHelp, HandHeart } from "lucide-react"
 import { NavLink } from "react-router"
 
 import { BrandLogo } from "@/components/brand-logo"
@@ -6,6 +6,7 @@ import { DonateDialog } from "@/components/donate-dialog"
 import { ModeToggle } from "@/components/mode-toggle"
 import { MorphNavMenu } from "@/components/ui/animated/morph-nav-menu"
 import { Button } from "@/components/ui/button"
+import { showGettingStarted } from "@/lib/getting-started"
 
 export function SiteHeader() {
   return (
@@ -23,6 +24,16 @@ export function SiteHeader() {
         <MorphNavMenu className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
 
         <div className="relative z-10 flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="icon-sm"
+            className="size-9 rounded-full"
+            aria-label="Help"
+            title="Help"
+            onClick={() => showGettingStarted()}
+          >
+            <CircleHelp />
+          </Button>
           <DonateDialog
             trigger={
               <Button
