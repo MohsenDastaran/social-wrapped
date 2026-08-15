@@ -37,7 +37,6 @@ export type StoryCatalogInput = {
   tiktokInsights?: TikTokInsights | null
   spotifyInsights?: SpotifyInsights | null
   appleMusicInsights?: AppleMusicInsights | null
-  profanityLang?: string | null
 }
 
 const MESSAGING_VIDEO_IDS = [
@@ -370,8 +369,7 @@ export function buildPlatformStoryCatalog(
 ): PlatformStoryCatalog {
   const messaging = buildMessagingStorySpecs(
     input.displayName,
-    input.analytics,
-    input.profanityLang
+    input.analytics
   )
 
   if (input.platformId === "instagram" && input.instagramSocial) {

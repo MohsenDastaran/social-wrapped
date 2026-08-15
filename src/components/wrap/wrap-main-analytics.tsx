@@ -139,6 +139,7 @@ export function WrapMainAnalytics({ analytics, wrapId }: WrapMainAnalyticsProps)
         selfName={analytics.displayName}
         stats={a.profanity}
         exportName="main-profanity"
+        excludeSelf
       />
 
       <TopEmojisCard emojis={a.emojis.topOverall} exportName="main-emojis" />

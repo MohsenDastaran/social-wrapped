@@ -1,20 +1,26 @@
-import { Crown } from "lucide-react"
-import { useSyncExternalStore } from "react"
+import { Crown, Languages } from "lucide-react"
+import { useMemo, useState, useSyncExternalStore } from "react"
 
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { fmt } from "@/components/wrap/chart-theme"
 import {
   PROFANITY_LANGUAGES,
   getProfanityLanguage,
   getProfanityLanguageVersion,
-  isProfanityLangId,
   setProfanityLanguage,
   subscribeProfanityLanguageVersion,
   type ProfanityLangId,
 } from "@/lib/profanity-language"
 import { cn } from "@/lib/utils"
-import type { ProfanityStats } from "@/platform/analytics-types"
+import type { ProfanityParticipant, ProfanityStats } from "@/platform/analytics-types"
 
 type ProfanityRankingCardProps = {
   wrapId: string
@@ -22,47 +28,63 @@ type ProfanityRankingCardProps = {
   selfName: string
   stats: ProfanityStats | undefined
   exportName: string
+  /** Hide the account owner (wrap-wide ranking of contacts). */
+  excludeSelf?: boolean
 }
 
-function LanguageChips({
+function LanguageGrid({
   value,
   onChange,
-  compact,
 }: {
   value: ProfanityLangId | null
   onChange: (lang: ProfanityLangId) => void
-  compact?: boolean
 }) {
   return (
-    <ToggleGroup
-      value={value ? [value] : []}
-      onValueChange={(groupValue) => {
-        const next = groupValue[0]
-        if (isProfanityLangId(next)) onChange(next)
-      }}
-      variant="outline"
-      spacing={1}
-      size="sm"
-      className={cn(
-        "flex w-full flex-wrap",
-        compact ? "justify-end" : "justify-start"
-      )}
-      aria-label="Chat language"
-    >
-      {PROFANITY_LANGUAGES.map((lang) => (
-        <ToggleGroupItem
-          key={lang.id}
-          value={lang.id}
-          className={cn(
-            "rounded-full",
-            compact && "h-6 px-2 text-[0.65rem]"
-          )}
-        >
-          {lang.label}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
+    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {PROFANITY_LANGUAGES.map((lang) => {
+        const selected = value === lang.id
+        return (
+          <li key={lang.id}>
+            <button
+              type="button"
+              onClick={() => onChange(lang.id)}
+              aria-pressed={selected}
+              className={cn(
+                "flex h-full w-full flex-col items-start gap-0.5 rounded-xl border px-3 py-2.5 text-start transition-colors",
+                "outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+                selected
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border bg-background hover:bg-muted/60"
+              )}
+            >
+              <span className="text-sm font-semibold leading-tight" dir="auto">
+                {lang.native}
+              </span>
+              <span className="text-[0.65rem] text-muted-foreground">
+                {lang.native === lang.label ? lang.id.toUpperCase() : lang.label}
+              </span>
+            </button>
+          </li>
+        )
+      })}
+    </ul>
   )
+}
+
+function rankingRows(
+  participants: ProfanityParticipant[],
+  youName: string,
+  excludeSelf: boolean
+): { rows: ProfanityParticipant[]; totalHits: number } {
+  const filtered = excludeSelf
+    ? participants.filter((row) => row.name !== youName)
+    : participants
+  const totalHits = filtered.reduce((sum, row) => sum + row.hits, 0)
+  const rows = filtered.map((row) => ({
+    ...row,
+    pct: totalHits > 0 ? (row.hits / totalHits) * 100 : 0,
+  }))
+  return { rows, totalHits }
 }
 
 /** Language-gated ranking of who accounts for the most bad-word hits. */
@@ -72,27 +94,37 @@ export function ProfanityRankingCard({
   selfName,
   stats,
   exportName,
+  excludeSelf = false,
 }: ProfanityRankingCardProps) {
+  const [pickerOpen, setPickerOpen] = useState(false)
   useSyncExternalStore(
     subscribeProfanityLanguageVersion,
     getProfanityLanguageVersion,
     getProfanityLanguageVersion
   )
   const lang = getProfanityLanguage(wrapId, chatId)
-  if (stats == null) return null
-  const ranking = lang ? stats?.byLanguage?.[lang] : undefined
-  const rows = ranking?.participants ?? []
-  const totalHits = ranking?.totalHits ?? 0
-  const leader = rows[0]
   const youName = selfName.trim()
+  const { rows, totalHits } = useMemo(() => {
+    const ranking = lang ? stats?.byLanguage?.[lang] : undefined
+    return rankingRows(ranking?.participants ?? [], youName, excludeSelf)
+  }, [lang, stats, youName, excludeSelf])
 
+  if (stats == null) return null
+
+  const leader = rows[0]
+  const langMeta = PROFANITY_LANGUAGES.find((item) => item.id === lang)
   const description = !lang
     ? "Pick the language this chat uses"
     : totalHits === 0
       ? "No spicy words showed up in this language"
       : leader
-        ? `${leader.name === youName ? "You" : leader.name} · ${Math.round(leader.pct)}% of spicy words`
+        ? `${leader.name} · ${Math.round(leader.pct)}% of spicy words`
         : `${fmt(totalHits)} spicy words`
+
+  function pickLanguage(next: ProfanityLangId) {
+    setProfanityLanguage(wrapId, next, chatId)
+    setPickerOpen(false)
+  }
 
   return (
     <WrapChartCard
@@ -101,37 +133,39 @@ export function ProfanityRankingCard({
       exportName={exportName}
       exportSize="compact"
       layout="flow"
+      headerExtra={
+        lang ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            data-export-ignore
+            onClick={() => setPickerOpen(true)}
+          >
+            <Languages data-icon="inline-start" />
+            Change language
+          </Button>
+        ) : null
+      }
       exportLines={
         lang && totalHits > 0
           ? rows.map(
               (row) =>
-                `${row.name === youName ? "You" : row.name} ${Math.round(row.pct)}% (${fmt(row.hits)})`
+                `${row.name} ${Math.round(row.pct)}% (${fmt(row.hits)})`
             )
           : undefined
       }
     >
-      {lang ? (
-        <div className="px-4 pt-1" data-export-ignore>
-          <LanguageChips
-            compact
-            value={lang}
-            onChange={(next) => setProfanityLanguage(wrapId, next, chatId)}
-          />
-        </div>
-      ) : null}
       {!lang ? (
         <div className="flex flex-col gap-3 p-4 pt-2" data-export-ignore>
           <p className="text-sm text-muted-foreground">
-            What language is this chat? Rankings stay hidden until you pick one.
+            Rankings stay hidden until you pick the language this chat uses.
           </p>
-          <LanguageChips
-            value={null}
-            onChange={(next) => setProfanityLanguage(wrapId, next, chatId)}
-          />
+          <LanguageGrid value={null} onChange={pickLanguage} />
         </div>
       ) : totalHits === 0 || rows.length === 0 ? (
         <p className="px-4 py-6 text-sm text-muted-foreground">
-          Nobody in this scope matched the {lang.toUpperCase()} list.
+          Nobody in this scope matched the {langMeta?.label ?? lang} list.
         </p>
       ) : (
         <ol className="flex flex-col gap-2.5 p-4 pt-2">
@@ -150,10 +184,7 @@ export function ProfanityRankingCard({
                     )}
                   >
                     {isLeader ? (
-                      <Crown
-                        className="size-3.5 shrink-0 text-amber-500"
-                        aria-hidden
-                      />
+                      <Crown className="size-3.5 shrink-0 text-amber-500" aria-hidden />
                     ) : (
                       <span className="w-3.5 shrink-0 text-center text-[0.65rem] tabular-nums text-muted-foreground">
                         {index + 1}
@@ -182,6 +213,18 @@ export function ProfanityRankingCard({
           })}
         </ol>
       )}
+
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent className="sm:max-w-md" data-export-ignore>
+          <DialogHeader>
+            <DialogTitle>Chat language</DialogTitle>
+            <DialogDescription>
+              Rankings use the bad-word list for the language you pick.
+            </DialogDescription>
+          </DialogHeader>
+          <LanguageGrid value={lang} onChange={pickLanguage} />
+        </DialogContent>
+      </Dialog>
     </WrapChartCard>
   )
 }

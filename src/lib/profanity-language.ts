@@ -1,10 +1,10 @@
 export const PROFANITY_LANGUAGES = [
-  { id: "en", label: "English" },
-  { id: "es", label: "Español" },
-  { id: "fa", label: "فارسی" },
-  { id: "fr", label: "Français" },
-  { id: "it", label: "Italiano" },
-  { id: "pt", label: "Português" },
+  { id: "en", label: "English", native: "English" },
+  { id: "es", label: "Spanish", native: "Español" },
+  { id: "fa", label: "Persian", native: "فارسی" },
+  { id: "fr", label: "French", native: "Français" },
+  { id: "it", label: "Italian", native: "Italiano" },
+  { id: "pt", label: "Portuguese", native: "Português" },
 ] as const
 
 export type ProfanityLangId = (typeof PROFANITY_LANGUAGES)[number]["id"]

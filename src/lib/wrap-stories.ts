@@ -62,8 +62,7 @@ export type StoryCaptureProgress = {
  */
 export function buildMessagingStorySpecs(
   displayName: string,
-  analytics: WrapAnalytics,
-  profanityLang?: string | null
+  analytics: WrapAnalytics
 ): WrapStorySpec[] {
   const a = analytics.account
   if (!a) return []
@@ -147,23 +146,6 @@ export function buildMessagingStorySpecs(
       exportName: "main-word-cloud",
       heading: "Your word cloud",
       subtext: `Led by “${top.text}” × ${fmt(top.value)} — the words you reach for most.`,
-    })
-  }
-
-  const ranking = profanityLang
-    ? a.profanity?.byLanguage?.[profanityLang]
-    : undefined
-  const leader = ranking?.participants[0]
-  if (ranking && ranking.totalHits > 0 && leader) {
-    const name =
-      leader.name === displayName || leader.name === analytics.displayName
-        ? "You"
-        : leader.name
-    specs.push({
-      id: "profanity",
-      exportName: "main-profanity",
-      heading: "Who swears the most",
-      subtext: `${name} · ${Math.round(leader.pct)}% of spicy words`,
     })
   }
 
