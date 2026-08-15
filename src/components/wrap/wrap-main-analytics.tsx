@@ -3,6 +3,7 @@ import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
 import { WordCloudChart } from "@/components/wrap/charts/word-cloud-chart"
 import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import { TopEmojisCard } from "@/components/wrap/top-emojis-card"
+import { ProfanityRankingCard } from "@/components/wrap/profanity-ranking-card"
 import { fmt, SENT_RECEIVED_PIE } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
@@ -19,10 +20,11 @@ import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 
 type WrapMainAnalyticsProps = {
   analytics: WrapAnalytics
+  wrapId: string
 }
 
 /** Account-wide analytics — chart-first layout. */
-export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
+export function WrapMainAnalytics({ analytics, wrapId }: WrapMainAnalyticsProps) {
   if (!analytics?.account) return null
   const a = analytics.account
 
@@ -130,6 +132,13 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
         title="Your word cloud"
         description="Words you use most across all chats"
         exportName="main-word-cloud"
+      />
+
+      <ProfanityRankingCard
+        wrapId={wrapId}
+        selfName={analytics.displayName}
+        stats={a.profanity}
+        exportName="main-profanity"
       />
 
       <TopEmojisCard emojis={a.emojis.topOverall} exportName="main-emojis" />

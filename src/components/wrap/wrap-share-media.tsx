@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { ImageIcon, Images, Video } from "lucide-react"
 
 import { AppLoader } from "@/components/app-loader"
@@ -33,6 +33,11 @@ import type { TikTokInsights } from "@/platform/tiktok-types"
 import type { XInsights } from "@/platform/x-types"
 import type { WhatsAppInsights } from "@/platform/whatsapp-types"
 import { cn } from "@/lib/utils"
+import {
+  getProfanityLanguage,
+  getProfanityLanguageVersion,
+  subscribeProfanityLanguageVersion,
+} from "@/lib/profanity-language"
 import type { VideoChartSlide } from "@sw-remotion/Composition"
 
 type WrapShareMediaProps = {
@@ -100,6 +105,12 @@ export function WrapShareMedia({
   spotifyInsights = null,
   appleMusicInsights = null,
 }: WrapShareMediaProps) {
+  useSyncExternalStore(
+    subscribeProfanityLanguageVersion,
+    getProfanityLanguageVersion,
+    getProfanityLanguageVersion
+  )
+  const profanityLang = getProfanityLanguage(wrapId)
   const catalog = useMemo(
     () =>
       buildPlatformStoryCatalog({
@@ -113,6 +124,7 @@ export function WrapShareMedia({
         tiktokInsights,
         spotifyInsights,
         appleMusicInsights,
+        profanityLang,
       }),
     [
       platformId,
@@ -125,6 +137,7 @@ export function WrapShareMedia({
       tiktokInsights,
       spotifyInsights,
       appleMusicInsights,
+      profanityLang,
     ]
   )
   const specs = catalog.storySpecs

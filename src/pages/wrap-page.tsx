@@ -238,7 +238,7 @@ export function WrapPage() {
               Direct messages and message requests from this download.
             </p>
           </header>
-          <WrapMainAnalytics analytics={wrap.analytics} />
+          <WrapMainAnalytics analytics={wrap.analytics} wrapId={wrap.id} />
           <InstagramEngagement data={igSocial} />
         </>
       ) : liInsights ? (
@@ -253,7 +253,7 @@ export function WrapPage() {
               Direct messages from this LinkedIn data export.
             </p>
           </header>
-          <WrapMainAnalytics analytics={wrap.analytics} />
+          <WrapMainAnalytics analytics={wrap.analytics} wrapId={wrap.id} />
           <LinkedInEngagement data={liInsights} />
         </>
       ) : appleMusicInsights ? (
@@ -282,7 +282,7 @@ export function WrapPage() {
                   Direct messages from this TikTok data download.
                 </p>
               </header>
-              <WrapMainAnalytics analytics={wrap.analytics} />
+              <WrapMainAnalytics analytics={wrap.analytics} wrapId={wrap.id} />
             </>
           ) : null}
         </>
@@ -310,12 +310,12 @@ export function WrapPage() {
                   Direct messages from this X data archive.
                 </p>
               </header>
-              <WrapMainAnalytics analytics={wrap.analytics} />
+              <WrapMainAnalytics analytics={wrap.analytics} wrapId={wrap.id} />
             </>
           ) : null}
         </>
       ) : (
-        <WrapMainAnalytics analytics={wrap.analytics} />
+        <WrapMainAnalytics analytics={wrap.analytics} wrapId={wrap.id} />
       )}
 
       {!isGoogleFamily && wrap.analytics.chats.length > 0 ? (

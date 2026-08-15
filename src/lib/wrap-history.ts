@@ -891,9 +891,16 @@ type StoredWrapStories = {
 
 /** Fingerprint story specs so catalog changes invalidate the cache. */
 export function wrapStoriesFingerprint(
-  specs: Array<{ id: string; exportName: string; heading: string }>
+  specs: Array<{
+    id: string
+    exportName: string
+    heading: string
+    subtext?: string
+  }>
 ): string {
-  return specs.map((s) => `${s.id}\0${s.exportName}\0${s.heading}`).join("\n")
+  return specs
+    .map((s) => `${s.id}\0${s.exportName}\0${s.heading}\0${s.subtext ?? ""}`)
+    .join("\n")
 }
 
 export async function saveWrapStories(

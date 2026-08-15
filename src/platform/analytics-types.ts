@@ -182,6 +182,24 @@ export type GhostingStats = {
   participants: ParticipantCount[]
 }
 
+// ── Profanity ranking ─────────────────────────────────────────────────────────
+
+export type ProfanityParticipant = {
+  name: string
+  hits: number
+  /** Share of this language's hits in this scope (0–100). */
+  pct: number
+}
+
+export type ProfanityLanguageStats = {
+  totalHits: number
+  participants: ProfanityParticipant[]
+}
+
+export type ProfanityStats = {
+  byLanguage: Record<string, ProfanityLanguageStats>
+}
+
 // ── Result types ──────────────────────────────────────────────────────────────
 
 export type AnalyticsResult = {
@@ -204,6 +222,8 @@ export type AnalyticsResult = {
   editTypo?: EditTypoStats
   /** Ghosting: left unanswered ≥ 24h. */
   ghosting?: GhostingStats
+  /** Bad-word hits by bundled language. Absent on wraps imported before this stat. */
+  profanity?: ProfanityStats
 }
 
 export type ChatResult = {

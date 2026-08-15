@@ -141,6 +141,7 @@ export function WrapChatPage() {
       <WrapChatAnalytics
         chat={chat}
         selfName={wrap.analytics.displayName || wrap.stats.displayName}
+        wrapId={wrap.id}
       />
     </div>
   )

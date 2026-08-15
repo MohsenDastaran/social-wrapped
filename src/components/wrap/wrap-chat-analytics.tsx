@@ -7,6 +7,7 @@ import { WordCloudChart } from "@/components/wrap/charts/word-cloud-chart"
 import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import { ComparisonKpiCard } from "@/components/wrap/comparison-kpi-card"
 import { chatDisplay } from "@/components/wrap/chat-display"
+import { ProfanityRankingCard } from "@/components/wrap/profanity-ranking-card"
 import { fmt, fmtResponseTime } from "@/components/wrap/chart-theme"
 import {
   TopEmojisCard,
@@ -23,10 +24,15 @@ type WrapChatAnalyticsProps = {
   chat: ChatResult
   /** Account display name — used to split “You” vs contact emoji scopes. */
   selfName: string
+  wrapId: string
 }
 
 /** Per-contact analytics charts — used on the contact detail page. */
-export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
+export function WrapChatAnalytics({
+  chat,
+  selfName,
+  wrapId,
+}: WrapChatAnalyticsProps) {
   const a = chat.analytics
   const display = chatDisplay(chat)
   const isSavedMessages = display.isSavedMessages
@@ -123,6 +129,16 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
         }
         exportName={`chat-${chat.chatId}-word-cloud`}
       />
+
+      {!isSavedMessages ? (
+        <ProfanityRankingCard
+          wrapId={wrapId}
+          chatId={chat.chatId}
+          selfName={selfName}
+          stats={a.profanity}
+          exportName={`chat-${chat.chatId}-profanity`}
+        />
+      ) : null}
 
       {!isSavedMessages ? (
         <>
