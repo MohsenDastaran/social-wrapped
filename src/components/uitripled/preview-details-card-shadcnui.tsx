@@ -75,7 +75,7 @@ export function PreviewDetailsCard({
       aria-describedby={descriptionId}
     >
       <div className="relative w-full">
-        <motion.div className="relative flex w-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 px-5 py-5 text-[var(--muted-foreground)] shadow-[0_25px_70px_-20px_rgba(15,23,42,0.5)] backdrop-blur-2xl sm:px-7 sm:py-6">
+        <motion.div className="relative flex w-full flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 px-5 py-5 text-muted-foreground shadow-[0_25px_70px_-20px_rgba(15,23,42,0.5)] backdrop-blur-2xl sm:px-7 sm:py-6">
           <div className="flex items-center justify-between text-xs tracking-[0.32em] uppercase">
             <span className="inline-flex items-center gap-2 text-(--muted-foreground)/70">
               <span className="flex size-8 items-center justify-center rounded-full bg-primary/15">

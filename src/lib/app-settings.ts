@@ -23,7 +23,7 @@ export type AppSettings = {
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
-  maxWraps: 10,
+  maxWraps: 25,
   autoClearDays: null,
 }
 
