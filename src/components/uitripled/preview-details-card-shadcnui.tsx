@@ -42,6 +42,11 @@ export function PreviewDetailsCard({
     setIsActive(true)
   }, [])
 
+  function handleTryDemo(platform: DemoPlatformId) {
+    onDismiss?.()
+    onTryDemo?.(platform)
+  }
+
   const flyoutVariants: Variants = useMemo(
     () => ({
       hidden: {
@@ -179,7 +184,7 @@ export function PreviewDetailsCard({
                         size="sm"
                         className="min-w-0 flex-1"
                         disabled={loading}
-                        onClick={() => onTryDemo("telegram")}
+                        onClick={() => handleTryDemo("telegram")}
                       >
                         <PlatformLogo
                           id="telegram"
@@ -197,7 +202,7 @@ export function PreviewDetailsCard({
                         size="sm"
                         className="min-w-0 flex-1"
                         disabled={loading}
-                        onClick={() => onTryDemo("instagram")}
+                        onClick={() => handleTryDemo("instagram")}
                       >
                         <PlatformLogo
                           id="instagram"
