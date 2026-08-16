@@ -20,10 +20,10 @@ export function Hero() {
   const [hasAnimatedStats, setHasAnimatedStats] = useState(false)
 
   const stats = [
-    { value: 100, suffix: "%", label: "On-device" },
-    { value: HIGH_PRIORITY_PLATFORMS.length, suffix: "", label: "Platforms" },
+    { value: 100, suffix: "%", label: "Runs on your device" },
     { value: 0, suffix: "", label: "Cloud uploads" },
-    { value: 1, suffix: "", label: "Private story" },
+    { value: 0, suffix: "", label: "API requests" },
+    { value: HIGH_PRIORITY_PLATFORMS.length, suffix: "", label: "Platforms" },
   ]
 
   useEffect(() => {

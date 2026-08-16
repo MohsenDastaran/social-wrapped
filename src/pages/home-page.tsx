@@ -1,25 +1,31 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowUpRight, ShieldCheck, XIcon } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Link } from "react-router"
 
 import { Hero } from "@/components/hero"
 import { PlatformImportCard } from "@/components/platform-guide-card"
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/reui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/reui/alert"
 import { PlatformSearchInput } from "@/components/platform-search-input"
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   ONBOARDING_MAX_VIEWS,
   bumpOnboardingViews,
   isGettingStartedDismissed,
   showGettingStarted,
 } from "@/lib/getting-started"
-import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
+import {
+  HIGH_PRIORITY_PLATFORMS,
+  PLATFORM_CATEGORY_LABELS,
+  PLATFORM_CATEGORY_ORDER,
+  groupPlatformsByCategory,
+  type PlatformCategory,
+} from "@/lib/platforms"
 
+const CATEGORY_CHIP_CLASS =
+  "h-9 min-h-9 flex-1 rounded-full px-3.5 text-sm font-semibold text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm data-[state=on]:ring-1 data-[state=on]:ring-foreground/10 sm:flex-none sm:px-4"
 const TRUST_ALERT_KEY = "social-wrapped:privacy-trust-alert"
 const TRUST_ALERT_MAX_PRIVACY_CLICKS = 2
 
@@ -57,24 +63,50 @@ function isTrustAlertVisible(state: TrustAlertState): boolean {
 
 export function HomePage() {
   const [query, setQuery] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState<
+    PlatformCategory | "all"
+  >("all")
   const [showTrustAlert, setShowTrustAlert] = useState(false)
   const reduceMotion = useReducedMotion()
   const filteredPlatforms = useMemo(() => {
     const search = query.trim().toLowerCase()
-    if (!search) return HIGH_PRIORITY_PLATFORMS
+    return HIGH_PRIORITY_PLATFORMS.filter((platform) => {
+      if (categoryFilter !== "all" && platform.category !== categoryFilter) {
+        return false
+      }
+      if (!search) return true
+      return platform.name.toLowerCase().includes(search)
+    })
+  }, [query, categoryFilter])
+  const platformGroups = useMemo(
+    () => groupPlatformsByCategory(filteredPlatforms),
+    [filteredPlatforms]
+  )
+  const filtersRef = useRef<HTMLDivElement>(null)
+  const filterPinTop = useRef<number | null>(null)
 
-    return HIGH_PRIORITY_PLATFORMS.filter((platform) =>
-      [
-        platform.name,
-        platform.summary,
-        platform.acceptedFiles.join(" "),
-        platform.formats,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(search)
-    )
-  }, [query])
+  function commitCategoryFilter(next: PlatformCategory | "all") {
+    if (next === categoryFilter) return
+    filterPinTop.current =
+      filtersRef.current?.getBoundingClientRect().top ?? null
+    setCategoryFilter(next)
+  }
+
+  useLayoutEffect(() => {
+    const pin = filterPinTop.current
+    if (pin == null) return
+    const sync = () => {
+      const el = filtersRef.current
+      if (!el) return
+      const delta = el.getBoundingClientRect().top - pin
+      if (Math.abs(delta) < 1) return
+      window.scrollBy({ top: delta, left: 0, behavior: "instant" })
+    }
+    sync()
+    const frame = requestAnimationFrame(sync)
+    filterPinTop.current = null
+    return () => cancelAnimationFrame(frame)
+  }, [categoryFilter, platformGroups])
 
   useEffect(() => {
     if (window.location.hash !== "#platforms") return
@@ -92,7 +124,9 @@ export function HomePage() {
     if (inOnboarding && !isGettingStartedDismissed()) {
       showGettingStarted()
     }
-    setShowTrustAlert(inOnboarding && isTrustAlertVisible(readTrustAlertState()))
+    setShowTrustAlert(
+      inOnboarding && isTrustAlertVisible(readTrustAlertState())
+    )
   }, [])
 
   function dismissTrustAlert() {
@@ -129,7 +163,7 @@ export function HomePage() {
         {showTrustAlert ? (
           <Alert
             variant="default"
-            className="relative mb-6 grid-cols-1 gap-0 overflow-hidden rounded-2xl border-primary/25 bg-primary/6 px-3 py-2.5 shadow-[0_10px_28px_-24px] shadow-foreground/40 ring-1 ring-primary/10"
+            className="relative mb-6 grid-cols-1 gap-0 overflow-hidden rounded-2xl border-primary/25 bg-primary/6 px-3 py-2.5 shadow-[0_10px_28px_-24px] ring-1 shadow-foreground/40 ring-primary/10"
           >
             <div
               className="pointer-events-none absolute -inset-e-8 -top-10 size-28 rounded-full bg-primary/15 blur-2xl"
@@ -145,7 +179,7 @@ export function HomePage() {
 
               <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <div className="min-w-0 flex-1">
-                  <AlertTitle className="font-heading col-start-auto min-h-0 text-[0.95rem] leading-tight tracking-tight">
+                  <AlertTitle className="col-start-auto min-h-0 font-heading text-[0.95rem] leading-tight tracking-tight">
                     Don&apos;t you trust us?
                   </AlertTitle>
                   <AlertDescription className="col-start-auto mt-0.5 text-xs leading-snug text-muted-foreground">
@@ -156,9 +190,7 @@ export function HomePage() {
                 <Button
                   size="sm"
                   className="w-fit shrink-0 rounded-full"
-                  render={
-                    <Link to="/privacy" onClick={handlePrivacyClick} />
-                  }
+                  render={<Link to="/privacy" onClick={handlePrivacyClick} />}
                   nativeButton={false}
                 >
                   Peek at Privacy
@@ -189,47 +221,117 @@ export function HomePage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onClear={() => setQuery("")}
-              placeholder="Find a platform or file type…"
+              placeholder="Find a platform…"
               className="sm:max-w-md"
             />
             <p
               className="inline-flex shrink-0 items-baseline gap-2 self-start rounded-full bg-primary/10 px-3 py-1.5 ring-1 ring-primary/25 sm:self-auto"
               aria-live="polite"
             >
-              <span className="font-heading text-xl font-semibold tabular-nums leading-none tracking-tight text-primary">
+              <span className="font-heading text-xl leading-none font-semibold tracking-tight text-primary tabular-nums">
                 {filteredPlatforms.length}
               </span>
-              <span className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-foreground/75">
+              <span className="text-[0.65rem] font-semibold tracking-[0.16em] text-foreground/75 uppercase">
                 {filteredPlatforms.length === 1 ? "platform" : "platforms"}
               </span>
             </p>
           </div>
+
+          <div
+            ref={filtersRef}
+            className="sticky top-14 z-20 -mx-1 rounded-2xl bg-muted/70 p-1 ring-1 ring-foreground/10 backdrop-blur-md sm:rounded-full"
+          >
+            <ToggleGroup
+              value={[categoryFilter]}
+              onValueChange={(value) => {
+                const next = value[0]
+                if (next == null) return
+                commitCategoryFilter(
+                  next === "all" ? "all" : (next as PlatformCategory)
+                )
+              }}
+              variant="default"
+              size="lg"
+              spacing={0.5}
+              className="flex w-full max-w-full flex-wrap sm:flex-nowrap"
+              aria-label="Filter by category"
+            >
+              <ToggleGroupItem value="all" className={CATEGORY_CHIP_CLASS}>
+                All
+              </ToggleGroupItem>
+              {PLATFORM_CATEGORY_ORDER.map((category) => (
+                <ToggleGroupItem
+                  key={category}
+                  value={category}
+                  className={CATEGORY_CHIP_CLASS}
+                >
+                  {PLATFORM_CATEGORY_LABELS[category]}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
         </section>
 
-        <motion.ul layout className="grid list-none gap-4 p-0 sm:grid-cols-2">
-          <AnimatePresence mode="popLayout" initial={false}>
-            {filteredPlatforms.map((platform, index) => (
-              <motion.li
-                key={platform.id}
-                layout={!reduceMotion}
-                initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={
-                  reduceMotion
-                    ? { opacity: 0 }
-                    : { opacity: 0, y: -10, scale: 0.96 }
-                }
-                transition={{
-                  duration: 0.32,
-                  delay: reduceMotion ? 0 : Math.min(index * 0.045, 0.25),
-                  ease: [0.22, 1, 0.36, 1],
-                }}
+        <motion.div
+          key={`${categoryFilter}:${query.trim().toLowerCase()}`}
+          initial={reduceMotion ? false : { opacity: 0.72 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          className="flex flex-col gap-8 [overflow-anchor:none]"
+        >
+          {platformGroups.map((group) => (
+            <section
+              key={group.category}
+              className="flex flex-col gap-3"
+              aria-labelledby={`platform-category-${group.category}`}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <h2
+                  id={`platform-category-${group.category}`}
+                  className="shrink-0 font-heading text-sm font-semibold tracking-tight sm:text-base"
+                >
+                  {group.label}
+                </h2>
+                <Separator className="min-w-0 flex-1" />
+                <span className="shrink-0 text-[0.65rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase tabular-nums">
+                  {group.platforms.length}
+                </span>
+              </div>
+
+              <motion.ul
+                layout
+                className="grid list-none gap-4 p-0 sm:grid-cols-2"
               >
-                <PlatformImportCard platform={platform} featured />
-              </motion.li>
-            ))}
-          </AnimatePresence>
-        </motion.ul>
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {group.platforms.map((platform, index) => (
+                    <motion.li
+                      key={platform.id}
+                      layout={!reduceMotion}
+                      initial={
+                        reduceMotion
+                          ? false
+                          : { opacity: 0, y: 18, scale: 0.96 }
+                      }
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={
+                        reduceMotion
+                          ? { opacity: 0 }
+                          : { opacity: 0, y: -10, scale: 0.96 }
+                      }
+                      transition={{
+                        duration: 0.32,
+                        delay: reduceMotion ? 0 : Math.min(index * 0.045, 0.25),
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                    >
+                      <PlatformImportCard platform={platform} featured />
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
+              </motion.ul>
+            </section>
+          ))}
+        </motion.div>
 
         {filteredPlatforms.length === 0 ? (
           <motion.p
@@ -237,8 +339,7 @@ export function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             className="mt-10 text-center text-sm leading-relaxed text-muted-foreground"
           >
-            Nothing matched “{query.trim()}”. Try a platform name or a file type
-            such as JSON, ZIP, or CSV.
+            Nothing matched “{query.trim()}”. Try a platform name.
           </motion.p>
         ) : null}
       </section>

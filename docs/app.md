@@ -123,6 +123,7 @@ Imports are processed on your device. Exact fields depend on what the platform p
 | **Spotify** | Privacy data download (extended streaming history) |
 | **Apple Music** | Official data export |
 | **LinkedIn** | Settings → Download your data (full archive ZIP) |
+| **ChatGPT** | Settings → Data controls → Export data (ZIP) |
 
 How to request each archive: in-app import help, and [target-platforms.md](./target-platforms.md).
 

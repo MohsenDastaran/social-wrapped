@@ -24,6 +24,7 @@ import { TikTokActivityInsights } from "@/components/wrap/tiktok-activity"
 import { TikTokEngagement } from "@/components/wrap/tiktok-engagement"
 import { XEngagement } from "@/components/wrap/x-engagement"
 import { XNetworkInsights } from "@/components/wrap/x-network"
+import { ChatGptModelsCard } from "@/components/wrap/chatgpt-models"
 import { WhatsAppAccountInsights } from "@/components/wrap/whatsapp-account"
 import { WhatsAppConnectionsInsights } from "@/components/wrap/whatsapp-connections"
 import { WhatsAppPrivacyInsights } from "@/components/wrap/whatsapp-privacy"
@@ -39,6 +40,7 @@ import { normalizeAppleMusicInsights } from "@/platform/apple-music-types"
 import { normalizeSpotifyInsights } from "@/platform/spotify-types"
 import { normalizeTikTokInsights } from "@/platform/tiktok-types"
 import { normalizeXInsights } from "@/platform/x-types"
+import { normalizeChatGptInsights } from "@/platform/chatgpt-types"
 import { normalizeWhatsAppInsights } from "@/platform/whatsapp-types"
 import {
   getWrap,
@@ -107,7 +109,9 @@ export function WrapPage() {
       ? true
       : wrap.platformId === "x" && wrap.xInsights
         ? true
-        : wrap.platformId === "whatsapp" && wrap.whatsappInsights
+        : wrap.platformId === "chatgpt" && wrap.chatgptInsights
+          ? true
+          : wrap.platformId === "whatsapp" && wrap.whatsappInsights
           ? true
           : wrap.platformId === "tiktok" && wrap.tiktokInsights
             ? true
@@ -128,6 +132,10 @@ export function WrapPage() {
       : null
   const xInsights =
     wrap.platformId === "x" ? normalizeXInsights(wrap.xInsights) : null
+  const chatgptInsights =
+    wrap.platformId === "chatgpt"
+      ? normalizeChatGptInsights(wrap.chatgptInsights)
+      : null
   const whatsappInsights =
     wrap.platformId === "whatsapp" && wrap.whatsappInsights
       ? normalizeWhatsAppInsights(wrap.whatsappInsights)
@@ -210,6 +218,7 @@ export function WrapPage() {
           instagramSocial={igSocial}
           linkedinInsights={liInsights}
           xInsights={xInsights}
+          chatgptInsights={chatgptInsights}
           whatsappInsights={whatsappInsights}
           tiktokInsights={tiktokInsights}
           spotifyInsights={spotifyInsights}
@@ -238,7 +247,11 @@ export function WrapPage() {
               Direct messages and message requests from this download.
             </p>
           </header>
-          <WrapMainAnalytics analytics={wrap.analytics} />
+          <WrapMainAnalytics
+            analytics={wrap.analytics}
+            wrapId={wrap.id}
+            category={platform?.category}
+          />
           <InstagramEngagement data={igSocial} />
         </>
       ) : liInsights ? (
@@ -253,7 +266,11 @@ export function WrapPage() {
               Direct messages from this LinkedIn data export.
             </p>
           </header>
-          <WrapMainAnalytics analytics={wrap.analytics} />
+          <WrapMainAnalytics
+            analytics={wrap.analytics}
+            wrapId={wrap.id}
+            category={platform?.category}
+          />
           <LinkedInEngagement data={liInsights} />
         </>
       ) : appleMusicInsights ? (
@@ -282,7 +299,11 @@ export function WrapPage() {
                   Direct messages from this TikTok data download.
                 </p>
               </header>
-              <WrapMainAnalytics analytics={wrap.analytics} />
+              <WrapMainAnalytics
+                analytics={wrap.analytics}
+                wrapId={wrap.id}
+                category={platform?.category}
+              />
             </>
           ) : null}
         </>
@@ -310,20 +331,50 @@ export function WrapPage() {
                   Direct messages from this X data archive.
                 </p>
               </header>
-              <WrapMainAnalytics analytics={wrap.analytics} />
+              <WrapMainAnalytics
+                analytics={wrap.analytics}
+                wrapId={wrap.id}
+                category={platform?.category}
+              />
+            </>
+          ) : null}
+        </>
+      ) : chatgptInsights ? (
+        <>
+          <ChatGptModelsCard data={chatgptInsights} />
+          {wrap.analytics.chats.length > 0 ? (
+            <>
+              <header className="text-start">
+                <h1 className="font-heading text-2xl font-bold tracking-tight">
+                  ChatGPT messaging analysis
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  You vs ChatGPT across every conversation in this export.
+                </p>
+              </header>
+              <WrapMainAnalytics
+                analytics={wrap.analytics}
+                wrapId={wrap.id}
+                category={platform?.category}
+              />
             </>
           ) : null}
         </>
       ) : (
-        <WrapMainAnalytics analytics={wrap.analytics} />
+        <WrapMainAnalytics
+          analytics={wrap.analytics}
+          wrapId={wrap.id}
+          category={platform?.category}
+        />
       )}
 
       {!isGoogleFamily && wrap.analytics.chats.length > 0 ? (
         <WrapTopContacts
           analytics={wrap.analytics}
+          category={platform?.category}
           description={
             wrap.platformId === "x"
-              ? "X’s archive only includes account IDs for most DMs. Handles show when you’ve mentioned that person in a tweet; groups use their archive name when set."
+              ? "X’s archive stores DMs by account ID. Names come from people you’ve mentioned or replied to in tweets; groups use their archive name when set."
               : undefined
           }
           onSelect={(chatId) => {

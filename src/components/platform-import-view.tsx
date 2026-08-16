@@ -23,7 +23,9 @@ import {
   type PlatformConfig,
 } from "@/lib/platforms"
 import {
+  buildInstagramDemoFile,
   buildTelegramDemoFile,
+  INSTAGRAM_DEMO_FILE_NAME,
   TELEGRAM_DEMO_FILE_NAME,
 } from "@/lib/telegram-demo-export"
 import { cn } from "@/lib/utils"
@@ -31,7 +33,7 @@ import { saveWrap, wrapEntryPath } from "@/lib/wrap-history"
 import { formatInvokeError } from "@/platform/api"
 import { importPlatformFiles, type ImportProgress } from "@/platform/import"
 
-let telegramDemoImportStarted = false
+let demoImportStarted = false
 
 export type PlatformImportViewProps = {
   platform: PlatformConfig
@@ -163,6 +165,7 @@ export function PlatformImportView({
         googleInsights,
         linkedinInsights,
         xInsights,
+        chatgptInsights,
         whatsappInsights,
         tiktokInsights,
         spotifyInsights,
@@ -192,6 +195,7 @@ export function PlatformImportView({
         googleInsights,
         linkedinInsights,
         xInsights,
+        chatgptInsights,
         whatsappInsights,
         tiktokInsights,
         spotifyInsights,
@@ -212,24 +216,30 @@ export function PlatformImportView({
   }
 
   useEffect(() => {
-    if (telegramDemoImportStarted) return
-    if (platform.id !== "telegram") return
+    if (demoImportStarted) return
     if (searchParams.get("demo") !== "1") return
-    telegramDemoImportStarted = true
+    if (platform.id !== "telegram" && platform.id !== "instagram") return
+    demoImportStarted = true
     setSearchParams({}, { replace: true })
     void (async () => {
       try {
-        const file = await buildTelegramDemoFile()
-        setFiles([file])
-        await runAnalyze([file], TELEGRAM_DEMO_FILE_NAME)
+        if (platform.id === "instagram") {
+          const file = await buildInstagramDemoFile()
+          setFiles([file])
+          await runAnalyze([file], INSTAGRAM_DEMO_FILE_NAME)
+        } else {
+          const file = await buildTelegramDemoFile()
+          setFiles([file])
+          await runAnalyze([file], TELEGRAM_DEMO_FILE_NAME)
+        }
       } catch (err) {
         setError(formatInvokeError(err))
         setProgress(null)
       } finally {
-        telegramDemoImportStarted = false
+        demoImportStarted = false
       }
     })()
-    // Run once when the Telegram import page is opened with ?demo=1.
+    // Run once when an import page is opened with ?demo=1.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [platform.id, searchParams, setSearchParams])
 
@@ -258,6 +268,10 @@ export function PlatformImportView({
                 ? progress?.phase === "computing"
                   ? "Building your X wrap"
                   : "Reading your X archive ZIP (tweets + DMs)"
+                : platform.category === "ai"
+                  ? progress?.phase === "computing"
+                    ? `Building your ${platform.name} wrap`
+                    : `Reading your ${platform.name} conversations`
                 : platform.id === "google" || platform.id === "youtube"
                   ? progress?.phase === "computing"
                     ? "Building your Google wrap"

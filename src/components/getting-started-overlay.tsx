@@ -23,7 +23,7 @@ export function GettingStartedOverlay() {
       {visible ? (
         <motion.div
           key={`getting-started-popup-${nonce}`}
-          className="fixed z-40 w-[min(calc(100%-2rem),22rem)] inset-e-4 bottom-24 max-h-[min(70dvh,36rem)] overflow-x-hidden overflow-y-auto md:bottom-6"
+          className="fixed z-40 w-[min(calc(100%-2rem),24rem)] inset-e-4 bottom-24 max-h-[min(70dvh,36rem)] overflow-x-hidden overflow-y-auto md:bottom-6"
           initial={
             reduceMotion
               ? { opacity: 0 }
@@ -42,7 +42,7 @@ export function GettingStartedOverlay() {
         >
           <PreviewDetailsCard
             key={nonce}
-            onTryDemo={() => navigate("/import/telegram?demo=1")}
+            onTryDemo={(platform) => navigate(`/import/${platform}?demo=1`)}
             onDismiss={dismissGettingStarted}
           />
         </motion.div>

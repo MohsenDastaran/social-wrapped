@@ -12,9 +12,33 @@ export const PLATFORM_ENABLED = {
   youtube: true,
   linkedin: true,
   "apple-music": true,
+  chatgpt: true,
 } as const satisfies Record<PlatformLogoId, boolean>
 
 export type PlatformId = keyof typeof PLATFORM_ENABLED
+
+export type PlatformCategory =
+  | "messaging"
+  | "social"
+  | "music"
+  | "google"
+  | "ai"
+
+export const PLATFORM_CATEGORY_ORDER = [
+  "messaging",
+  "social",
+  "music",
+  "google",
+  "ai",
+] as const satisfies readonly PlatformCategory[]
+
+export const PLATFORM_CATEGORY_LABELS: Record<PlatformCategory, string> = {
+  messaging: "Messaging",
+  social: "Social",
+  music: "Music",
+  google: "Google",
+  ai: "AI",
+}
 
 export function isPlatformEnabled(id: PlatformId): boolean {
   return PLATFORM_ENABLED[id]
@@ -23,6 +47,7 @@ export function isPlatformEnabled(id: PlatformId): boolean {
 export type PlatformConfig = {
   id: PlatformId
   name: string
+  category: PlatformCategory
   accentClass: string
   /** Soft wash for featured home cards */
   gradientClass: string
@@ -42,11 +67,28 @@ export type PlatformConfig = {
   accept: string
 }
 
+export function groupPlatformsByCategory(
+  platforms: PlatformConfig[]
+): { category: PlatformCategory; label: string; platforms: PlatformConfig[] }[] {
+  return PLATFORM_CATEGORY_ORDER.flatMap((category) => {
+    const items = platforms.filter((platform) => platform.category === category)
+    if (items.length === 0) return []
+    return [
+      {
+        category,
+        label: PLATFORM_CATEGORY_LABELS[category],
+        platforms: items,
+      },
+    ]
+  })
+}
+
 /** Tier 1 high-priority platforms from docs/target-platforms.md */
 export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "telegram",
     name: "Telegram",
+    category: "messaging",
     accentClass: "border-sky-500/50",
     gradientClass:
       "from-sky-500/25 via-sky-400/10 to-transparent dark:from-sky-400/20 dark:via-sky-500/5",
@@ -59,7 +101,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     steps: [
       "Open Telegram Desktop (export is most complete from the desktop app).",
       "Go to Settings → Advanced → Export Telegram Data.",
-      "Choose Machine-readable JSON (preferred). Optionally include media.",
+      "Choose Machine-readable JSON. Do not include media.",
       "Select the chats you want, then start the export and wait for the folder to finish.",
       "In Social Wrapped, import that export folder (or its result.json) from Home.",
     ],
@@ -74,6 +116,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "whatsapp",
     name: "WhatsApp",
+    category: "messaging",
     accentClass: "border-emerald-500/50",
     gradientClass:
       "from-emerald-500/25 via-emerald-400/10 to-transparent dark:from-emerald-400/20 dark:via-emerald-500/5",
@@ -101,6 +144,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "x",
     name: "X (Twitter)",
+    category: "social",
     accentClass: "border-zinc-500/50",
     gradientClass:
       "from-zinc-500/20 via-zinc-400/10 to-transparent dark:from-zinc-300/15 dark:via-zinc-500/5",
@@ -125,6 +169,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "google",
     name: "Google Ecosystem",
+    category: "google",
     accentClass: "border-blue-500/50",
     gradientClass:
       "from-blue-500/25 via-blue-400/10 to-transparent dark:from-blue-400/20 dark:via-blue-500/5",
@@ -150,6 +195,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "instagram",
     name: "Instagram",
+    category: "social",
     accentClass: "border-fuchsia-500/50",
     gradientClass:
       "from-fuchsia-500/25 via-rose-400/10 to-transparent dark:from-fuchsia-400/20 dark:via-rose-500/5",
@@ -175,6 +221,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "tiktok",
     name: "TikTok",
+    category: "social",
     accentClass: "border-cyan-500/50",
     gradientClass:
       "from-cyan-500/25 via-teal-400/10 to-transparent dark:from-cyan-400/20 dark:via-teal-500/5",
@@ -199,6 +246,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "spotify",
     name: "Spotify",
+    category: "music",
     accentClass: "border-green-500/50",
     gradientClass:
       "from-green-500/25 via-lime-400/10 to-transparent dark:from-green-400/20 dark:via-lime-500/5",
@@ -221,6 +269,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "apple-music",
     name: "Apple Music",
+    category: "music",
     accentClass: "border-rose-500/50",
     gradientClass:
       "from-rose-500/25 via-pink-400/10 to-transparent dark:from-rose-400/20 dark:via-pink-500/5",
@@ -244,6 +293,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "youtube",
     name: "YouTube",
+    category: "google",
     accentClass: "border-red-500/50",
     gradientClass:
       "from-red-500/25 via-orange-400/10 to-transparent dark:from-red-400/20 dark:via-orange-500/5",
@@ -268,6 +318,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "linkedin",
     name: "LinkedIn",
+    category: "social",
     accentClass: "border-sky-600/50",
     gradientClass:
       "from-sky-600/25 via-blue-500/10 to-transparent dark:from-sky-500/20 dark:via-blue-600/5",
@@ -290,6 +341,32 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     acceptedFiles: [".zip"],
     accept: ".zip,application/zip",
   },
+  {
+    id: "chatgpt",
+    name: "ChatGPT",
+    category: "ai",
+    accentClass: "border-emerald-600/50",
+    gradientClass:
+      "from-emerald-600/25 via-teal-500/10 to-transparent dark:from-emerald-400/20 dark:via-teal-500/5",
+    summary:
+      "Export your ChatGPT data ZIP from settings — conversations stay on this device.",
+    exportPath: "Settings → Data controls → Export data",
+    formats: "ZIP",
+    extractable:
+      "Conversation history (you vs ChatGPT), timestamps, model names, and a word cloud of your prompts.",
+    steps: [
+      "Open ChatGPT → Settings → Data controls → Export data.",
+      "Confirm the request and wait for the email, then download the ZIP (do not unzip).",
+      "In Social Wrapped, import that ZIP from Home → ChatGPT.",
+    ],
+    importHint:
+      "Upload the complete ChatGPT data export ZIP. Conversation text is analyzed locally; attached files and chat.html are skipped.",
+    importTitle: "Import ChatGPT data",
+    importDescription:
+      "Upload your ChatGPT data export ZIP. Conversations and models are analyzed on your device.",
+    acceptedFiles: [".zip"],
+    accept: ".zip,application/zip",
+  },
 ]
 
 export function getPlatform(
@@ -297,6 +374,23 @@ export function getPlatform(
 ): PlatformConfig | undefined {
   if (!id) return undefined
   return HIGH_PRIORITY_PLATFORMS.find((platform) => platform.id === id)
+}
+
+export function isAiPlatform(id: string | undefined): boolean {
+  return getPlatform(id)?.category === "ai"
+}
+
+/** Human-contact wrap cards that do not apply to assistant chats. */
+export function omitHumanChatMetrics(
+  category: PlatformCategory | undefined
+): boolean {
+  return category === "ai"
+}
+
+export function wrapEntityLabel(
+  category: PlatformCategory | undefined
+): "contact" | "chat" {
+  return category === "ai" ? "chat" : "contact"
 }
 
 export function platformImportPath(id: PlatformId): string {

@@ -12,6 +12,7 @@ import type { AppleMusicInsights } from "@/platform/apple-music-types"
 import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
 import type { XInsights } from "@/platform/x-types"
+import type { ChatGptInsights } from "@/platform/chatgpt-types"
 import type { WhatsAppInsights } from "@/platform/whatsapp-types"
 import { getAppSettings } from "@/lib/app-settings"
 import { normalizeContentMix } from "@/lib/normalize-content-mix"
@@ -41,6 +42,8 @@ export type WrapRecord = {
   linkedinInsights?: LinkedInInsights
   /** X (Twitter) tweets / likes / network insights. */
   xInsights?: XInsights
+  /** ChatGPT conversation / model insights. */
+  chatgptInsights?: ChatGptInsights
   /** WhatsApp Account Information report insights. */
   whatsappInsights?: WhatsAppInsights
   /** TikTok watch / likes / comments / DM insights. */
@@ -108,6 +111,7 @@ type StoredWrap = {
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
   xInsights?: XInsights
+  chatgptInsights?: ChatGptInsights
   whatsappInsights?: WhatsAppInsights
   tiktokInsights?: TikTokInsights
   spotifyInsights?: SpotifyInsights
@@ -126,6 +130,7 @@ type LegacyStoredWrap = Partial<WrapRecord> & {
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
   xInsights?: XInsights
+  chatgptInsights?: ChatGptInsights
   whatsappInsights?: WhatsAppInsights
   tiktokInsights?: TikTokInsights
   spotifyInsights?: SpotifyInsights
@@ -489,6 +494,7 @@ function normalizeWrap(raw: LegacyStoredWrap): WrapRecord | null {
     ...(raw.googleInsights ? { googleInsights: raw.googleInsights } : {}),
     ...(raw.linkedinInsights ? { linkedinInsights: raw.linkedinInsights } : {}),
     ...(raw.xInsights ? { xInsights: raw.xInsights } : {}),
+    ...(raw.chatgptInsights ? { chatgptInsights: raw.chatgptInsights } : {}),
     ...(raw.whatsappInsights ? { whatsappInsights: raw.whatsappInsights } : {}),
     ...(raw.tiktokInsights ? { tiktokInsights: raw.tiktokInsights } : {}),
     ...(raw.spotifyInsights ? { spotifyInsights: raw.spotifyInsights } : {}),
@@ -513,6 +519,7 @@ function toStored(wrap: WrapRecord): StoredWrap {
       ? { linkedinInsights: wrap.linkedinInsights }
       : {}),
     ...(wrap.xInsights ? { xInsights: wrap.xInsights } : {}),
+    ...(wrap.chatgptInsights ? { chatgptInsights: wrap.chatgptInsights } : {}),
     ...(wrap.whatsappInsights ? { whatsappInsights: wrap.whatsappInsights } : {}),
     ...(wrap.tiktokInsights ? { tiktokInsights: wrap.tiktokInsights } : {}),
     ...(wrap.spotifyInsights ? { spotifyInsights: wrap.spotifyInsights } : {}),
@@ -721,6 +728,7 @@ export async function saveWrap(input: {
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
   xInsights?: XInsights
+  chatgptInsights?: ChatGptInsights
   whatsappInsights?: WhatsAppInsights
   tiktokInsights?: TikTokInsights
   spotifyInsights?: SpotifyInsights
@@ -755,6 +763,9 @@ export async function saveWrap(input: {
       ? { linkedinInsights: input.linkedinInsights }
       : {}),
     ...(input.xInsights ? { xInsights: input.xInsights } : {}),
+    ...(input.chatgptInsights
+      ? { chatgptInsights: input.chatgptInsights }
+      : {}),
     ...(input.whatsappInsights
       ? { whatsappInsights: input.whatsappInsights }
       : {}),
@@ -891,9 +902,16 @@ type StoredWrapStories = {
 
 /** Fingerprint story specs so catalog changes invalidate the cache. */
 export function wrapStoriesFingerprint(
-  specs: Array<{ id: string; exportName: string; heading: string }>
+  specs: Array<{
+    id: string
+    exportName: string
+    heading: string
+    subtext?: string
+  }>
 ): string {
-  return specs.map((s) => `${s.id}\0${s.exportName}\0${s.heading}`).join("\n")
+  return specs
+    .map((s) => `${s.id}\0${s.exportName}\0${s.heading}\0${s.subtext ?? ""}`)
+    .join("\n")
 }
 
 export async function saveWrapStories(

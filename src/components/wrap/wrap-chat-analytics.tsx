@@ -7,6 +7,7 @@ import { WordCloudChart } from "@/components/wrap/charts/word-cloud-chart"
 import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import { ComparisonKpiCard } from "@/components/wrap/comparison-kpi-card"
 import { chatDisplay } from "@/components/wrap/chat-display"
+import { ProfanityRankingCard } from "@/components/wrap/profanity-ranking-card"
 import { fmt, fmtResponseTime } from "@/components/wrap/chart-theme"
 import {
   TopEmojisCard,
@@ -18,15 +19,27 @@ import type {
   EmojiStats,
 } from "@/platform/analytics-types"
 import { filterEmojiEntries } from "@/lib/emoji"
+import {
+  omitHumanChatMetrics,
+  type PlatformCategory,
+} from "@/lib/platforms"
 
 type WrapChatAnalyticsProps = {
   chat: ChatResult
   /** Account display name — used to split “You” vs contact emoji scopes. */
   selfName: string
+  wrapId: string
+  category?: PlatformCategory
 }
 
 /** Per-contact analytics charts — used on the contact detail page. */
-export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
+export function WrapChatAnalytics({
+  chat,
+  selfName,
+  wrapId,
+  category,
+}: WrapChatAnalyticsProps) {
+  const hideHuman = omitHumanChatMetrics(category)
   const a = chat.analytics
   const display = chatDisplay(chat)
   const isSavedMessages = display.isSavedMessages
@@ -124,6 +137,16 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
         exportName={`chat-${chat.chatId}-word-cloud`}
       />
 
+      {!hideHuman && !isSavedMessages ? (
+        <ProfanityRankingCard
+          wrapId={wrapId}
+          chatId={chat.chatId}
+          selfName={selfName}
+          stats={a.profanity}
+          exportName={`chat-${chat.chatId}-profanity`}
+        />
+      ) : null}
+
       {!isSavedMessages ? (
         <>
           <KeywordBattleChart
@@ -137,17 +160,19 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
             }
           />
 
-          <GhostingChart
-            ghosting={a.ghosting}
-            exportName={`chat-${chat.chatId}-ghosting`}
-            selfName={selfName}
-            youLabel="You"
-            themLabel={
-              display.isDeleted
-                ? (display.subtitle ?? "Them")
-                : truncate(chat.chatName || display.title, 14)
-            }
-          />
+          {!hideHuman ? (
+            <GhostingChart
+              ghosting={a.ghosting}
+              exportName={`chat-${chat.chatId}-ghosting`}
+              selfName={selfName}
+              youLabel="You"
+              themLabel={
+                display.isDeleted
+                  ? (display.subtitle ?? "Them")
+                  : truncate(chat.chatName || display.title, 14)
+              }
+            />
+          ) : null}
         </>
       ) : null}
 
@@ -203,33 +228,37 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
             highlightLabel="Longer"
           />
 
-          <ComparisonKpiCard
-            title="Who starts / closes"
-            description="After 6h+ of silence"
-            exportName={`chat-${chat.chatId}-initiator`}
-            rows={initiatorRows}
-            metrics={[
-              { key: "starts", label: "Starts", accent: "teal" },
-              { key: "closes", label: "Closes", accent: "amber" },
-            ]}
-            highlightKey="starts"
-            highlightLabel="Opener"
-          />
+          {!hideHuman ? (
+            <ComparisonKpiCard
+              title="Who starts / closes"
+              description="After 6h+ of silence"
+              exportName={`chat-${chat.chatId}-initiator`}
+              rows={initiatorRows}
+              metrics={[
+                { key: "starts", label: "Starts", accent: "teal" },
+                { key: "closes", label: "Closes", accent: "amber" },
+              ]}
+              highlightKey="starts"
+              highlightLabel="Opener"
+            />
+          ) : null}
 
-          <ComparisonKpiCard
-            title="Late night (1–5 AM)"
-            description={`${fmt(a.lateNight.totalLateNight)} messages`}
-            exportName={`chat-${chat.chatId}-late-night`}
-            rows={lateNightRows}
-            metrics={[
-              {
-                key: "count",
-                label: "Messages",
-                accent: "indigo",
-              },
-            ]}
-            highlightLabel="Night owl"
-          />
+          {!hideHuman ? (
+            <ComparisonKpiCard
+              title="Late night (1–5 AM)"
+              description={`${fmt(a.lateNight.totalLateNight)} messages`}
+              exportName={`chat-${chat.chatId}-late-night`}
+              rows={lateNightRows}
+              metrics={[
+                {
+                  key: "count",
+                  label: "Messages",
+                  accent: "indigo",
+                },
+              ]}
+              highlightLabel="Night owl"
+            />
+          ) : null}
 
           <ComparisonKpiCard
             title="Edited messages"
@@ -248,13 +277,15 @@ export function WrapChatAnalytics({ chat, selfName }: WrapChatAnalyticsProps) {
         </div>
       ) : null}
 
-      <TopEmojisCard
-        emojis={a.emojis.topOverall}
-        exportName={`chat-${chat.chatId}-emojis`}
-        description="Most used in this chat"
-        limit={10}
-        scopes={isSavedMessages ? undefined : emojiScopes}
-      />
+      {!hideHuman ? (
+        <TopEmojisCard
+          emojis={a.emojis.topOverall}
+          exportName={`chat-${chat.chatId}-emojis`}
+          description="Most used in this chat"
+          limit={10}
+          scopes={isSavedMessages ? undefined : emojiScopes}
+        />
+      ) : null}
 
       {!isSavedMessages ? (
         <CircadianRhythmCard

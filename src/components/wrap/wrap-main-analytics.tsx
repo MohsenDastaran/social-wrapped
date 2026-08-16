@@ -3,11 +3,16 @@ import { MessageTypesChart } from "@/components/wrap/charts/message-types-chart"
 import { WordCloudChart } from "@/components/wrap/charts/word-cloud-chart"
 import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import { TopEmojisCard } from "@/components/wrap/top-emojis-card"
+import { ProfanityRankingCard } from "@/components/wrap/profanity-ranking-card"
 import { fmt, SENT_RECEIVED_PIE } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import type { WrapAnalytics } from "@/platform/analytics-types"
+import {
+  omitHumanChatMetrics,
+  type PlatformCategory,
+} from "@/lib/platforms"
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -19,12 +24,19 @@ import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 
 type WrapMainAnalyticsProps = {
   analytics: WrapAnalytics
+  wrapId: string
+  category?: PlatformCategory
 }
 
 /** Account-wide analytics — chart-first layout. */
-export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
+export function WrapMainAnalytics({
+  analytics,
+  wrapId,
+  category,
+}: WrapMainAnalyticsProps) {
   if (!analytics?.account) return null
   const a = analytics.account
+  const hideHuman = omitHumanChatMetrics(category)
 
   const sentRecvTotal = a.volume.sent + a.volume.received
   const sentReceived = [
@@ -132,7 +144,19 @@ export function WrapMainAnalytics({ analytics }: WrapMainAnalyticsProps) {
         exportName="main-word-cloud"
       />
 
-      <TopEmojisCard emojis={a.emojis.topOverall} exportName="main-emojis" />
+      {!hideHuman ? (
+        <ProfanityRankingCard
+          wrapId={wrapId}
+          selfName={analytics.displayName}
+          stats={a.profanity}
+          exportName="main-profanity"
+          excludeSelf
+        />
+      ) : null}
+
+      {!hideHuman ? (
+        <TopEmojisCard emojis={a.emojis.topOverall} exportName="main-emojis" />
+      ) : null}
 
       <CircadianRhythmCard
         hourlyTotal={a.circadian.hourlyTotal}

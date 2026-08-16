@@ -131,8 +131,9 @@ export function DonateDialog({
         <DialogHeader>
           <DialogTitle>Donate</DialogTitle>
           <DialogDescription>
-            Social Wrapped is free, local-first, and built without ads or
-            accounts. If it was useful, a crypto tip helps keep the lights on.
+            Social Wrapped is free, local, offline, open-source, and can be used
+            without ads or accounts. If it was useful, a crypto tip helps keep
+            the lights on.
           </DialogDescription>
         </DialogHeader>
 

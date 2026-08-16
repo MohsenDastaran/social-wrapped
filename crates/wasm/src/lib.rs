@@ -7,10 +7,17 @@ pub fn greet(name: &str) -> String {
     app_core::greet(name)
 }
 
-/// Seeded two-year Telegram Desktop `result.json` for the getting-started demo.
+/// Seeded 3.5-year Telegram Desktop `result.json` for the getting-started demo.
 #[wasm_bindgen]
 pub fn generate_telegram_demo_json() -> Result<String, JsValue> {
     app_core::mock::telegram_demo::generate_export_json()
+        .map_err(|error| JsValue::from_str(&error.to_string()))
+}
+
+/// Seeded 3.5-year Instagram Meta JSON ZIP for the getting-started demo.
+#[wasm_bindgen]
+pub fn generate_instagram_demo_zip() -> Result<Vec<u8>, JsValue> {
+    app_core::mock::instagram_demo::generate_export_zip()
         .map_err(|error| JsValue::from_str(&error.to_string()))
 }
 
@@ -261,6 +268,37 @@ pub fn analyze_x_bytes_with_progress(
             &JsValue::from_f64(total as f64),
         );
     })
+    .and_then(|result| result.to_json())
+    .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// Scan a ChatGPT data-export ZIP and return preview JSON.
+#[wasm_bindgen]
+pub fn preview_chatgpt_bytes(data: &[u8]) -> Result<String, JsValue> {
+    app_core::parsers::chatgpt::preview_export_bytes(data)
+        .and_then(|preview| preview.to_json())
+        .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// Full ChatGPT analytics pass.
+///
+/// Returns JSON `{ analytics, chatgptInsights }` (conversations + models).
+#[wasm_bindgen]
+pub fn analyze_chatgpt_bytes_with_progress(
+    data: &[u8],
+    on_progress: &js_sys::Function,
+) -> Result<String, JsValue> {
+    app_core::parsers::chatgpt::analyze_export_bytes_with_progress(
+        data,
+        |phase, current, total| {
+            let _ = on_progress.call3(
+                &JsValue::NULL,
+                &JsValue::from_str(phase.as_str()),
+                &JsValue::from_f64(current as f64),
+                &JsValue::from_f64(total as f64),
+            );
+        },
+    )
     .and_then(|result| result.to_json())
     .map_err(|e| JsValue::from_str(&e.to_string()))
 }

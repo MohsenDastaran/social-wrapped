@@ -10,6 +10,7 @@ import { chatDisplay } from "@/components/wrap/chat-display"
 import { WrapChatAnalytics } from "@/components/wrap/wrap-chat-analytics"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { fmt } from "@/components/wrap/chart-theme"
+import { getPlatform } from "@/lib/platforms"
 import { getWrap, wrapPath, type WrapRecord } from "@/lib/wrap-history"
 
 /** Per-contact analytics — `/wrap/:wrapId/chat/:chatId`. */
@@ -51,6 +52,7 @@ export function WrapChatPage() {
     return <Navigate to="/history" replace />
   }
 
+  const platform = getPlatform(wrap.platformId)
   const chat = wrap.analytics.chats.find((c) => c.chatId === chatId)
   if (!chat) {
     return <Navigate to={wrapPath(wrap.id)} replace />
@@ -141,6 +143,8 @@ export function WrapChatPage() {
       <WrapChatAnalytics
         chat={chat}
         selfName={wrap.analytics.displayName || wrap.stats.displayName}
+        wrapId={wrap.id}
+        category={platform?.category}
       />
     </div>
   )

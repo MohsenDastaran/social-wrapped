@@ -74,15 +74,19 @@ type RaceModel = {
 
 type ContactBarRaceChartProps = {
   chats: ChatResult[]
+  title?: string
 }
 
-export function ContactBarRaceChart({ chats }: ContactBarRaceChartProps) {
+export function ContactBarRaceChart({
+  chats,
+  title = "Contact race",
+}: ContactBarRaceChartProps) {
   const race = useMemo(() => buildRace(chats), [chats])
   if (!race || race.frames.length < 2 || race.racers.length < 2) return null
-  return <RaceCard race={race} />
+  return <RaceCard race={race} title={title} />
 }
 
-function RaceCard({ race }: { race: RaceModel }) {
+function RaceCard({ race, title }: { race: RaceModel; title: string }) {
   const reduceMotion = useReducedMotion()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -231,7 +235,7 @@ function RaceCard({ race }: { race: RaceModel }) {
   return (
     <div className="relative">
       <WrapChartCard
-        title="Contact race"
+        title={title}
         description={`Cumulative messages by month · top ${fmt(race.racers.length)}`}
         exportName="contact-bar-race"
         exportSize="wide"
@@ -262,7 +266,7 @@ function RaceCard({ race }: { race: RaceModel }) {
               type="button"
               variant="outline"
               size="xs"
-              aria-label="Replay contact race from the start"
+              aria-label={`Replay ${title.toLowerCase()} from the start`}
               disabled={exporting}
               onClick={() => {
                 setFrameIndex(0)
@@ -277,7 +281,7 @@ function RaceCard({ race }: { race: RaceModel }) {
                 type="button"
                 variant="outline"
                 size="xs"
-                aria-label="Export contact race as MP4"
+                aria-label={`Export ${title.toLowerCase()} as MP4`}
                 onClick={() => void exportMp4()}
               >
                 <Download data-icon="inline-start" />

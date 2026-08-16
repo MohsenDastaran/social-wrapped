@@ -1,7 +1,7 @@
 import { fmt } from "@/components/wrap/chart-theme"
 import { peakHourLabel } from "@/components/wrap/charts/circadian-polar-chart"
 import { keywordsToWords } from "@/components/wrap/charts/word-cloud-chart"
-import type { PlatformId } from "@/lib/platforms"
+import { isAiPlatform, type PlatformId } from "@/lib/platforms"
 import {
   buildMessagingStorySpecs,
   type WrapStorySpec,
@@ -18,6 +18,7 @@ import {
 import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
 import type { XInsights } from "@/platform/x-types"
+import type { ChatGptInsights } from "@/platform/chatgpt-types"
 import type { WhatsAppInsights } from "@/platform/whatsapp-types"
 
 export type PlatformStoryCatalog = {
@@ -33,6 +34,7 @@ export type StoryCatalogInput = {
   instagramSocial?: InstagramSocialInsights | null
   linkedinInsights?: LinkedInInsights | null
   xInsights?: XInsights | null
+  chatgptInsights?: ChatGptInsights | null
   whatsappInsights?: WhatsAppInsights | null
   tiktokInsights?: TikTokInsights | null
   spotifyInsights?: SpotifyInsights | null
@@ -214,6 +216,22 @@ export function buildLinkedInStorySpecs(
   return specs
 }
 
+/** ChatGPT model ranking slide (gated on data). */
+export function buildChatGptStorySpecs(
+  insights: ChatGptInsights
+): WrapStorySpec[] {
+  const top = insights.models.find((m) => m.name && m.count > 0)
+  if (!top) return []
+  return [
+    {
+      id: "chatgpt-models",
+      exportName: "chatgpt-models",
+      heading: "Models you used",
+      subtext: `Led by ${top.name} × ${fmt(top.count)} · ${fmt(insights.conversationCount)} conversations`,
+    },
+  ]
+}
+
 /** X network / tweet slides (gated on data). */
 export function buildXStorySpecs(insights: XInsights): WrapStorySpec[] {
   const specs: WrapStorySpec[] = []
@@ -367,7 +385,10 @@ function pickVideoIds(
 export function buildPlatformStoryCatalog(
   input: StoryCatalogInput
 ): PlatformStoryCatalog {
-  const messaging = buildMessagingStorySpecs(input.displayName, input.analytics)
+  const messaging = buildMessagingStorySpecs(
+    input.displayName,
+    input.analytics
+  ).filter((spec) => (isAiPlatform(input.platformId) ? spec.id !== "emojis" : true))
 
   if (input.platformId === "instagram" && input.instagramSocial) {
     const ig = buildInstagramStorySpecs(input.instagramSocial)
@@ -431,6 +452,15 @@ export function buildPlatformStoryCatalog(
     return {
       storySpecs,
       videoSlideIds: pickVideoIds(APPLE_MUSIC_VIDEO_IDS, storySpecs, 9),
+    }
+  }
+
+  if (input.platformId === "chatgpt" && input.chatgptInsights) {
+    const gpt = buildChatGptStorySpecs(input.chatgptInsights)
+    const storySpecs = [...gpt, ...messaging]
+    return {
+      storySpecs,
+      videoSlideIds: pickVideoIds(MESSAGING_VIDEO_IDS, storySpecs),
     }
   }
 
