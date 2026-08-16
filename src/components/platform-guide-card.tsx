@@ -1,4 +1,4 @@
-import { FileArchive, Lock, Sparkles, Upload } from "lucide-react"
+import { FileArchive, Lock, Upload } from "lucide-react"
 import { Link } from "react-router"
 
 import { PlatformCardFace } from "@/components/platform-card-face"
@@ -120,14 +120,7 @@ export function PlatformImportCard({
                 Soon
               </>
             ) : (
-              <>
-                <span className="relative flex size-1.5" aria-hidden>
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary-foreground/55" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-primary-foreground" />
-                </span>
-                Ready
-                <Sparkles className="size-3 opacity-90" aria-hidden />
-              </>
+              PLATFORM_CATEGORY_LABELS[platform.category]
             )}
           </span>
         </div>
@@ -145,7 +138,6 @@ export function PlatformImportCard({
           <span className="inline-flex min-w-0 items-center gap-1.5 text-[0.7rem] font-medium text-muted-foreground">
             <FileArchive className="size-3.5 shrink-0" aria-hidden />
             <span className="truncate">
-              {PLATFORM_CATEGORY_LABELS[platform.category]} ·{" "}
               {platform.acceptedFiles.join(" · ")}
             </span>
           </span>

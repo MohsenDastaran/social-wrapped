@@ -75,17 +75,7 @@ export function HomePage() {
         return false
       }
       if (!search) return true
-      return [
-        platform.name,
-        platform.summary,
-        platform.category,
-        PLATFORM_CATEGORY_LABELS[platform.category],
-        platform.acceptedFiles.join(" "),
-        platform.formats,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(search)
+      return platform.name.toLowerCase().includes(search)
     })
   }, [query, categoryFilter])
   const platformGroups = useMemo(
@@ -231,7 +221,7 @@ export function HomePage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onClear={() => setQuery("")}
-              placeholder="Find a platform, category, or file type…"
+              placeholder="Find a platform…"
               className="sm:max-w-md"
             />
             <p
@@ -349,8 +339,7 @@ export function HomePage() {
             animate={{ opacity: 1, y: 0 }}
             className="mt-10 text-center text-sm leading-relaxed text-muted-foreground"
           >
-            Nothing matched “{query.trim()}”. Try a platform name or a file type
-            such as JSON, ZIP, or CSV.
+            Nothing matched “{query.trim()}”. Try a platform name.
           </motion.p>
         ) : null}
       </section>
