@@ -15,5 +15,7 @@ export async function buildTelegramDemoFile(): Promise<File> {
 
 export async function buildInstagramDemoFile(): Promise<File> {
   const bytes = await generateInstagramDemoZip()
-  return new File([bytes], "instagram-demo.zip", { type: "application/zip" })
+  const copy = new ArrayBuffer(bytes.byteLength)
+  new Uint8Array(copy).set(bytes)
+  return new File([copy], "instagram-demo.zip", { type: "application/zip" })
 }
