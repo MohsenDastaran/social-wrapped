@@ -9,6 +9,7 @@ import {
   platformImportAreaViewTransitionName,
   platformImportPath,
   platformLogoViewTransitionName,
+  PLATFORM_CATEGORY_LABELS,
   type PlatformConfig,
 } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
@@ -141,9 +142,12 @@ export function PlatformImportCard({
         </div>
 
         <div className="flex items-center justify-between gap-3 pt-0.5">
-          <span className="inline-flex items-center gap-1.5 text-[0.7rem] font-medium text-muted-foreground">
-            <FileArchive className="size-3.5" aria-hidden />
-            {platform.acceptedFiles.join(" · ")}
+          <span className="inline-flex min-w-0 items-center gap-1.5 text-[0.7rem] font-medium text-muted-foreground">
+            <FileArchive className="size-3.5 shrink-0" aria-hidden />
+            <span className="truncate">
+              {PLATFORM_CATEGORY_LABELS[platform.category]} ·{" "}
+              {platform.acceptedFiles.join(" · ")}
+            </span>
           </span>
           {!disabled ? (
             <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">

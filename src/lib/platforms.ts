@@ -24,6 +24,22 @@ export type PlatformCategory =
   | "google"
   | "ai"
 
+export const PLATFORM_CATEGORY_ORDER = [
+  "messaging",
+  "social",
+  "music",
+  "google",
+  "ai",
+] as const satisfies readonly PlatformCategory[]
+
+export const PLATFORM_CATEGORY_LABELS: Record<PlatformCategory, string> = {
+  messaging: "Messaging",
+  social: "Social",
+  music: "Music",
+  google: "Google",
+  ai: "AI",
+}
+
 export function isPlatformEnabled(id: PlatformId): boolean {
   return PLATFORM_ENABLED[id]
 }
@@ -49,6 +65,22 @@ export type PlatformConfig = {
   acceptedFiles: string[]
   /** HTML `accept` attribute for the file picker */
   accept: string
+}
+
+export function groupPlatformsByCategory(
+  platforms: PlatformConfig[]
+): { category: PlatformCategory; label: string; platforms: PlatformConfig[] }[] {
+  return PLATFORM_CATEGORY_ORDER.flatMap((category) => {
+    const items = platforms.filter((platform) => platform.category === category)
+    if (items.length === 0) return []
+    return [
+      {
+        category,
+        label: PLATFORM_CATEGORY_LABELS[category],
+        platforms: items,
+      },
+    ]
+  })
 }
 
 /** Tier 1 high-priority platforms from docs/target-platforms.md */

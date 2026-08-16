@@ -12,13 +12,21 @@ import {
 } from "@/components/reui/alert"
 import { PlatformSearchInput } from "@/components/platform-search-input"
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   ONBOARDING_MAX_VIEWS,
   bumpOnboardingViews,
   isGettingStartedDismissed,
   showGettingStarted,
 } from "@/lib/getting-started"
-import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
+import {
+  HIGH_PRIORITY_PLATFORMS,
+  PLATFORM_CATEGORY_LABELS,
+  PLATFORM_CATEGORY_ORDER,
+  groupPlatformsByCategory,
+  type PlatformCategory,
+} from "@/lib/platforms"
 
 const TRUST_ALERT_KEY = "social-wrapped:privacy-trust-alert"
 const TRUST_ALERT_MAX_PRIVACY_CLICKS = 2
@@ -57,24 +65,35 @@ function isTrustAlertVisible(state: TrustAlertState): boolean {
 
 export function HomePage() {
   const [query, setQuery] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState<PlatformCategory | "all">(
+    "all"
+  )
   const [showTrustAlert, setShowTrustAlert] = useState(false)
   const reduceMotion = useReducedMotion()
   const filteredPlatforms = useMemo(() => {
     const search = query.trim().toLowerCase()
-    if (!search) return HIGH_PRIORITY_PLATFORMS
-
-    return HIGH_PRIORITY_PLATFORMS.filter((platform) =>
-      [
+    return HIGH_PRIORITY_PLATFORMS.filter((platform) => {
+      if (categoryFilter !== "all" && platform.category !== categoryFilter) {
+        return false
+      }
+      if (!search) return true
+      return [
         platform.name,
         platform.summary,
+        platform.category,
+        PLATFORM_CATEGORY_LABELS[platform.category],
         platform.acceptedFiles.join(" "),
         platform.formats,
       ]
         .join(" ")
         .toLowerCase()
         .includes(search)
-    )
-  }, [query])
+    })
+  }, [query, categoryFilter])
+  const platformGroups = useMemo(
+    () => groupPlatformsByCategory(filteredPlatforms),
+    [filteredPlatforms]
+  )
 
   useEffect(() => {
     if (window.location.hash !== "#platforms") return
@@ -189,7 +208,7 @@ export function HomePage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onClear={() => setQuery("")}
-              placeholder="Find a platform or file type…"
+              placeholder="Find a platform, category, or file type…"
               className="sm:max-w-md"
             />
             <p
@@ -204,32 +223,92 @@ export function HomePage() {
               </span>
             </p>
           </div>
+
+          <ToggleGroup
+            value={[categoryFilter]}
+            onValueChange={(value) => {
+              const next = value[0]
+              setCategoryFilter(
+                next === "all" || next === undefined
+                  ? "all"
+                  : (next as PlatformCategory)
+              )
+            }}
+            variant="outline"
+            size="sm"
+            spacing={1}
+            className="flex w-full max-w-full flex-wrap"
+            aria-label="Filter by category"
+          >
+            <ToggleGroupItem value="all" className="rounded-full px-3">
+              All
+            </ToggleGroupItem>
+            {PLATFORM_CATEGORY_ORDER.map((category) => (
+              <ToggleGroupItem
+                key={category}
+                value={category}
+                className="rounded-full px-3"
+              >
+                {PLATFORM_CATEGORY_LABELS[category]}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         </section>
 
-        <motion.ul layout className="grid list-none gap-4 p-0 sm:grid-cols-2">
-          <AnimatePresence mode="popLayout" initial={false}>
-            {filteredPlatforms.map((platform, index) => (
-              <motion.li
-                key={platform.id}
-                layout={!reduceMotion}
-                initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={
-                  reduceMotion
-                    ? { opacity: 0 }
-                    : { opacity: 0, y: -10, scale: 0.96 }
-                }
-                transition={{
-                  duration: 0.32,
-                  delay: reduceMotion ? 0 : Math.min(index * 0.045, 0.25),
-                  ease: [0.22, 1, 0.36, 1],
-                }}
+        <div className="flex flex-col gap-8">
+          {platformGroups.map((group) => (
+            <section
+              key={group.category}
+              className="flex flex-col gap-3"
+              aria-labelledby={`platform-category-${group.category}`}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <h2
+                  id={`platform-category-${group.category}`}
+                  className="shrink-0 font-heading text-sm font-semibold tracking-tight sm:text-base"
+                >
+                  {group.label}
+                </h2>
+                <Separator className="min-w-0 flex-1" />
+                <span className="shrink-0 text-[0.65rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase tabular-nums">
+                  {group.platforms.length}
+                </span>
+              </div>
+
+              <motion.ul
+                layout
+                className="grid list-none gap-4 p-0 sm:grid-cols-2"
               >
-                <PlatformImportCard platform={platform} featured />
-              </motion.li>
-            ))}
-          </AnimatePresence>
-        </motion.ul>
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {group.platforms.map((platform, index) => (
+                    <motion.li
+                      key={platform.id}
+                      layout={!reduceMotion}
+                      initial={
+                        reduceMotion ? false : { opacity: 0, y: 18, scale: 0.96 }
+                      }
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={
+                        reduceMotion
+                          ? { opacity: 0 }
+                          : { opacity: 0, y: -10, scale: 0.96 }
+                      }
+                      transition={{
+                        duration: 0.32,
+                        delay: reduceMotion
+                          ? 0
+                          : Math.min(index * 0.045, 0.25),
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                    >
+                      <PlatformImportCard platform={platform} featured />
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
+              </motion.ul>
+            </section>
+          ))}
+        </div>
 
         {filteredPlatforms.length === 0 ? (
           <motion.p
