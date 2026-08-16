@@ -7,6 +7,10 @@ import type { ChatResult, WrapAnalytics } from "@/platform/analytics-types"
 import { cn } from "@/lib/utils"
 import { scrollYClass } from "@/lib/scroll"
 import {
+  wrapEntityLabel,
+  type PlatformCategory,
+} from "@/lib/platforms"
+import {
   Bookmark,
   ChevronRight,
   Clock3,
@@ -35,15 +39,12 @@ const LIST_EXPORT = {
 
 const VISIBLE_CONTACTS = 50
 
-type EntityLabel = "contact" | "chat"
-
 type WrapTopContactsProps = {
   analytics: WrapAnalytics
   onSelect: (chatId: number) => void
   /** Extra context under the section title (e.g. X archive ID limits). */
   description?: string
-  /** ChatGPT wrap uses “chats”; messaging platforms keep “contacts”. */
-  entityLabel?: EntityLabel
+  category?: PlatformCategory
 }
 
 function namesMatch(a: string, b: string): boolean {
@@ -64,9 +65,15 @@ export function contactGhostScore(chat: ChatResult, selfName: string): number {
 export function WrapTopContacts({
   analytics,
   onSelect,
-  description = "People and groups you message most. Search to find anyone, then tap to open their stats.",
-  entityLabel = "contact",
+  description,
+  category,
 }: WrapTopContactsProps) {
+  const entityLabel = wrapEntityLabel(category)
+  const sectionDescription =
+    description ??
+    (category === "ai"
+      ? "Conversations ranked by message count. Tap one for the same charts as the main wrap, for that thread only."
+      : "People and groups you message most. Search to find anyone, then tap to open their stats.")
   const selfName = analytics.displayName
   const savedMessages =
     analytics.savedMessages ??
@@ -130,7 +137,7 @@ export function WrapTopContacts({
         <h2 className="font-heading text-xl font-semibold tracking-tight">
           {entityLabel === "chat" ? "Top chats" : "Top contacts"}
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{sectionDescription}</p>
       </header>
 
       {savedMessages ? (
@@ -396,7 +403,7 @@ function TopContactsList({
 }: {
   chats: ChatResult[]
   directory: ChatResult[]
-  entityLabel: EntityLabel
+  entityLabel: ReturnType<typeof wrapEntityLabel>
   onSelect: (chatId: number) => void
 }) {
   const { ref, exporting, exportError, exportPng } =

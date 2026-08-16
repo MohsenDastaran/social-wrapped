@@ -1,7 +1,7 @@
 import { fmt } from "@/components/wrap/chart-theme"
 import { peakHourLabel } from "@/components/wrap/charts/circadian-polar-chart"
 import { keywordsToWords } from "@/components/wrap/charts/word-cloud-chart"
-import type { PlatformId } from "@/lib/platforms"
+import { isAiPlatform, type PlatformId } from "@/lib/platforms"
 import {
   buildMessagingStorySpecs,
   type WrapStorySpec,
@@ -388,9 +388,7 @@ export function buildPlatformStoryCatalog(
   const messaging = buildMessagingStorySpecs(
     input.displayName,
     input.analytics
-  ).filter((spec) =>
-    input.platformId === "chatgpt" ? spec.id !== "emojis" : true
-  )
+  ).filter((spec) => (isAiPlatform(input.platformId) ? spec.id !== "emojis" : true))
 
   if (input.platformId === "instagram" && input.instagramSocial) {
     const ig = buildInstagramStorySpecs(input.instagramSocial)

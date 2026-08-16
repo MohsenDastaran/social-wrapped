@@ -260,10 +260,10 @@ export function PlatformImportView({
                 ? progress?.phase === "computing"
                   ? "Building your X wrap"
                   : "Reading your X archive ZIP (tweets + DMs)"
-                : platform.id === "chatgpt"
+                : platform.category === "ai"
                   ? progress?.phase === "computing"
-                    ? "Building your ChatGPT wrap"
-                    : "Reading your ChatGPT conversations"
+                    ? `Building your ${platform.name} wrap`
+                    : `Reading your ${platform.name} conversations`
                 : platform.id === "google" || platform.id === "youtube"
                   ? progress?.phase === "computing"
                     ? "Building your Google wrap"

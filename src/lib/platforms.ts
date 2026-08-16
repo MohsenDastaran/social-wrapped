@@ -17,6 +17,13 @@ export const PLATFORM_ENABLED = {
 
 export type PlatformId = keyof typeof PLATFORM_ENABLED
 
+export type PlatformCategory =
+  | "messaging"
+  | "social"
+  | "music"
+  | "google"
+  | "ai"
+
 export function isPlatformEnabled(id: PlatformId): boolean {
   return PLATFORM_ENABLED[id]
 }
@@ -24,6 +31,7 @@ export function isPlatformEnabled(id: PlatformId): boolean {
 export type PlatformConfig = {
   id: PlatformId
   name: string
+  category: PlatformCategory
   accentClass: string
   /** Soft wash for featured home cards */
   gradientClass: string
@@ -48,6 +56,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "telegram",
     name: "Telegram",
+    category: "messaging",
     accentClass: "border-sky-500/50",
     gradientClass:
       "from-sky-500/25 via-sky-400/10 to-transparent dark:from-sky-400/20 dark:via-sky-500/5",
@@ -75,6 +84,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "whatsapp",
     name: "WhatsApp",
+    category: "messaging",
     accentClass: "border-emerald-500/50",
     gradientClass:
       "from-emerald-500/25 via-emerald-400/10 to-transparent dark:from-emerald-400/20 dark:via-emerald-500/5",
@@ -102,6 +112,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "x",
     name: "X (Twitter)",
+    category: "social",
     accentClass: "border-zinc-500/50",
     gradientClass:
       "from-zinc-500/20 via-zinc-400/10 to-transparent dark:from-zinc-300/15 dark:via-zinc-500/5",
@@ -126,6 +137,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "google",
     name: "Google Ecosystem",
+    category: "google",
     accentClass: "border-blue-500/50",
     gradientClass:
       "from-blue-500/25 via-blue-400/10 to-transparent dark:from-blue-400/20 dark:via-blue-500/5",
@@ -151,6 +163,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "instagram",
     name: "Instagram",
+    category: "social",
     accentClass: "border-fuchsia-500/50",
     gradientClass:
       "from-fuchsia-500/25 via-rose-400/10 to-transparent dark:from-fuchsia-400/20 dark:via-rose-500/5",
@@ -176,6 +189,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "tiktok",
     name: "TikTok",
+    category: "social",
     accentClass: "border-cyan-500/50",
     gradientClass:
       "from-cyan-500/25 via-teal-400/10 to-transparent dark:from-cyan-400/20 dark:via-teal-500/5",
@@ -200,6 +214,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "spotify",
     name: "Spotify",
+    category: "music",
     accentClass: "border-green-500/50",
     gradientClass:
       "from-green-500/25 via-lime-400/10 to-transparent dark:from-green-400/20 dark:via-lime-500/5",
@@ -222,6 +237,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "apple-music",
     name: "Apple Music",
+    category: "music",
     accentClass: "border-rose-500/50",
     gradientClass:
       "from-rose-500/25 via-pink-400/10 to-transparent dark:from-rose-400/20 dark:via-pink-500/5",
@@ -245,6 +261,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "youtube",
     name: "YouTube",
+    category: "google",
     accentClass: "border-red-500/50",
     gradientClass:
       "from-red-500/25 via-orange-400/10 to-transparent dark:from-red-400/20 dark:via-orange-500/5",
@@ -269,6 +286,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "linkedin",
     name: "LinkedIn",
+    category: "social",
     accentClass: "border-sky-600/50",
     gradientClass:
       "from-sky-600/25 via-blue-500/10 to-transparent dark:from-sky-500/20 dark:via-blue-600/5",
@@ -294,6 +312,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "chatgpt",
     name: "ChatGPT",
+    category: "ai",
     accentClass: "border-emerald-600/50",
     gradientClass:
       "from-emerald-600/25 via-teal-500/10 to-transparent dark:from-emerald-400/20 dark:via-teal-500/5",
@@ -323,6 +342,23 @@ export function getPlatform(
 ): PlatformConfig | undefined {
   if (!id) return undefined
   return HIGH_PRIORITY_PLATFORMS.find((platform) => platform.id === id)
+}
+
+export function isAiPlatform(id: string | undefined): boolean {
+  return getPlatform(id)?.category === "ai"
+}
+
+/** Human-contact wrap cards that do not apply to assistant chats. */
+export function omitHumanChatMetrics(
+  category: PlatformCategory | undefined
+): boolean {
+  return category === "ai"
+}
+
+export function wrapEntityLabel(
+  category: PlatformCategory | undefined
+): "contact" | "chat" {
+  return category === "ai" ? "chat" : "contact"
 }
 
 export function platformImportPath(id: PlatformId): string {

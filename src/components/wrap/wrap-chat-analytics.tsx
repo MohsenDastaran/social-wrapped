@@ -19,17 +19,17 @@ import type {
   EmojiStats,
 } from "@/platform/analytics-types"
 import { filterEmojiEntries } from "@/lib/emoji"
+import {
+  omitHumanChatMetrics,
+  type PlatformCategory,
+} from "@/lib/platforms"
 
 type WrapChatAnalyticsProps = {
   chat: ChatResult
   /** Account display name — used to split “You” vs contact emoji scopes. */
   selfName: string
   wrapId: string
-  hideProfanity?: boolean
-  hideEmojis?: boolean
-  hideGhosting?: boolean
-  hideInitiator?: boolean
-  hideLateNight?: boolean
+  category?: PlatformCategory
 }
 
 /** Per-contact analytics charts — used on the contact detail page. */
@@ -37,12 +37,9 @@ export function WrapChatAnalytics({
   chat,
   selfName,
   wrapId,
-  hideProfanity = false,
-  hideEmojis = false,
-  hideGhosting = false,
-  hideInitiator = false,
-  hideLateNight = false,
+  category,
 }: WrapChatAnalyticsProps) {
+  const hideHuman = omitHumanChatMetrics(category)
   const a = chat.analytics
   const display = chatDisplay(chat)
   const isSavedMessages = display.isSavedMessages
@@ -140,7 +137,7 @@ export function WrapChatAnalytics({
         exportName={`chat-${chat.chatId}-word-cloud`}
       />
 
-      {!hideProfanity && !isSavedMessages ? (
+      {!hideHuman && !isSavedMessages ? (
         <ProfanityRankingCard
           wrapId={wrapId}
           chatId={chat.chatId}
@@ -163,7 +160,7 @@ export function WrapChatAnalytics({
             }
           />
 
-          {!hideGhosting ? (
+          {!hideHuman ? (
             <GhostingChart
               ghosting={a.ghosting}
               exportName={`chat-${chat.chatId}-ghosting`}
@@ -231,7 +228,7 @@ export function WrapChatAnalytics({
             highlightLabel="Longer"
           />
 
-          {!hideInitiator ? (
+          {!hideHuman ? (
             <ComparisonKpiCard
               title="Who starts / closes"
               description="After 6h+ of silence"
@@ -246,7 +243,7 @@ export function WrapChatAnalytics({
             />
           ) : null}
 
-          {!hideLateNight ? (
+          {!hideHuman ? (
             <ComparisonKpiCard
               title="Late night (1–5 AM)"
               description={`${fmt(a.lateNight.totalLateNight)} messages`}
@@ -280,7 +277,7 @@ export function WrapChatAnalytics({
         </div>
       ) : null}
 
-      {!hideEmojis ? (
+      {!hideHuman ? (
         <TopEmojisCard
           emojis={a.emojis.topOverall}
           exportName={`chat-${chat.chatId}-emojis`}

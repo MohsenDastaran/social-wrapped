@@ -10,6 +10,10 @@ import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import type { WrapAnalytics } from "@/platform/analytics-types"
 import {
+  omitHumanChatMetrics,
+  type PlatformCategory,
+} from "@/lib/platforms"
+import {
   ArrowDownLeft,
   ArrowUpRight,
   MessagesSquare,
@@ -21,19 +25,18 @@ import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 type WrapMainAnalyticsProps = {
   analytics: WrapAnalytics
   wrapId: string
-  hideProfanity?: boolean
-  hideEmojis?: boolean
+  category?: PlatformCategory
 }
 
 /** Account-wide analytics — chart-first layout. */
 export function WrapMainAnalytics({
   analytics,
   wrapId,
-  hideProfanity = false,
-  hideEmojis = false,
+  category,
 }: WrapMainAnalyticsProps) {
   if (!analytics?.account) return null
   const a = analytics.account
+  const hideHuman = omitHumanChatMetrics(category)
 
   const sentRecvTotal = a.volume.sent + a.volume.received
   const sentReceived = [
@@ -141,7 +144,7 @@ export function WrapMainAnalytics({
         exportName="main-word-cloud"
       />
 
-      {!hideProfanity ? (
+      {!hideHuman ? (
         <ProfanityRankingCard
           wrapId={wrapId}
           selfName={analytics.displayName}
@@ -151,7 +154,7 @@ export function WrapMainAnalytics({
         />
       ) : null}
 
-      {!hideEmojis ? (
+      {!hideHuman ? (
         <TopEmojisCard emojis={a.emojis.topOverall} exportName="main-emojis" />
       ) : null}
 
