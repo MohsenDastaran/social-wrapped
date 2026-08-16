@@ -323,7 +323,7 @@ export function WrapPage() {
           analytics={wrap.analytics}
           description={
             wrap.platformId === "x"
-              ? "X’s archive only includes account IDs for most DMs. Handles show when you’ve mentioned that person in a tweet; groups use their archive name when set."
+              ? "X’s archive stores DMs by account ID. Names come from people you’ve mentioned or replied to in tweets; groups use their archive name when set."
               : undefined
           }
           onSelect={(chatId) => {
