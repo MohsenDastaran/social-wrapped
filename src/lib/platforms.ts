@@ -59,7 +59,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     steps: [
       "Open Telegram Desktop (export is most complete from the desktop app).",
       "Go to Settings → Advanced → Export Telegram Data.",
-      "Choose Machine-readable JSON (preferred). Optionally include media.",
+      "Choose Machine-readable JSON. Do not include media.",
       "Select the chats you want, then start the export and wait for the folder to finish.",
       "In Social Wrapped, import that export folder (or its result.json) from Home.",
     ],
