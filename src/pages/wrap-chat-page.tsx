@@ -144,6 +144,9 @@ export function WrapChatPage() {
         wrapId={wrap.id}
         hideProfanity={wrap.platformId === "chatgpt"}
         hideEmojis={wrap.platformId === "chatgpt"}
+        hideGhosting={wrap.platformId === "chatgpt"}
+        hideInitiator={wrap.platformId === "chatgpt"}
+        hideLateNight={wrap.platformId === "chatgpt"}
       />
     </div>
   )

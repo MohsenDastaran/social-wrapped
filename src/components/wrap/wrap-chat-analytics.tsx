@@ -27,6 +27,9 @@ type WrapChatAnalyticsProps = {
   wrapId: string
   hideProfanity?: boolean
   hideEmojis?: boolean
+  hideGhosting?: boolean
+  hideInitiator?: boolean
+  hideLateNight?: boolean
 }
 
 /** Per-contact analytics charts — used on the contact detail page. */
@@ -36,6 +39,9 @@ export function WrapChatAnalytics({
   wrapId,
   hideProfanity = false,
   hideEmojis = false,
+  hideGhosting = false,
+  hideInitiator = false,
+  hideLateNight = false,
 }: WrapChatAnalyticsProps) {
   const a = chat.analytics
   const display = chatDisplay(chat)
@@ -157,17 +163,19 @@ export function WrapChatAnalytics({
             }
           />
 
-          <GhostingChart
-            ghosting={a.ghosting}
-            exportName={`chat-${chat.chatId}-ghosting`}
-            selfName={selfName}
-            youLabel="You"
-            themLabel={
-              display.isDeleted
-                ? (display.subtitle ?? "Them")
-                : truncate(chat.chatName || display.title, 14)
-            }
-          />
+          {!hideGhosting ? (
+            <GhostingChart
+              ghosting={a.ghosting}
+              exportName={`chat-${chat.chatId}-ghosting`}
+              selfName={selfName}
+              youLabel="You"
+              themLabel={
+                display.isDeleted
+                  ? (display.subtitle ?? "Them")
+                  : truncate(chat.chatName || display.title, 14)
+              }
+            />
+          ) : null}
         </>
       ) : null}
 
@@ -223,33 +231,37 @@ export function WrapChatAnalytics({
             highlightLabel="Longer"
           />
 
-          <ComparisonKpiCard
-            title="Who starts / closes"
-            description="After 6h+ of silence"
-            exportName={`chat-${chat.chatId}-initiator`}
-            rows={initiatorRows}
-            metrics={[
-              { key: "starts", label: "Starts", accent: "teal" },
-              { key: "closes", label: "Closes", accent: "amber" },
-            ]}
-            highlightKey="starts"
-            highlightLabel="Opener"
-          />
+          {!hideInitiator ? (
+            <ComparisonKpiCard
+              title="Who starts / closes"
+              description="After 6h+ of silence"
+              exportName={`chat-${chat.chatId}-initiator`}
+              rows={initiatorRows}
+              metrics={[
+                { key: "starts", label: "Starts", accent: "teal" },
+                { key: "closes", label: "Closes", accent: "amber" },
+              ]}
+              highlightKey="starts"
+              highlightLabel="Opener"
+            />
+          ) : null}
 
-          <ComparisonKpiCard
-            title="Late night (1–5 AM)"
-            description={`${fmt(a.lateNight.totalLateNight)} messages`}
-            exportName={`chat-${chat.chatId}-late-night`}
-            rows={lateNightRows}
-            metrics={[
-              {
-                key: "count",
-                label: "Messages",
-                accent: "indigo",
-              },
-            ]}
-            highlightLabel="Night owl"
-          />
+          {!hideLateNight ? (
+            <ComparisonKpiCard
+              title="Late night (1–5 AM)"
+              description={`${fmt(a.lateNight.totalLateNight)} messages`}
+              exportName={`chat-${chat.chatId}-late-night`}
+              rows={lateNightRows}
+              metrics={[
+                {
+                  key: "count",
+                  label: "Messages",
+                  accent: "indigo",
+                },
+              ]}
+              highlightLabel="Night owl"
+            />
+          ) : null}
 
           <ComparisonKpiCard
             title="Edited messages"
