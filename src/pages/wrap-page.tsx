@@ -22,6 +22,14 @@ import { SpotifyLibraryInsights } from "@/components/wrap/spotify-library"
 import { SpotifyListeningInsights } from "@/components/wrap/spotify-listening"
 import { TikTokActivityInsights } from "@/components/wrap/tiktok-activity"
 import { TikTokEngagement } from "@/components/wrap/tiktok-engagement"
+import {
+  FacebookAds,
+  FacebookEngagement,
+  FacebookLoginActivity,
+  FacebookNetworkInsights,
+  FacebookPagesGroups,
+  FacebookPosts,
+} from "@/components/wrap/facebook-insights"
 import { XEngagement } from "@/components/wrap/x-engagement"
 import { XNetworkInsights } from "@/components/wrap/x-network"
 import { ChatGptModelsCard } from "@/components/wrap/chatgpt-models"
@@ -39,6 +47,7 @@ import { normalizeLinkedInInsights } from "@/platform/linkedin-types"
 import { normalizeAppleMusicInsights } from "@/platform/apple-music-types"
 import { normalizeSpotifyInsights } from "@/platform/spotify-types"
 import { normalizeTikTokInsights } from "@/platform/tiktok-types"
+import { normalizeFacebookInsights } from "@/platform/facebook-types"
 import { normalizeXInsights } from "@/platform/x-types"
 import { normalizeChatGptInsights } from "@/platform/chatgpt-types"
 import { normalizeWhatsAppInsights } from "@/platform/whatsapp-types"
@@ -115,6 +124,8 @@ export function WrapPage() {
           ? true
           : wrap.platformId === "tiktok" && wrap.tiktokInsights
             ? true
+            : wrap.platformId === "facebook" && wrap.facebookInsights
+              ? true
             : wrap.platformId === "spotify" && wrap.spotifyInsights
               ? true
               : wrap.platformId === "apple-music" && wrap.appleMusicInsights
@@ -143,6 +154,10 @@ export function WrapPage() {
   const tiktokInsights =
     wrap.platformId === "tiktok"
       ? normalizeTikTokInsights(wrap.tiktokInsights)
+      : null
+  const fbInsights =
+    wrap.platformId === "facebook"
+      ? normalizeFacebookInsights(wrap.facebookInsights)
       : null
   const spotifyInsights =
     wrap.platformId === "spotify"
@@ -221,6 +236,7 @@ export function WrapPage() {
           chatgptInsights={chatgptInsights}
           whatsappInsights={whatsappInsights}
           tiktokInsights={tiktokInsights}
+          facebookInsights={fbInsights}
           spotifyInsights={spotifyInsights}
           appleMusicInsights={appleMusicInsights}
         />
@@ -253,6 +269,32 @@ export function WrapPage() {
             category={platform?.category}
           />
           <InstagramEngagement data={igSocial} />
+        </>
+      ) : fbInsights ? (
+        <>
+          <FacebookNetworkInsights data={fbInsights} />
+          <FacebookEngagement data={fbInsights} />
+          <FacebookPosts data={fbInsights} />
+          <FacebookPagesGroups data={fbInsights} />
+          <FacebookAds data={fbInsights} />
+          <FacebookLoginActivity data={fbInsights} />
+          {wrap.analytics.chats.length > 0 ? (
+            <>
+              <header className="text-start">
+                <h2 className="font-heading text-xl font-semibold tracking-tight">
+                  Facebook messaging analysis
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Messenger threads from this download.
+                </p>
+              </header>
+              <WrapMainAnalytics
+                analytics={wrap.analytics}
+                wrapId={wrap.id}
+                category={platform?.category}
+              />
+            </>
+          ) : null}
         </>
       ) : liInsights ? (
         <>

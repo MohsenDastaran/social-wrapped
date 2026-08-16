@@ -30,6 +30,7 @@ import type { LinkedInInsights } from "@/platform/linkedin-types"
 import type { AppleMusicInsights } from "@/platform/apple-music-types"
 import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
+import type { FacebookInsights } from "@/platform/facebook-types"
 import type { XInsights } from "@/platform/x-types"
 import type { ChatGptInsights } from "@/platform/chatgpt-types"
 import type { WhatsAppInsights } from "@/platform/whatsapp-types"
@@ -49,6 +50,7 @@ type WrapShareMediaProps = {
   chatgptInsights?: ChatGptInsights | null
   whatsappInsights?: WhatsAppInsights | null
   tiktokInsights?: TikTokInsights | null
+  facebookInsights?: FacebookInsights | null
   spotifyInsights?: SpotifyInsights | null
   appleMusicInsights?: AppleMusicInsights | null
 }
@@ -100,6 +102,7 @@ export function WrapShareMedia({
   chatgptInsights = null,
   whatsappInsights = null,
   tiktokInsights = null,
+  facebookInsights = null,
   spotifyInsights = null,
   appleMusicInsights = null,
 }: WrapShareMediaProps) {
@@ -115,6 +118,7 @@ export function WrapShareMedia({
         chatgptInsights,
         whatsappInsights,
         tiktokInsights,
+        facebookInsights,
         spotifyInsights,
         appleMusicInsights,
       }),
@@ -128,6 +132,7 @@ export function WrapShareMedia({
       chatgptInsights,
       whatsappInsights,
       tiktokInsights,
+      facebookInsights,
       spotifyInsights,
       appleMusicInsights,
     ]

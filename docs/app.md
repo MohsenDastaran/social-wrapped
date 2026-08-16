@@ -119,6 +119,7 @@ Imports are processed on your device. Exact fields depend on what the platform p
 | **Google** | Takeout ZIP(s) — YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos metadata, Gmail **headers**, Drive **library metadata** (not message bodies or Drive file contents) |
 | **YouTube** | Via Google Takeout |
 | **Instagram** | Meta “export to device” JSON ZIP |
+| **Facebook** | Meta Accounts Centre “Download your information” JSON ZIP |
 | **TikTok** | In-app data download ZIP (prefer TXT) |
 | **Spotify** | Privacy data download (extended streaming history) |
 | **Apple Music** | Official data export |

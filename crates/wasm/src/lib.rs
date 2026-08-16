@@ -165,6 +165,46 @@ pub fn analyze_whatsapp_bytes_with_progress(
     .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
+/// Scan a Facebook Meta ZIP and return preview JSON
+/// (`displayName`, `suggestedMe`, `senders`, …).
+#[wasm_bindgen]
+pub fn preview_facebook_bytes(data: &[u8]) -> Result<String, JsValue> {
+    app_core::parsers::facebook::preview_export_bytes(data)
+        .and_then(|preview| preview.to_json())
+        .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// Full Facebook analytics pass.
+///
+/// Returns JSON `{ analytics, facebookInsights }` (Messenger + network/activity).
+/// `me_name` may be omitted when the profile Name already matches senders,
+/// or when the ZIP has no Messenger threads.
+#[wasm_bindgen]
+pub fn analyze_facebook_bytes_with_progress(
+    data: &[u8],
+    me_name: Option<String>,
+    on_progress: &js_sys::Function,
+) -> Result<String, JsValue> {
+    let me = me_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    app_core::parsers::facebook::analyze_export_bytes_with_progress(
+        data,
+        me,
+        |phase, current, total| {
+            let _ = on_progress.call3(
+                &JsValue::NULL,
+                &JsValue::from_str(phase.as_str()),
+                &JsValue::from_f64(current as f64),
+                &JsValue::from_f64(total as f64),
+            );
+        },
+    )
+    .and_then(|result| result.to_json())
+    .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
 /// Scan an Instagram Meta ZIP and return preview JSON
 /// (`displayName`, `username`, `suggestedMe`, `senders`, …).
 #[wasm_bindgen]

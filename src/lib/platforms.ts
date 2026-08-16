@@ -7,6 +7,7 @@ export const PLATFORM_ENABLED = {
   x: true,
   google: true,
   instagram: true,
+  facebook: true,
   tiktok: true,
   spotify: true,
   youtube: true,
@@ -215,6 +216,33 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     importTitle: "Import Instagram data",
     importDescription:
       "Upload your Instagram information export ZIP (JSON). Chats are processed on your device — media files are ignored.",
+    acceptedFiles: [".zip"],
+    accept: ".zip,application/zip",
+  },
+  {
+    id: "facebook",
+    name: "Facebook",
+    category: "social",
+    accentClass: "border-blue-600/50",
+    gradientClass:
+      "from-blue-600/25 via-sky-400/10 to-transparent dark:from-blue-500/20 dark:via-blue-600/5",
+    summary:
+      "Download your information from Meta Accounts Centre as a JSON ZIP.",
+    exportPath:
+      "Accounts Centre → Your information and permissions → Download your information",
+    formats: "JSON",
+    extractable:
+      "Friends, following, reactions, comments, posts, pages, groups, Messenger threads, advertisers, and login activity.",
+    steps: [
+      "Open Accounts Centre → Your information and permissions → Download your information (or Export your information).",
+      "Choose Export to device, select JSON, and include Facebook activity, connections, and messages if you want Messenger analytics.",
+      "Download the ZIP when ready and import it in Social Wrapped without unzipping.",
+    ],
+    importHint:
+      "Use the JSON Meta export ZIP. Media is skipped. A full Messenger download includes inbox/ plus archived threads.",
+    importTitle: "Import Facebook data",
+    importDescription:
+      "Upload your Facebook Download Your Information ZIP (JSON). Friends, activity, and Messenger chats are processed on your device — media files are ignored.",
     acceptedFiles: [".zip"],
     accept: ".zip,application/zip",
   },

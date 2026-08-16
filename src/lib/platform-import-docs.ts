@@ -49,6 +49,16 @@ export const PLATFORM_IMPORT_DOCS: Partial<
       "https://help.instagram.com/181231772500920/?helpref=uf_share",
     officialExportLabel: "Instagram export help",
   },
+  facebook: {
+    title: "Download your Facebook information",
+    paragraphs: [
+      "Meta lets you download a copy of your Facebook information from Accounts Centre. Social Wrapped reads the JSON ZIP on your device — photos, videos, uploaded contacts, emails, phone numbers, and IP addresses are skipped.",
+      "Open Accounts Centre → Your information and permissions → Download your information (wording may say Export your information). Choose Export to device, select JSON, and include Facebook activity, connections, and messages if you want Messenger analytics.",
+      "When the export is ready, download the ZIP and import it here without unzipping. A download that only includes archived or filtered threads still wraps friends, reactions, posts, and pages. A full Messenger download adds inbox/ and message_requests/.",
+    ],
+    officialExportUrl: "https://www.facebook.com/help/212802163081380",
+    officialExportLabel: "Facebook download-your-information help",
+  },
   whatsapp: {
     title: "Export WhatsApp account info or a chat",
     paragraphs: [

@@ -17,6 +17,7 @@ import {
 } from "@/platform/apple-music-types"
 import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
+import type { FacebookInsights } from "@/platform/facebook-types"
 import type { XInsights } from "@/platform/x-types"
 import type { ChatGptInsights } from "@/platform/chatgpt-types"
 import type { WhatsAppInsights } from "@/platform/whatsapp-types"
@@ -37,6 +38,7 @@ export type StoryCatalogInput = {
   chatgptInsights?: ChatGptInsights | null
   whatsappInsights?: WhatsAppInsights | null
   tiktokInsights?: TikTokInsights | null
+  facebookInsights?: FacebookInsights | null
   spotifyInsights?: SpotifyInsights | null
   appleMusicInsights?: AppleMusicInsights | null
 }
@@ -89,6 +91,15 @@ const X_MESSAGING_STORY_EXCLUDE = new Set([
 const TIKTOK_VIDEO_IDS = [
   "tt-activity",
   "tt-engage",
+  "heatmap",
+  "activity",
+  "sent-received",
+] as const
+
+const FACEBOOK_VIDEO_IDS = [
+  "fb-network",
+  "fb-engage",
+  "fb-posts",
   "heatmap",
   "activity",
   "sent-received",
@@ -372,6 +383,91 @@ export function buildTikTokStorySpecs(
   return specs
 }
 
+/** Facebook network / engagement / posts slides (gated on data). */
+export function buildFacebookStorySpecs(
+  insights: FacebookInsights
+): WrapStorySpec[] {
+  const specs: WrapStorySpec[] = []
+
+  if (
+    insights.friendCount > 0 ||
+    insights.followingCount > 0 ||
+    insights.unfriendedCount > 0
+  ) {
+    specs.push({
+      id: "fb-network",
+      exportName: "facebook-network-kpis",
+      heading: "Your Facebook network",
+      subtext: `${fmt(insights.friendCount)} friends · ${fmt(insights.followingCount)} following`,
+    })
+  }
+
+  if (insights.reactionCount > 0 || insights.commentsWrittenCount > 0) {
+    specs.push({
+      id: "fb-engage",
+      exportName: "facebook-engage-kpis",
+      heading: "Reactions & comments",
+      subtext: `${fmt(insights.reactionCount)} reactions · ${fmt(insights.commentsWrittenCount)} comments`,
+    })
+  }
+
+  if (insights.postCount > 0) {
+    specs.push({
+      id: "fb-posts",
+      exportName: "facebook-posts-kpis",
+      heading: "Your posts",
+      subtext: `${fmt(insights.postCount)} posts in this download`,
+    })
+  }
+
+  if (insights.pageLikeCount > 0 || insights.groupsJoinedCount > 0) {
+    specs.push({
+      id: "fb-pages",
+      exportName: "facebook-pages-kpis",
+      heading: "Pages & groups",
+      subtext: `${fmt(insights.pageLikeCount)} pages · ${fmt(insights.groupsJoinedCount)} groups joined`,
+    })
+  }
+
+  if (insights.advertiserCount > 0) {
+    specs.push({
+      id: "fb-ads",
+      exportName: "facebook-ads-kpis",
+      heading: "Advertisers",
+      subtext: `${fmt(insights.advertiserCount)} advertisers using your activity`,
+    })
+  }
+
+  if (insights.loginCount > 0) {
+    specs.push({
+      id: "fb-logins",
+      exportName: "facebook-login-kpis",
+      heading: "Login activity",
+      subtext: `${fmt(insights.loginCount)} sign-ins recorded`,
+    })
+  }
+
+  if (insights.reactionHeatmap.length > 0) {
+    specs.push({
+      id: "fb-reaction-heatmap",
+      exportName: "facebook-reaction-heatmap",
+      heading: "When you react",
+      subtext: "Days you liked, reacted, or commented.",
+    })
+  }
+
+  if (insights.postHeatmap.length > 0) {
+    specs.push({
+      id: "fb-post-heatmap",
+      exportName: "facebook-post-heatmap",
+      heading: "When you posted",
+      subtext: "Your Facebook posts on the calendar.",
+    })
+  }
+
+  return specs
+}
+
 function pickVideoIds(
   preferred: readonly string[],
   available: WrapStorySpec[],
@@ -434,6 +530,17 @@ export function buildPlatformStoryCatalog(
     return {
       storySpecs,
       videoSlideIds: pickVideoIds(TIKTOK_VIDEO_IDS, storySpecs),
+    }
+  }
+
+  if (input.platformId === "facebook" && input.facebookInsights) {
+    const fb = buildFacebookStorySpecs(input.facebookInsights)
+    const messagingForFb =
+      input.analytics.chats.length > 0 ? messaging : []
+    const storySpecs = [...fb, ...messagingForFb]
+    return {
+      storySpecs,
+      videoSlideIds: pickVideoIds(FACEBOOK_VIDEO_IDS, storySpecs),
     }
   }
 
