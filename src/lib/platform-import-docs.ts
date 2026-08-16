@@ -84,6 +84,16 @@ export const PLATFORM_IMPORT_DOCS: Partial<
       "https://www.linkedin.com/mypreferences/d/download-my-data",
     officialExportLabel: "LinkedIn download your data",
   },
+  chatgpt: {
+    title: "Export your ChatGPT data",
+    paragraphs: [
+      "ChatGPT lets you download a copy of your conversations as a ZIP. Social Wrapped reads conversation text and model names on your device — attached files and the bundled chat.html viewer are skipped.",
+      "In ChatGPT, open Settings → Data controls → Export data. Confirm, wait for the email, then download the ZIP. Import that file here without unzipping.",
+      "The archive includes conversations-*.json (your chats), user.json (account metadata), and optional ads/settings files. Only conversations are used for the wrap.",
+    ],
+    officialExportUrl: "https://chatgpt.com/#settings",
+    officialExportLabel: "Open ChatGPT settings",
+  },
 }
 
 export function getPlatformImportDoc(

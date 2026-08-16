@@ -265,6 +265,37 @@ pub fn analyze_x_bytes_with_progress(
     .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
+/// Scan a ChatGPT data-export ZIP and return preview JSON.
+#[wasm_bindgen]
+pub fn preview_chatgpt_bytes(data: &[u8]) -> Result<String, JsValue> {
+    app_core::parsers::chatgpt::preview_export_bytes(data)
+        .and_then(|preview| preview.to_json())
+        .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// Full ChatGPT analytics pass.
+///
+/// Returns JSON `{ analytics, chatgptInsights }` (conversations + models).
+#[wasm_bindgen]
+pub fn analyze_chatgpt_bytes_with_progress(
+    data: &[u8],
+    on_progress: &js_sys::Function,
+) -> Result<String, JsValue> {
+    app_core::parsers::chatgpt::analyze_export_bytes_with_progress(
+        data,
+        |phase, current, total| {
+            let _ = on_progress.call3(
+                &JsValue::NULL,
+                &JsValue::from_str(phase.as_str()),
+                &JsValue::from_f64(current as f64),
+                &JsValue::from_f64(total as f64),
+            );
+        },
+    )
+    .and_then(|result| result.to_json())
+    .map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
 /// Scan a TikTok TXT data-download ZIP and return preview JSON.
 #[wasm_bindgen]
 pub fn preview_tiktok_bytes(data: &[u8]) -> Result<String, JsValue> {

@@ -10,6 +10,10 @@ import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
 import { normalizeXInsights, type XInsights } from "@/platform/x-types"
 import {
+  normalizeChatGptInsights,
+  type ChatGptInsights,
+} from "@/platform/chatgpt-types"
+import {
   normalizeWhatsAppInsights,
   type WhatsAppInsights,
 } from "@/platform/whatsapp-types"
@@ -22,6 +26,7 @@ export type { AppleMusicInsights } from "@/platform/apple-music-types"
 export type { SpotifyInsights } from "@/platform/spotify-types"
 export type { TikTokInsights } from "@/platform/tiktok-types"
 export type { XInsights } from "@/platform/x-types"
+export type { ChatGptInsights } from "@/platform/chatgpt-types"
 export type { WhatsAppInsights } from "@/platform/whatsapp-types"
 
 /** Result of a platform import pass (side insights for IG / Google / LinkedIn / X / TikTok / Spotify / WA account). */
@@ -31,6 +36,7 @@ export type ImportResult = {
   googleInsights?: GoogleInsights
   linkedinInsights?: LinkedInInsights
   xInsights?: XInsights
+  chatgptInsights?: ChatGptInsights
   tiktokInsights?: TikTokInsights
   spotifyInsights?: SpotifyInsights
   appleMusicInsights?: AppleMusicInsights
@@ -131,6 +137,8 @@ export type AppleMusicImportWorkerRequest = { type: "file"; file: File }
 
 export type XImportWorkerRequest = { type: "file"; file: File }
 
+export type ChatGptImportWorkerRequest = { type: "file"; file: File }
+
 export type ImportWorkerResponse =
   | {
       type: "progress"
@@ -206,6 +214,13 @@ function validateFile(platform: PlatformConfig, file: File): void {
     return
   }
 
+  if (platform.id === "chatgpt") {
+    if (!lower.endsWith(".zip")) {
+      throw new Error("Please choose your ChatGPT data export as a ZIP.")
+    }
+    return
+  }
+
   if (platform.id === "tiktok") {
     if (!lower.endsWith(".zip")) {
       throw new Error(
@@ -241,7 +256,7 @@ function validateFile(platform: PlatformConfig, file: File): void {
   }
 
   throw new Error(
-    `${platform.name} import isn't wired yet. Telegram, WhatsApp, Instagram, LinkedIn, X, TikTok, Spotify, Apple Music, Google, and YouTube exports can be analyzed right now.`
+    `${platform.name} import isn't wired yet. Telegram, WhatsApp, Instagram, LinkedIn, X, ChatGPT, TikTok, Spotify, Apple Music, Google, and YouTube exports can be analyzed right now.`
   )
 }
 
@@ -1025,6 +1040,95 @@ function importXFile(
   })
 }
 
+function parseChatGptAnalyzeJson(analyticsJson: string): ImportResult {
+  const payload = JSON.parse(analyticsJson) as {
+    analytics?: WrapAnalytics
+    chatgptInsights?: ChatGptInsights
+  }
+
+  if (!payload.analytics?.account) {
+    throw new Error("ChatGPT import returned incomplete analytics.")
+  }
+
+  return {
+    analytics: normalizeAnalytics(payload.analytics),
+    chatgptInsights: payload.chatgptInsights
+      ? normalizeChatGptInsights(payload.chatgptInsights)
+      : undefined,
+  }
+}
+
+function importChatGptFile(
+  file: File,
+  onProgress?: (progress: ImportProgress) => void
+): Promise<ImportResult> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL("../workers/chatgpt-import.worker.ts", import.meta.url),
+      { type: "module", name: "chatgpt-import" }
+    )
+
+    let settled = false
+
+    const fail = (error: Error) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      reject(error)
+    }
+
+    const succeed = (result: ImportResult) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      resolve(result)
+    }
+
+    worker.onmessage = (event: MessageEvent<ImportWorkerResponse>) => {
+      const message = event.data
+      if (message.type === "progress") {
+        const phase = normalizeProgressPhase(message.phase)
+        const { current, total } = message
+        const percent =
+          total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0
+        onProgress?.({
+          phase,
+          percent,
+          overallPercent: importOverallPercent(phase, percent),
+          current,
+          total,
+        })
+        return
+      }
+
+      if (message.type === "done") {
+        try {
+          succeed(parseChatGptAnalyzeJson(message.analyticsJson))
+        } catch (error) {
+          fail(error instanceof Error ? error : new Error(String(error)))
+        }
+        return
+      }
+
+      if (message.type === "error") {
+        fail(new Error(message.message || "ChatGPT import failed."))
+        return
+      }
+
+      fail(new Error("Unexpected ChatGPT import response."))
+    }
+
+    worker.onerror = (event) => {
+      fail(new Error(event.message || "Import worker failed to start."))
+    }
+
+    worker.postMessage({
+      type: "file",
+      file,
+    } satisfies ChatGptImportWorkerRequest)
+  })
+}
+
 function parseGoogleAnalyzeJson(analyticsJson: string): ImportResult {
   const payload = JSON.parse(analyticsJson) as {
     analytics?: WrapAnalytics
@@ -1182,6 +1286,10 @@ export function importPlatformFiles(
 
   if (platform.id === "x") {
     return importXFile(file, onProgress)
+  }
+
+  if (platform.id === "chatgpt") {
+    return importChatGptFile(file, onProgress)
   }
 
   return importTelegramFile(file, onProgress)

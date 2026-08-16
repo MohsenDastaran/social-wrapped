@@ -45,6 +45,11 @@ type WasmModuleExports = {
     data: Uint8Array,
     onProgress: WasmProgressCallback
   ) => string
+  preview_chatgpt_bytes: (data: Uint8Array) => string
+  analyze_chatgpt_bytes_with_progress: (
+    data: Uint8Array,
+    onProgress: WasmProgressCallback
+  ) => string
   preview_tiktok_bytes: (data: Uint8Array) => string
   analyze_tiktok_bytes_with_progress: (
     data: Uint8Array,
@@ -90,6 +95,8 @@ declare module "@/wasm-pkg/social_wrapped_wasm" {
   export const analyze_linkedin_bytes_with_progress: WasmModuleExports["analyze_linkedin_bytes_with_progress"]
   export const preview_x_bytes: WasmModuleExports["preview_x_bytes"]
   export const analyze_x_bytes_with_progress: WasmModuleExports["analyze_x_bytes_with_progress"]
+  export const preview_chatgpt_bytes: WasmModuleExports["preview_chatgpt_bytes"]
+  export const analyze_chatgpt_bytes_with_progress: WasmModuleExports["analyze_chatgpt_bytes_with_progress"]
   export const preview_tiktok_bytes: WasmModuleExports["preview_tiktok_bytes"]
   export const analyze_tiktok_bytes_with_progress: WasmModuleExports["analyze_tiktok_bytes_with_progress"]
   export const preview_spotify_bytes: WasmModuleExports["preview_spotify_bytes"]
@@ -118,6 +125,8 @@ declare module "@/wasm-pkg/social_wrapped_wasm.js" {
   export const analyze_linkedin_bytes_with_progress: WasmModuleExports["analyze_linkedin_bytes_with_progress"]
   export const preview_x_bytes: WasmModuleExports["preview_x_bytes"]
   export const analyze_x_bytes_with_progress: WasmModuleExports["analyze_x_bytes_with_progress"]
+  export const preview_chatgpt_bytes: WasmModuleExports["preview_chatgpt_bytes"]
+  export const analyze_chatgpt_bytes_with_progress: WasmModuleExports["analyze_chatgpt_bytes_with_progress"]
   export const preview_tiktok_bytes: WasmModuleExports["preview_tiktok_bytes"]
   export const analyze_tiktok_bytes_with_progress: WasmModuleExports["analyze_tiktok_bytes_with_progress"]
   export const preview_spotify_bytes: WasmModuleExports["preview_spotify_bytes"]
@@ -146,6 +155,8 @@ declare module "../wasm-pkg/social_wrapped_wasm.js" {
   export const analyze_linkedin_bytes_with_progress: WasmModuleExports["analyze_linkedin_bytes_with_progress"]
   export const preview_x_bytes: WasmModuleExports["preview_x_bytes"]
   export const analyze_x_bytes_with_progress: WasmModuleExports["analyze_x_bytes_with_progress"]
+  export const preview_chatgpt_bytes: WasmModuleExports["preview_chatgpt_bytes"]
+  export const analyze_chatgpt_bytes_with_progress: WasmModuleExports["analyze_chatgpt_bytes_with_progress"]
   export const preview_tiktok_bytes: WasmModuleExports["preview_tiktok_bytes"]
   export const analyze_tiktok_bytes_with_progress: WasmModuleExports["analyze_tiktok_bytes_with_progress"]
   export const preview_spotify_bytes: WasmModuleExports["preview_spotify_bytes"]

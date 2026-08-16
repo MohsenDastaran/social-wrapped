@@ -12,9 +12,10 @@ export type PlatformLogoId =
   | "apple-music"
   | "youtube"
   | "linkedin"
+  | "chatgpt"
 
 /** Logos that ship as black fills — invert in dark mode. */
-const MONOCHROME_LOGOS = new Set<PlatformLogoId>(["x", "tiktok"])
+const MONOCHROME_LOGOS = new Set<PlatformLogoId>(["x", "tiktok", "chatgpt"])
 
 type PlatformLogoProps = {
   id: PlatformLogoId

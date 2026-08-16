@@ -12,6 +12,7 @@ export const PLATFORM_ENABLED = {
   youtube: true,
   linkedin: true,
   "apple-music": true,
+  chatgpt: true,
 } as const satisfies Record<PlatformLogoId, boolean>
 
 export type PlatformId = keyof typeof PLATFORM_ENABLED
@@ -287,6 +288,31 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     importTitle: "Import LinkedIn data",
     importDescription:
       "Upload your LinkedIn data export ZIP. Connections, messages, and engagement are processed on your device.",
+    acceptedFiles: [".zip"],
+    accept: ".zip,application/zip",
+  },
+  {
+    id: "chatgpt",
+    name: "ChatGPT",
+    accentClass: "border-emerald-600/50",
+    gradientClass:
+      "from-emerald-600/25 via-teal-500/10 to-transparent dark:from-emerald-400/20 dark:via-teal-500/5",
+    summary:
+      "Export your ChatGPT data ZIP from settings — conversations stay on this device.",
+    exportPath: "Settings → Data controls → Export data",
+    formats: "ZIP",
+    extractable:
+      "Conversation history (you vs ChatGPT), timestamps, model names, and a word cloud of your prompts.",
+    steps: [
+      "Open ChatGPT → Settings → Data controls → Export data.",
+      "Confirm the request and wait for the email, then download the ZIP (do not unzip).",
+      "In Social Wrapped, import that ZIP from Home → ChatGPT.",
+    ],
+    importHint:
+      "Upload the complete ChatGPT data export ZIP. Conversation text is analyzed locally; attached files and chat.html are skipped.",
+    importTitle: "Import ChatGPT data",
+    importDescription:
+      "Upload your ChatGPT data export ZIP. Conversations and models are analyzed on your device.",
     acceptedFiles: [".zip"],
     accept: ".zip,application/zip",
   },

@@ -163,6 +163,7 @@ export function PlatformImportView({
         googleInsights,
         linkedinInsights,
         xInsights,
+        chatgptInsights,
         whatsappInsights,
         tiktokInsights,
         spotifyInsights,
@@ -192,6 +193,7 @@ export function PlatformImportView({
         googleInsights,
         linkedinInsights,
         xInsights,
+        chatgptInsights,
         whatsappInsights,
         tiktokInsights,
         spotifyInsights,
@@ -258,6 +260,10 @@ export function PlatformImportView({
                 ? progress?.phase === "computing"
                   ? "Building your X wrap"
                   : "Reading your X archive ZIP (tweets + DMs)"
+                : platform.id === "chatgpt"
+                  ? progress?.phase === "computing"
+                    ? "Building your ChatGPT wrap"
+                    : "Reading your ChatGPT conversations"
                 : platform.id === "google" || platform.id === "youtube"
                   ? progress?.phase === "computing"
                     ? "Building your Google wrap"
