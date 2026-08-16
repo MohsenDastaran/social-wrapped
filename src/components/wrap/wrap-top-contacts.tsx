@@ -35,11 +35,15 @@ const LIST_EXPORT = {
 
 const VISIBLE_CONTACTS = 50
 
+type EntityLabel = "contact" | "chat"
+
 type WrapTopContactsProps = {
   analytics: WrapAnalytics
   onSelect: (chatId: number) => void
   /** Extra context under the section title (e.g. X archive ID limits). */
   description?: string
+  /** ChatGPT wrap uses “chats”; messaging platforms keep “contacts”. */
+  entityLabel?: EntityLabel
 }
 
 function namesMatch(a: string, b: string): boolean {
@@ -61,6 +65,7 @@ export function WrapTopContacts({
   analytics,
   onSelect,
   description = "People and groups you message most. Search to find anyone, then tap to open their stats.",
+  entityLabel = "contact",
 }: WrapTopContactsProps) {
   const selfName = analytics.displayName
   const savedMessages =
@@ -123,7 +128,7 @@ export function WrapTopContacts({
     <section className="flex flex-col gap-4">
       <header className="text-start">
         <h2 className="font-heading text-xl font-semibold tracking-tight">
-          Top contacts
+          {entityLabel === "chat" ? "Top chats" : "Top contacts"}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </header>
@@ -170,13 +175,17 @@ export function WrapTopContacts({
       </div>
 
       {directory.length > 1 ? (
-        <ContactBarRaceChart chats={directory} />
+        <ContactBarRaceChart
+          chats={directory}
+          title={entityLabel === "chat" ? "Chat race" : "Contact race"}
+        />
       ) : null}
 
       {directory.length > 0 ? (
         <TopContactsList
           chats={topContacts}
           directory={directory}
+          entityLabel={entityLabel}
           onSelect={onSelect}
         />
       ) : null}
@@ -382,10 +391,12 @@ function contactMatches(chat: ChatResult, query: string): boolean {
 function TopContactsList({
   chats,
   directory,
+  entityLabel,
   onSelect,
 }: {
   chats: ChatResult[]
   directory: ChatResult[]
+  entityLabel: EntityLabel
   onSelect: (chatId: number) => void
 }) {
   const { ref, exporting, exportError, exportPng } =
@@ -408,9 +419,10 @@ function TopContactsList({
     ranked.forEach((chat, index) => map.set(chat.chatId, index))
     return map
   }, [ranked])
+  const noun = entityLabel === "chat" ? "chats" : "contacts"
   const title = searching
     ? `${visible.length} ${visible.length === 1 ? "match" : "matches"}`
-    : `Top ${Math.min(VISIBLE_CONTACTS, ranked.length)} contacts`
+    : `Top ${Math.min(VISIBLE_CONTACTS, ranked.length)} ${noun}`
 
   return (
     <div

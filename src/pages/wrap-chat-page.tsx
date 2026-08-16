@@ -142,6 +142,8 @@ export function WrapChatPage() {
         chat={chat}
         selfName={wrap.analytics.displayName || wrap.stats.displayName}
         wrapId={wrap.id}
+        hideProfanity={wrap.platformId === "chatgpt"}
+        hideEmojis={wrap.platformId === "chatgpt"}
       />
     </div>
   )

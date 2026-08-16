@@ -388,6 +388,8 @@ export function buildPlatformStoryCatalog(
   const messaging = buildMessagingStorySpecs(
     input.displayName,
     input.analytics
+  ).filter((spec) =>
+    input.platformId === "chatgpt" ? spec.id !== "emojis" : true
   )
 
   if (input.platformId === "instagram" && input.instagramSocial) {

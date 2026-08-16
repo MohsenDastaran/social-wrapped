@@ -336,7 +336,12 @@ export function WrapPage() {
                   You vs ChatGPT across every conversation in this export.
                 </p>
               </header>
-              <WrapMainAnalytics analytics={wrap.analytics} wrapId={wrap.id} />
+              <WrapMainAnalytics
+                analytics={wrap.analytics}
+                wrapId={wrap.id}
+                hideProfanity
+                hideEmojis
+              />
             </>
           ) : null}
         </>
@@ -347,6 +352,7 @@ export function WrapPage() {
       {!isGoogleFamily && wrap.analytics.chats.length > 0 ? (
         <WrapTopContacts
           analytics={wrap.analytics}
+          entityLabel={wrap.platformId === "chatgpt" ? "chat" : "contact"}
           description={
             wrap.platformId === "x"
               ? "X’s archive stores DMs by account ID. Names come from people you’ve mentioned or replied to in tweets; groups use their archive name when set."

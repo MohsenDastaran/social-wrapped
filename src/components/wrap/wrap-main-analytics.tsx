@@ -21,10 +21,17 @@ import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
 type WrapMainAnalyticsProps = {
   analytics: WrapAnalytics
   wrapId: string
+  hideProfanity?: boolean
+  hideEmojis?: boolean
 }
 
 /** Account-wide analytics — chart-first layout. */
-export function WrapMainAnalytics({ analytics, wrapId }: WrapMainAnalyticsProps) {
+export function WrapMainAnalytics({
+  analytics,
+  wrapId,
+  hideProfanity = false,
+  hideEmojis = false,
+}: WrapMainAnalyticsProps) {
   if (!analytics?.account) return null
   const a = analytics.account
 
@@ -134,15 +141,19 @@ export function WrapMainAnalytics({ analytics, wrapId }: WrapMainAnalyticsProps)
         exportName="main-word-cloud"
       />
 
-      <ProfanityRankingCard
-        wrapId={wrapId}
-        selfName={analytics.displayName}
-        stats={a.profanity}
-        exportName="main-profanity"
-        excludeSelf
-      />
+      {!hideProfanity ? (
+        <ProfanityRankingCard
+          wrapId={wrapId}
+          selfName={analytics.displayName}
+          stats={a.profanity}
+          exportName="main-profanity"
+          excludeSelf
+        />
+      ) : null}
 
-      <TopEmojisCard emojis={a.emojis.topOverall} exportName="main-emojis" />
+      {!hideEmojis ? (
+        <TopEmojisCard emojis={a.emojis.topOverall} exportName="main-emojis" />
+      ) : null}
 
       <CircadianRhythmCard
         hourlyTotal={a.circadian.hourlyTotal}

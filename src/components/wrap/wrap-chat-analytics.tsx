@@ -25,6 +25,8 @@ type WrapChatAnalyticsProps = {
   /** Account display name — used to split “You” vs contact emoji scopes. */
   selfName: string
   wrapId: string
+  hideProfanity?: boolean
+  hideEmojis?: boolean
 }
 
 /** Per-contact analytics charts — used on the contact detail page. */
@@ -32,6 +34,8 @@ export function WrapChatAnalytics({
   chat,
   selfName,
   wrapId,
+  hideProfanity = false,
+  hideEmojis = false,
 }: WrapChatAnalyticsProps) {
   const a = chat.analytics
   const display = chatDisplay(chat)
@@ -130,7 +134,7 @@ export function WrapChatAnalytics({
         exportName={`chat-${chat.chatId}-word-cloud`}
       />
 
-      {!isSavedMessages ? (
+      {!hideProfanity && !isSavedMessages ? (
         <ProfanityRankingCard
           wrapId={wrapId}
           chatId={chat.chatId}
@@ -264,13 +268,15 @@ export function WrapChatAnalytics({
         </div>
       ) : null}
 
-      <TopEmojisCard
-        emojis={a.emojis.topOverall}
-        exportName={`chat-${chat.chatId}-emojis`}
-        description="Most used in this chat"
-        limit={10}
-        scopes={isSavedMessages ? undefined : emojiScopes}
-      />
+      {!hideEmojis ? (
+        <TopEmojisCard
+          emojis={a.emojis.topOverall}
+          exportName={`chat-${chat.chatId}-emojis`}
+          description="Most used in this chat"
+          limit={10}
+          scopes={isSavedMessages ? undefined : emojiScopes}
+        />
+      ) : null}
 
       {!isSavedMessages ? (
         <CircadianRhythmCard
