@@ -6,9 +6,10 @@ import {
   useReducedMotion,
   type Variants,
 } from "framer-motion"
-import { ArrowUpRight, Play, Sparkles, Star, XIcon } from "lucide-react"
+import { ArrowUpRight, Sparkles, Star, XIcon } from "lucide-react"
 import { useEffect, useId, useMemo, useState } from "react"
 
+import { PlatformLogo } from "@/components/platform-logo"
 import { Button } from "@/components/ui/button"
 
 const SOURCE_URL = "https://github.com/MohsenDastaran/social-wrapped"
@@ -19,8 +20,10 @@ const gettingStartedSteps = [
   { label: "03", value: "See the analytics" },
 ]
 
+type DemoPlatformId = "telegram" | "instagram"
+
 type PreviewDetailsCardProps = {
-  onTryDemo?: () => void
+  onTryDemo?: (platform: DemoPlatformId) => void
   onDismiss?: () => void
   loading?: boolean
 }
@@ -112,7 +115,8 @@ export function PreviewDetailsCard({
               id={descriptionId}
               className="text-sm leading-relaxed text-[var(--muted-foreground)]"
             >
-              Three simple steps to your wrap — or try a demo in one tap.
+              Three simple steps to your wrap — or try a Telegram or Instagram
+              demo.
             </p>
           </div>
 
@@ -165,16 +169,37 @@ export function PreviewDetailsCard({
                 </a>
 
                 {onTryDemo ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="mt-4 w-full"
-                    disabled={loading}
-                    onClick={onTryDemo}
-                  >
-                    <Play data-icon="inline-start" />
-                    Try with demo data
-                  </Button>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-full"
+                      disabled={loading}
+                      onClick={() => onTryDemo("telegram")}
+                    >
+                      <PlatformLogo
+                        id="telegram"
+                        className="size-4"
+                        title="Telegram"
+                      />
+                      Telegram
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      disabled={loading}
+                      onClick={() => onTryDemo("instagram")}
+                    >
+                      <PlatformLogo
+                        id="instagram"
+                        className="size-4"
+                        title="Instagram"
+                      />
+                      Instagram
+                    </Button>
+                  </div>
                 ) : null}
               </motion.div>
             )}

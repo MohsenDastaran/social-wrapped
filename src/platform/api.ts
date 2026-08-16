@@ -42,11 +42,21 @@ export async function loadTelegramMock(): Promise<string> {
   return wasm.load_telegram_mock()
 }
 
-/** Two-year seeded Telegram `result.json` generated in Rust. */
+/// Seeded 3.5-year Telegram `result.json` generated in Rust.
 export async function generateTelegramDemoJson(): Promise<string> {
   if (isTauri()) {
     return invoke<string>("generate_telegram_demo_json")
   }
   const wasm = await getWasm()
   return wasm.generate_telegram_demo_json()
+}
+
+/** Seeded 3.5-year Instagram Meta JSON ZIP generated in Rust. */
+export async function generateInstagramDemoZip(): Promise<Uint8Array> {
+  if (isTauri()) {
+    const data = await invoke<number[] | Uint8Array>("generate_instagram_demo_zip")
+    return data instanceof Uint8Array ? data : new Uint8Array(data)
+  }
+  const wasm = await getWasm()
+  return wasm.generate_instagram_demo_zip()
 }

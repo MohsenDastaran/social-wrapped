@@ -12,6 +12,10 @@ export function generate_telegram_demo_json(): string {
   throw new Error("WASM module not built. Run: bun run build:wasm:dev")
 }
 
+export function generate_instagram_demo_zip(): Uint8Array {
+  throw new Error("WASM module not built. Run: bun run build:wasm:dev")
+}
+
 export function summarize_telegram_bytes(_data: Uint8Array): string {
   throw new Error("WASM module not built. Run: bun run build:wasm:dev")
 }

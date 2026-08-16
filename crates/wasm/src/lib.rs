@@ -7,10 +7,17 @@ pub fn greet(name: &str) -> String {
     app_core::greet(name)
 }
 
-/// Seeded two-year Telegram Desktop `result.json` for the getting-started demo.
+/// Seeded 3.5-year Telegram Desktop `result.json` for the getting-started demo.
 #[wasm_bindgen]
 pub fn generate_telegram_demo_json() -> Result<String, JsValue> {
     app_core::mock::telegram_demo::generate_export_json()
+        .map_err(|error| JsValue::from_str(&error.to_string()))
+}
+
+/// Seeded 3.5-year Instagram Meta JSON ZIP for the getting-started demo.
+#[wasm_bindgen]
+pub fn generate_instagram_demo_zip() -> Result<Vec<u8>, JsValue> {
+    app_core::mock::instagram_demo::generate_export_zip()
         .map_err(|error| JsValue::from_str(&error.to_string()))
 }
 

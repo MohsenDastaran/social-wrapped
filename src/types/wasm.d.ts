@@ -9,6 +9,7 @@ type WasmModuleExports = {
   greet: (name: string) => string
   load_telegram_mock: () => Promise<string>
   generate_telegram_demo_json: () => string
+  generate_instagram_demo_zip: () => Uint8Array
   summarize_telegram_bytes: (data: Uint8Array) => string
   summarize_telegram_bytes_with_progress: (
     data: Uint8Array,
@@ -84,6 +85,7 @@ declare module "@/wasm-pkg/social_wrapped_wasm" {
   export const greet: WasmModuleExports["greet"]
   export const load_telegram_mock: WasmModuleExports["load_telegram_mock"]
   export const generate_telegram_demo_json: WasmModuleExports["generate_telegram_demo_json"]
+  export const generate_instagram_demo_zip: WasmModuleExports["generate_instagram_demo_zip"]
   export const summarize_telegram_bytes: WasmModuleExports["summarize_telegram_bytes"]
   export const summarize_telegram_bytes_with_progress: WasmModuleExports["summarize_telegram_bytes_with_progress"]
   export const analyze_telegram_bytes_with_progress: WasmModuleExports["analyze_telegram_bytes_with_progress"]
@@ -114,6 +116,7 @@ declare module "@/wasm-pkg/social_wrapped_wasm.js" {
   export const greet: WasmModuleExports["greet"]
   export const load_telegram_mock: WasmModuleExports["load_telegram_mock"]
   export const generate_telegram_demo_json: WasmModuleExports["generate_telegram_demo_json"]
+  export const generate_instagram_demo_zip: WasmModuleExports["generate_instagram_demo_zip"]
   export const summarize_telegram_bytes: WasmModuleExports["summarize_telegram_bytes"]
   export const summarize_telegram_bytes_with_progress: WasmModuleExports["summarize_telegram_bytes_with_progress"]
   export const analyze_telegram_bytes_with_progress: WasmModuleExports["analyze_telegram_bytes_with_progress"]
@@ -144,6 +147,7 @@ declare module "../wasm-pkg/social_wrapped_wasm.js" {
   export const greet: WasmModuleExports["greet"]
   export const load_telegram_mock: WasmModuleExports["load_telegram_mock"]
   export const generate_telegram_demo_json: WasmModuleExports["generate_telegram_demo_json"]
+  export const generate_instagram_demo_zip: WasmModuleExports["generate_instagram_demo_zip"]
   export const summarize_telegram_bytes: WasmModuleExports["summarize_telegram_bytes"]
   export const summarize_telegram_bytes_with_progress: WasmModuleExports["summarize_telegram_bytes_with_progress"]
   export const analyze_telegram_bytes_with_progress: WasmModuleExports["analyze_telegram_bytes_with_progress"]
