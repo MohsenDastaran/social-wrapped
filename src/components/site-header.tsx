@@ -17,7 +17,7 @@ export function SiteHeader() {
           className="relative z-10 flex items-center gap-2 text-sm font-semibold tracking-tight"
           end
         >
-          <BrandLogo title="Social Wrapped" />
+          <BrandLogo title="Social Wrapped" className="-translate-y-px" />
           Social Wrapped
         </NavLink>
 
