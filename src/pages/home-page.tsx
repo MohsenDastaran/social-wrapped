@@ -4,12 +4,12 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Link } from "react-router"
 
 import { Hero } from "@/components/hero"
+import { PlatformCategoryFilter } from "@/components/platform-category-filter"
 import { PlatformImportCard } from "@/components/platform-guide-card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/reui/alert"
 import { PlatformSearchInput } from "@/components/platform-search-input"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   ONBOARDING_MAX_VIEWS,
   bumpOnboardingViews,
@@ -18,14 +18,11 @@ import {
 } from "@/lib/getting-started"
 import {
   HIGH_PRIORITY_PLATFORMS,
-  PLATFORM_CATEGORY_LABELS,
   PLATFORM_CATEGORY_ORDER,
   groupPlatformsByCategory,
   type PlatformCategory,
 } from "@/lib/platforms"
 
-const CATEGORY_CHIP_CLASS =
-  "h-9 min-h-9 flex-1 rounded-full px-3.5 text-sm font-semibold text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-sm data-[state=on]:ring-1 data-[state=on]:ring-foreground/10 sm:flex-none sm:px-4"
 const TRUST_ALERT_KEY = "social-wrapped:privacy-trust-alert"
 const TRUST_ALERT_MAX_PRIVACY_CLICKS = 2
 
@@ -82,6 +79,22 @@ export function HomePage() {
     () => groupPlatformsByCategory(filteredPlatforms),
     [filteredPlatforms]
   )
+  const categoryCounts = useMemo(() => {
+    const search = query.trim().toLowerCase()
+    const matches = HIGH_PRIORITY_PLATFORMS.filter(
+      (platform) => !search || platform.name.toLowerCase().includes(search)
+    )
+    const counts = { all: matches.length } as Record<
+      PlatformCategory | "all",
+      number
+    >
+    for (const category of PLATFORM_CATEGORY_ORDER) {
+      counts[category] = matches.filter(
+        (platform) => platform.category === category
+      ).length
+    }
+    return counts
+  }, [query])
   const filtersRef = useRef<HTMLDivElement>(null)
   const filterPinTop = useRef<number | null>(null)
 
@@ -237,39 +250,12 @@ export function HomePage() {
             </p>
           </div>
 
-          <div
+          <PlatformCategoryFilter
             ref={filtersRef}
-            className="sticky top-14 z-20 -mx-1 rounded-2xl bg-muted/70 p-1 ring-1 ring-foreground/10 backdrop-blur-md sm:rounded-full"
-          >
-            <ToggleGroup
-              value={[categoryFilter]}
-              onValueChange={(value) => {
-                const next = value[0]
-                if (next == null) return
-                commitCategoryFilter(
-                  next === "all" ? "all" : (next as PlatformCategory)
-                )
-              }}
-              variant="default"
-              size="lg"
-              spacing={0.5}
-              className="flex w-full max-w-full flex-wrap sm:flex-nowrap"
-              aria-label="Filter by category"
-            >
-              <ToggleGroupItem value="all" className={CATEGORY_CHIP_CLASS}>
-                All
-              </ToggleGroupItem>
-              {PLATFORM_CATEGORY_ORDER.map((category) => (
-                <ToggleGroupItem
-                  key={category}
-                  value={category}
-                  className={CATEGORY_CHIP_CLASS}
-                >
-                  {PLATFORM_CATEGORY_LABELS[category]}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </div>
+            value={categoryFilter}
+            onValueChange={commitCategoryFilter}
+            counts={categoryCounts}
+          />
         </section>
 
         <motion.div
