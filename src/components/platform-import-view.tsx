@@ -104,6 +104,19 @@ export function PlatformImportView({
     null
   )
   const loading = progress !== null
+  const selectedCount = files.length
+
+  useEffect(() => {
+    if (selectedCount === 0) return
+    const frame = requestAnimationFrame(() => {
+      window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        left: 0,
+        behavior: "smooth",
+      })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [selectedCount])
 
   function takeFiles(next: FileList | File[] | null) {
     if (!next) return
