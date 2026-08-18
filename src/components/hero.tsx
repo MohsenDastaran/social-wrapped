@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 
 import { AnimatedLines } from "@/components/animated-lines"
 import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
+import { fetchUserCount } from "@/lib/user-stats"
 import { ArrowDown } from "lucide-react"
 
 function scrollToPlatforms() {
@@ -18,11 +19,12 @@ function scrollToPlatforms() {
 /** Home hero — theme-aware primary/sky backdrop + CTA into wrap history. */
 export function Hero() {
   const [hasAnimatedStats, setHasAnimatedStats] = useState(false)
+  const [userCount, setUserCount] = useState(0)
 
   const stats = [
     { value: 100, suffix: "%", label: "Runs on your device" },
     { value: 0, suffix: "", label: "Cloud uploads" },
-    { value: 0, suffix: "", label: "API requests" },
+    { value: userCount, suffix: "", label: "Users" },
     { value: HIGH_PRIORITY_PLATFORMS.length, suffix: "", label: "Platforms" },
   ]
 
@@ -34,6 +36,15 @@ export function Hero() {
     return () => {
       cancelAnimationFrame(frameId)
     }
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetchUserCount(controller.signal).then((count) => {
+      if (controller.signal.aborted || count == null) return
+      setUserCount(count)
+    })
+    return () => controller.abort()
   }, [])
 
   return (
