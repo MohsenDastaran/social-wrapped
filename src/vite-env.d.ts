@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  /** Full URL of GET user-count endpoint. See docs/user-counter-backend.md */
-  readonly VITE_USER_STATS_URL?: string
+  /** API origin from `.env` `BASE_URL` (injected in vite.config). */
+  readonly API_BASE_URL: string
 }
 
 interface ImportMeta {

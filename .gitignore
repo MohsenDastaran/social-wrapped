@@ -27,3 +27,4 @@ crates/core/src/mock/telegram/
 *.sln
 *.sw?
 .tools/
+.env
