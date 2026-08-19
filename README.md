@@ -1,6 +1,8 @@
 # Social Wrapped
 
-Local-first wrap for **official** social and media exports (Tauri + React). Your Telegram dump, Takeout ZIP, or Instagram archive is analyzed **on your device** — not uploaded for “insights.”
+Local-first wrap for **official** social and media exports (Tauri + React). Your Telegram dump, Takeout ZIP, or Instagram archive is analyzed **on your device** — never uploaded for “insights.”
+
+The website may load a small **visitor count** (and ads later). That is not your export. Desktop and Android builds work with the internet off: [download the latest release](https://github.com/MohsenDastaran/social-wrapped/releases/latest).
 
 **Full product & trust guide:** [docs/app.md](./docs/app.md)
 
@@ -10,7 +12,8 @@ This repository is public so you can **verify** that exports stay local:
 
 - No Social Wrapped account is required to run a wrap.
 - Files are picked on disk, parsed in-app (including WASM), and stored in **IndexedDB** on this device.
-- You can prove it: turn on airplane mode or watch DevTools → Network while importing. A wrap that still works offline never needed our servers.
+- We do not upload chats, Takeout dumps, or wrap results. Optional network (visitor count, future ads, GitHub links) is not a pipeline for your archive.
+- Native apps: turn on airplane mode after install and import as usual. A wrap that still works offline never needed our servers for your data.
 
 The analytics engine (`crates/core`) is a **private git submodule**. It still runs **only on your machine**. Closed source does not mean the cloud.
 

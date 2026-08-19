@@ -5,8 +5,9 @@ import NumberFlow, { continuous } from "@number-flow/react"
 import { useEffect, useState } from "react"
 
 import { AnimatedLines } from "@/components/animated-lines"
+import { DOWNLOAD_URL } from "@/lib/app-links"
 import { syncUserStats } from "@/lib/user-stats"
-import { ArrowDown } from "lucide-react"
+import { ArrowDown, Download } from "lucide-react"
 
 function scrollToPlatforms() {
   const el = document.getElementById("platforms")
@@ -22,7 +23,7 @@ export function Hero() {
   const [userVisits, setUserVisits] = useState(0)
 
   const stats = [
-    { value: 100, suffix: "%", label: "Runs on your device" },
+    { value: 100, suffix: "%", label: "Export stays here" },
     { value: 0, suffix: "", label: "Data uploads" },
     { value: userCount, suffix: "", label: "Users" },
     { value: userVisits, suffix: "", label: "Visits" },
@@ -94,8 +95,9 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.15, ease: "easeOut" }}
           >
-            Reopen past exports, stories, and chat insights anytime — everything
-            stays on this device until you clear it.
+            Wrapped is a platform for social media Analytics. It is a free and
+            open-source project that allows you to wrap your social media data
+            and share it with your friends and family.
           </motion.p>
 
           <motion.div
@@ -104,22 +106,38 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.25, ease: "easeOut" }}
           >
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.2 }}
-            >
-              <a
-                href="#platforms"
-                onClick={(event) => {
-                  event.preventDefault()
-                  scrollToPlatforms()
-                }}
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm ring-1 ring-primary/30"
+            <div className="flex flex-wrap items-center justify-center gap-2.5">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                transition={{ duration: 0.2 }}
               >
-                Browse Platforms
-                <ArrowDown className="size-3.5" />
-              </a>
-            </motion.div>
+                <a
+                  href="#platforms"
+                  onClick={(event) => {
+                    event.preventDefault()
+                    scrollToPlatforms()
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm ring-1 ring-primary/30"
+                >
+                  Browse Platforms
+                  <ArrowDown className="size-3.5" />
+                </a>
+              </motion.div>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                transition={{ duration: 0.2 }}
+              >
+                <a
+                  href={DOWNLOAD_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-background/75 px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border/70"
+                >
+                  Get the app
+                  <Download className="size-3.5" />
+                </a>
+              </motion.div>
+            </div>
           </motion.div>
         </div>
 

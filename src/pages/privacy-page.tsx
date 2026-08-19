@@ -1,4 +1,4 @@
-import { ArrowUpRight, Code2, Home, ShieldCheck } from "lucide-react"
+import { ArrowUpRight, Code2, Download, Home, ShieldCheck } from "lucide-react"
 import { Link } from "react-router"
 
 import {
@@ -7,6 +7,7 @@ import {
   CraftButtonLabel,
 } from "@/components/ui/animated/link-button"
 import { Button } from "@/components/ui/button"
+import { DOWNLOAD_URL } from "@/lib/app-links"
 import { APP_STORAGE_LIMIT_BYTES } from "@/lib/wrap-history"
 
 const SOURCE_URL = "https://github.com/MohsenDastaran/social-wrapped"
@@ -17,7 +18,7 @@ function formatSoftCapGb(): string {
 
 function SectionHeading({ children }: { children: string }) {
   return (
-    <h2 className="font-heading mb-2 text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+    <h2 className="mb-2 font-heading text-lg font-semibold tracking-tight text-foreground sm:text-xl">
       {children}
     </h2>
   )
@@ -41,7 +42,9 @@ export function PrivacyPage() {
 
       <div className="space-y-8 text-start">
         <section className="rounded-2xl border border-primary/25 bg-primary/8 px-4 py-5 ring-1 ring-primary/15 sm:px-6 sm:py-6">
-          <SectionHeading>Don&apos;t trust any app with your data</SectionHeading>
+          <SectionHeading>
+            Don&apos;t trust any app with your data
+          </SectionHeading>
           <p className="mb-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
             That includes this one. If something wants your chats, photos, or
             exports, skepticism is the right default — privacy policies are easy
@@ -50,8 +53,8 @@ export function PrivacyPage() {
           <p className="mb-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
             We don&apos;t ask you to take our word for it. Social Wrapped is
             built so you can{" "}
-            <span className="font-medium text-foreground">prove</span> the safety
-            claims yourself:
+            <span className="font-medium text-foreground">prove</span> the
+            safety claims yourself:
           </p>
           <ul className="list-disc space-y-2 ps-5 text-sm leading-relaxed text-muted-foreground sm:text-base">
             <li>
@@ -67,12 +70,16 @@ export function PrivacyPage() {
               your archive isn&apos;t uploaded for &ldquo;insights.&rdquo;
             </li>
             <li>
-              <span className="font-medium text-foreground">Offline proof:</span>{" "}
-              turn on airplane mode (or cut Wi‑Fi) and run the same import —
-              if it still works, your data never needed our servers.
+              <span className="font-medium text-foreground">
+                Offline proof:
+              </span>{" "}
+              install the desktop or Android app, turn on airplane mode, and
+              import — if it still works, your data never needed our servers.
             </li>
             <li>
-              <span className="font-medium text-foreground">Local by design:</span>{" "}
+              <span className="font-medium text-foreground">
+                Local by design:
+              </span>{" "}
               parsing, scoring, and saved wraps stay in your browser on this
               device — not on infrastructure we control.
             </li>
@@ -91,9 +98,38 @@ export function PrivacyPage() {
           <SectionHeading>No uploads for “insights”</SectionHeading>
           <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
             Your chat exports are not sent to a remote server so we can generate
-            results for you. Opening optional links (like GitHub) or checking
-            for updates may use the network — under your control — but that is
-            not a pipeline for shipping private conversations off-device.
+            results for you. Parsing, scoring, and saved wraps stay on this
+            device. That is the claim that matters: we do not use the internet
+            for <span className="font-medium text-foreground">your data</span>.
+          </p>
+        </section>
+
+        <section>
+          <SectionHeading>Optional network — not your archive</SectionHeading>
+          <p className="mb-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            The website is not 100% offline. On load it may{" "}
+            <span className="font-medium text-foreground">
+              GET a visitor count
+            </span>{" "}
+            (an opaque browser id, never wrap files). Ads may appear later on
+            the site. Those requests are not a pipeline for chats or wrap
+            results.
+          </p>
+          <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Desktop and Android builds work with the internet off: install from{" "}
+            <a
+              href={DOWNLOAD_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-foreground underline underline-offset-4"
+            >
+              GitHub Releases
+            </a>
+            {", "}
+            turn on airplane mode, and import as usual. Analysis still runs.
+            Opening GitHub, export-help links, or checking for updates needs a
+            network — that is expected and still not your archive leaving the
+            device.
           </p>
         </section>
 
@@ -143,26 +179,46 @@ export function PrivacyPage() {
             <li>
               <span className="font-medium text-foreground">Browser:</span> open
               DevTools → Network, clear the log, then import or analyze an
-              export. You should not see large uploads of your archive leaving
-              the page.
+              export. You may see a small visitor-count request. You should{" "}
+              <span className="font-medium text-foreground">not</span> see a
+              large upload of your archive.
             </li>
             <li>
-              <span className="font-medium text-foreground">Phone:</span> turn on
-              Airplane Mode (or disable Wi‑Fi and mobile data). If analysis
-              still works offline, those files never needed the internet to be
-              processed.
-            </li>
-            <li>
-              <span className="font-medium text-foreground">Desktop:</span>{" "}
-              disconnect from the network or block the app, then run the same
-              analysis. Same idea: offline success means the archive stayed
-              local.
+              <span className="font-medium text-foreground">
+                Phone / desktop app:
+              </span>{" "}
+              install from{" "}
+              <a
+                href={DOWNLOAD_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-foreground underline underline-offset-4"
+              >
+                GitHub Releases
+              </a>
+              {", "}
+              turn on Airplane Mode (or disable Wi‑Fi and mobile data), then
+              import a file already on the device. If analysis still works,
+              those files never needed the internet.
             </li>
           </ul>
         </section>
       </div>
 
       <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+        <CraftButton
+          render={<a href={DOWNLOAD_URL} target="_blank" rel="noreferrer" />}
+        >
+          <Download
+            className="relative z-2 size-3.5 shrink-0 opacity-70 transition-colors duration-500 group-hover/button:text-foreground group-hover/button:opacity-100"
+            aria-hidden
+          />
+          <CraftButtonLabel>Get the app</CraftButtonLabel>
+          <CraftButtonIcon>
+            <ArrowUpRight className="size-3" aria-hidden />
+          </CraftButtonIcon>
+        </CraftButton>
+
         <CraftButton
           render={<a href={SOURCE_URL} target="_blank" rel="noreferrer" />}
         >

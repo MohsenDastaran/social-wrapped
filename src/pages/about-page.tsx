@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react"
-import { ArrowUpRight, Code2, UserRound } from "lucide-react"
+import { ArrowUpRight, Code2, Download, UserRound } from "lucide-react"
 
 import { DonateDialog } from "@/components/donate-dialog"
+import { DOWNLOAD_URL } from "@/lib/app-links"
 import {
   AnimatedTextRoller,
   type AnimatedTextItem,
@@ -46,7 +47,7 @@ const PLATFORM_GOALS: (AnimatedTextItem & { detail: string })[] = [
     text: "uncompromising privacy",
     color: "text-violet-600 dark:text-violet-400",
     detail:
-      "Personal insights without giving yourself away. Your stories stay with you — private by design, not by policy.",
+      "Personal insights without giving your archive away. We do not upload your data — optional site stats (and ads later) are not your chats.",
   },
   {
     text: "a universal Wrapped",
@@ -108,6 +109,21 @@ export function AboutPage() {
                 aria-hidden
               />
               <CraftButtonLabel>Developer</CraftButtonLabel>
+              <CraftButtonIcon>
+                <ArrowUpRight className="size-3" aria-hidden />
+              </CraftButtonIcon>
+            </CraftButton>
+
+            <CraftButton
+              render={
+                <a href={DOWNLOAD_URL} target="_blank" rel="noreferrer" />
+              }
+            >
+              <Download
+                className="relative z-2 size-3.5 shrink-0 opacity-70 transition-colors duration-500 group-hover/button:text-foreground group-hover/button:opacity-100"
+                aria-hidden
+              />
+              <CraftButtonLabel>Get the app</CraftButtonLabel>
               <CraftButtonIcon>
                 <ArrowUpRight className="size-3" aria-hidden />
               </CraftButtonIcon>
