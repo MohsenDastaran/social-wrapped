@@ -5,7 +5,6 @@ import NumberFlow, { continuous } from "@number-flow/react"
 import { useEffect, useState } from "react"
 
 import { AnimatedLines } from "@/components/animated-lines"
-import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
 import { syncUserStats } from "@/lib/user-stats"
 import { ArrowDown } from "lucide-react"
 
