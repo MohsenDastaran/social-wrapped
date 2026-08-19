@@ -17,11 +17,13 @@ Social Wrapped is built so a Telegram dump, a Google Takeout ZIP, or an Instagra
 | **Official exports only** | You download data from Telegram, Google Takeout, Meta, Spotify, etc. using **their** export tools. We never ask for your social-network password or OAuth into those accounts. |
 | **On-device engine** | Parsing and scoring run in the app (including WebAssembly compiled from Rust). The engine process is **your** machine, not a server we operate. |
 | **Local storage** | Saved wraps live in **IndexedDB** on this device. Settings and retention only affect that local store. |
-| **You can prove it** | Airplane mode / DevTools Network / blocking the app — if a wrap still runs, the archive never needed the internet. |
+| **You can prove it** | DevTools Network while importing: no large archive upload. Native apps: airplane mode — if a wrap still runs, the archive never needed the internet. |
 
 We do **not** ask you to trust a privacy policy alone. The public repo exists so you (or someone you trust) can read how files are chosen, handed to the analyzer, and written back to disk.
 
-Optional network use is under your control: opening GitHub, checking for an app update, or similar. That is not a pipeline for shipping chats or Takeout dumps off-device.
+Optional network is **not** used for your archive. The website may `GET` a visitor count (and may show ads later). Opening GitHub or checking for an app update also uses the network. None of that uploads chats, Takeout dumps, or wrap results.
+
+Desktop and Android apps from [GitHub Releases](https://github.com/MohsenDastaran/social-wrapped/releases/latest) work with the internet off: install, turn on airplane mode, import as usual.
 
 ---
 
@@ -71,27 +73,23 @@ These checks only require watching your device.
 1. Open DevTools (F12) → **Network**, clear the log.
 2. Import an export and wait for the wrap.
 3. You should **not** see a large POST of your archive to a remote host.
-4. If a request appears, inspect URL, size, and payload. Analysis must not upload the dump.
+4. You **may** see a small `GET` for the public visitor count. That is not your export. Ads, if added later, would also be unrelated to wrap files.
+5. If a request appears, inspect URL, size, and payload. Analysis must not upload the dump.
 
-### Phone
+### Phone / desktop app
 
-1. Turn on **Airplane Mode** (or disable Wi‑Fi and mobile data).
-2. Open a saved wrap or import a file already on the device.
-3. If analysis still works, those files never needed the internet.
+1. Install from [GitHub Releases](https://github.com/MohsenDastaran/social-wrapped/releases/latest).
+2. Turn on **Airplane Mode** (or disable Wi‑Fi and mobile data / disconnect Ethernet).
+3. Open a saved wrap or import a file already on the device.
+4. If analysis still works, those files never needed the internet.
 
-External links (GitHub, official export help) will fail offline — that is expected.
-
-### Desktop
-
-1. Disconnect Ethernet/Wi‑Fi, or block the app in the OS firewall.
-2. Run the same import.
-3. Offline success means the archive stayed local.
+External links (GitHub, official export help) will fail offline — that is expected. The visitor-count request will fail too; wrapping still works.
 
 ---
 
 ## What the app does
 
-Social Wrapped is a **local-first wrap**: Spotify Wrapped–style stories for **your** exports, not a dashboard that lives on our servers.
+Social Wrapped is a **local-first wrap**: Spotify Wrapped–style stories for **your** exports. Analysis is not a dashboard that lives on our servers. The website is not fully offline (visitor count today; ads possible later); your **data** still never needs the network.
 
 Typical flow:
 
@@ -170,7 +168,7 @@ The submodule [`social-wrapped-core`](https://github.com/MohsenDastaran/social-w
 
 - Frontend only: `bun run dev`
 - Desktop: see [desktop-build.md](./desktop-build.md)
-- Releases: GitHub Releases (Android APK, Windows, macOS, Linux)
+- Releases: [latest GitHub Release](https://github.com/MohsenDastaran/social-wrapped/releases/latest) (Android APK, Windows, macOS, Linux)
 
 Without submodule access, use a **prebuilt release** from GitHub. The engine inside that binary still runs **only on your machine**.
 
@@ -183,6 +181,7 @@ Without submodule access, use a **prebuilt release** from GitHub. The engine ins
 - Train models on your chats on our servers
 - Need your archive online to compute a wrap
 - Store your export on infrastructure we control
+- Pretend the website has zero network use — a visitor count (and possibly ads later) is separate from your files
 
 If you find behavior that contradicts this document, open an issue on the public repo.
 
@@ -197,4 +196,5 @@ If you find behavior that contradicts this document, open an issue on the public
 | [google-analytics.md](./google-analytics.md) | Google Takeout coverage |
 | [instagram-analytics.md](./instagram-analytics.md) | Instagram archive fields |
 | [youtube-analytics.md](./youtube-analytics.md) | YouTube / Takeout watch history |
+| [user-counter-backend.md](./user-counter-backend.md) | Optional visitor-count API (not wrap data) |
 | In-app **Privacy** | Same safety story inside the product |

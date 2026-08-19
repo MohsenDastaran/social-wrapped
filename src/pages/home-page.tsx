@@ -196,7 +196,9 @@ export function HomePage() {
                     Don&apos;t you trust us?
                   </AlertTitle>
                   <AlertDescription className="col-start-auto mt-0.5 text-xs leading-snug text-muted-foreground">
-                    No accounts, no uploads — analysis stays on this device.
+                    No accounts, No data uploads — your archive is analyzed on
+                    this device. This site may load a visitor count; that is not
+                    your export.
                   </AlertDescription>
                 </div>
 

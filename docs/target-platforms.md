@@ -2,7 +2,7 @@
 
 ## Overview
 
-When building a privacy-focused, offline-first data analytics application using **Tauri** and **Rust**, leveraging platform data exports is the most reliable approach. Since user data is downloaded directly from services via official compliance features (GDPR, CCPA) or local application state files, your application avoids API rate limits, OAuth overhead, and API access restrictions.
+When building a privacy-focused, local-analysis application using **Tauri** and **Rust**, leveraging platform data exports is the most reliable approach. Since user data is downloaded directly from services via official compliance features (GDPR, CCPA) or local application state files, your application avoids API rate limits, OAuth overhead, and API access restrictions. Archives are parsed on the device — they are not uploaded for insights.
 
 Rust provides exceptional performance for parsing large JSON files, processing high-volume CSVs, querying SQLite databases, and regex-parsing unstructured text logs. Combined with Tauri's lightweight desktop shell, you can process gigabytes of personal social media archives locally with minimal memory footprint.
 
