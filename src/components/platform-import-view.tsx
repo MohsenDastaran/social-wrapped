@@ -181,6 +181,7 @@ export function PlatformImportView({
         chatgptInsights,
         whatsappInsights,
         tiktokInsights,
+        facebookInsights,
         spotifyInsights,
         appleMusicInsights,
       } = await importPlatformFiles(
@@ -189,6 +190,7 @@ export function PlatformImportView({
         setProgress,
         platform.id === "whatsapp" ||
           platform.id === "instagram" ||
+          platform.id === "facebook" ||
           platform.id === "linkedin" ||
           platform.id === "tiktok"
           ? promptIdentity
@@ -211,6 +213,7 @@ export function PlatformImportView({
         chatgptInsights,
         whatsappInsights,
         tiktokInsights,
+        facebookInsights,
         spotifyInsights,
         appleMusicInsights,
         archiveBlob:
@@ -265,6 +268,10 @@ export function PlatformImportView({
         ? progress?.phase === "computing"
           ? "Building your wrap from Instagram chats"
           : "Reading your Instagram ZIP (messages + social)"
+        : platform.id === "facebook"
+          ? progress?.phase === "computing"
+            ? "Building your Facebook wrap"
+            : "Reading your Facebook ZIP (activity + Messenger)"
         : platform.id === "linkedin"
           ? progress?.phase === "computing"
             ? "Building your LinkedIn wrap"

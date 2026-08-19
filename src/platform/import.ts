@@ -8,6 +8,10 @@ import type { LinkedInInsights } from "@/platform/linkedin-types"
 import type { AppleMusicInsights } from "@/platform/apple-music-types"
 import type { SpotifyInsights } from "@/platform/spotify-types"
 import type { TikTokInsights } from "@/platform/tiktok-types"
+import {
+  normalizeFacebookInsights,
+  type FacebookInsights,
+} from "@/platform/facebook-types"
 import { normalizeXInsights, type XInsights } from "@/platform/x-types"
 import {
   normalizeChatGptInsights,
@@ -25,11 +29,12 @@ export type { LinkedInInsights } from "@/platform/linkedin-types"
 export type { AppleMusicInsights } from "@/platform/apple-music-types"
 export type { SpotifyInsights } from "@/platform/spotify-types"
 export type { TikTokInsights } from "@/platform/tiktok-types"
+export type { FacebookInsights } from "@/platform/facebook-types"
 export type { XInsights } from "@/platform/x-types"
 export type { ChatGptInsights } from "@/platform/chatgpt-types"
 export type { WhatsAppInsights } from "@/platform/whatsapp-types"
 
-/** Result of a platform import pass (side insights for IG / Google / LinkedIn / X / TikTok / Spotify / WA account). */
+/** Result of a platform import pass (side insights for IG / Facebook / Google / LinkedIn / X / TikTok / Spotify / WA account). */
 export type ImportResult = {
   analytics: WrapAnalytics
   instagramSocial?: InstagramSocialInsights
@@ -38,6 +43,7 @@ export type ImportResult = {
   xInsights?: XInsights
   chatgptInsights?: ChatGptInsights
   tiktokInsights?: TikTokInsights
+  facebookInsights?: FacebookInsights
   spotifyInsights?: SpotifyInsights
   appleMusicInsights?: AppleMusicInsights
   whatsappInsights?: WhatsAppInsights
@@ -129,6 +135,10 @@ export type TikTokImportWorkerRequest =
   | { type: "file"; file: File }
   | { type: "identity"; meName: string }
 
+export type FacebookImportWorkerRequest =
+  | { type: "file"; file: File }
+  | { type: "identity"; meName: string }
+
 export type SpotifyImportWorkerRequest =
   | { type: "file"; file: File }
   | { type: "files"; files: File[] }
@@ -196,6 +206,15 @@ function validateFile(platform: PlatformConfig, file: File): void {
     return
   }
 
+  if (platform.id === "facebook") {
+    if (!lower.endsWith(".zip")) {
+      throw new Error(
+        "Please choose your Facebook Download Your Information ZIP (JSON format)."
+      )
+    }
+    return
+  }
+
   if (platform.id === "linkedin") {
     if (!lower.endsWith(".zip")) {
       throw new Error(
@@ -256,7 +275,7 @@ function validateFile(platform: PlatformConfig, file: File): void {
   }
 
   throw new Error(
-    `${platform.name} import isn't wired yet. Telegram, WhatsApp, Instagram, LinkedIn, X, ChatGPT, TikTok, Spotify, Apple Music, Google, and YouTube exports can be analyzed right now.`
+    `${platform.name} import isn't wired yet. Telegram, WhatsApp, Instagram, Facebook, LinkedIn, X, ChatGPT, TikTok, Spotify, Apple Music, Google, and YouTube exports can be analyzed right now.`
   )
 }
 
@@ -566,6 +585,118 @@ function importInstagramFile(
       type: "file",
       file,
     } satisfies InstagramImportWorkerRequest)
+  })
+}
+
+function parseFacebookAnalyzeJson(analyticsJson: string): ImportResult {
+  const payload = JSON.parse(analyticsJson) as {
+    analytics?: WrapAnalytics
+    facebookInsights?: FacebookInsights
+  }
+
+  if (!payload.analytics?.account) {
+    throw new Error("Facebook import returned incomplete analytics.")
+  }
+
+  return {
+    analytics: normalizeAnalytics(payload.analytics),
+    facebookInsights: normalizeFacebookInsights(payload.facebookInsights),
+  }
+}
+
+function importFacebookFile(
+  file: File,
+  onProgress?: (progress: ImportProgress) => void,
+  onNeedIdentity?: NeedIdentityHandler
+): Promise<ImportResult> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(
+      new URL("../workers/facebook-import.worker.ts", import.meta.url),
+      { type: "module", name: "facebook-import" }
+    )
+
+    let settled = false
+
+    const fail = (error: Error) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      reject(error)
+    }
+
+    const succeed = (result: ImportResult) => {
+      if (settled) return
+      settled = true
+      worker.terminate()
+      resolve(result)
+    }
+
+    worker.onmessage = (event: MessageEvent<ImportWorkerResponse>) => {
+      const message = event.data
+      if (message.type === "progress") {
+        const phase = normalizeProgressPhase(message.phase)
+        const { current, total } = message
+        const percent =
+          total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0
+        onProgress?.({
+          phase,
+          percent,
+          overallPercent: importOverallPercent(phase, percent),
+          current,
+          total,
+        })
+        return
+      }
+
+      if (message.type === "need_identity") {
+        if (!onNeedIdentity) {
+          fail(
+            new Error(
+              "Could not determine which Facebook sender is you. Re-import and pick your name."
+            )
+          )
+          return
+        }
+        void onNeedIdentity(message.senders, message.chatName)
+          .then((meName) => {
+            if (settled) return
+            worker.postMessage({
+              type: "identity",
+              meName,
+            } satisfies FacebookImportWorkerRequest)
+          })
+          .catch((error: unknown) => {
+            fail(
+              error instanceof Error
+                ? error
+                : new Error("Identity selection was cancelled.")
+            )
+          })
+        return
+      }
+
+      if (message.type === "done") {
+        try {
+          succeed(parseFacebookAnalyzeJson(message.analyticsJson))
+        } catch (error) {
+          fail(
+            error instanceof Error ? error : new Error(String(error))
+          )
+        }
+        return
+      }
+
+      fail(new Error(message.message || "Facebook import failed."))
+    }
+
+    worker.onerror = (event) => {
+      fail(new Error(event.message || "Import worker failed to start."))
+    }
+
+    worker.postMessage({
+      type: "file",
+      file,
+    } satisfies FacebookImportWorkerRequest)
   })
 }
 
@@ -1274,6 +1405,10 @@ export function importPlatformFiles(
 
   if (platform.id === "instagram") {
     return importInstagramFile(file, onProgress, onNeedIdentity)
+  }
+
+  if (platform.id === "facebook") {
+    return importFacebookFile(file, onProgress, onNeedIdentity)
   }
 
   if (platform.id === "linkedin") {

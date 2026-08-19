@@ -5,7 +5,7 @@ import NumberFlow, { continuous } from "@number-flow/react"
 import { useEffect, useState } from "react"
 
 import { AnimatedLines } from "@/components/animated-lines"
-import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
+import { syncUserStats } from "@/lib/user-stats"
 import { ArrowDown } from "lucide-react"
 
 function scrollToPlatforms() {
@@ -18,12 +18,14 @@ function scrollToPlatforms() {
 /** Home hero — theme-aware primary/sky backdrop + CTA into wrap history. */
 export function Hero() {
   const [hasAnimatedStats, setHasAnimatedStats] = useState(false)
+  const [userCount, setUserCount] = useState(0)
+  const [userVisits, setUserVisits] = useState(0)
 
   const stats = [
     { value: 100, suffix: "%", label: "Runs on your device" },
-    { value: 0, suffix: "", label: "Cloud uploads" },
-    { value: 0, suffix: "", label: "API requests" },
-    { value: HIGH_PRIORITY_PLATFORMS.length, suffix: "", label: "Platforms" },
+    { value: 0, suffix: "", label: "Data uploads" },
+    { value: userCount, suffix: "", label: "Users" },
+    { value: userVisits, suffix: "", label: "Visits" },
   ]
 
   useEffect(() => {
@@ -33,6 +35,18 @@ export function Hero() {
 
     return () => {
       cancelAnimationFrame(frameId)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void syncUserStats().then((stats) => {
+      if (cancelled || stats == null) return
+      setUserCount(stats.users)
+      setUserVisits(stats.visits)
+    })
+    return () => {
+      cancelled = true
     }
   }, [])
 

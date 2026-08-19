@@ -82,6 +82,7 @@ export function CountedRankList({
   emptyLabel,
   accent = "teal",
   limit,
+  showCount = true,
 }: {
   title: string
   description?: string
@@ -90,11 +91,14 @@ export function CountedRankList({
   emptyLabel: string
   accent?: AccentKey
   limit?: number
+  /** Hide the trailing count (name-only lists). @default true */
+  showCount?: boolean
 }) {
   const palette = ACCENT[accent]
-  const ranked = (limit ? items.slice(0, limit) : items).filter(
-    (item) => item.name.trim() && item.count > 0
-  )
+  const ranked = (limit ? items.slice(0, limit) : items).filter((item) => {
+    if (!item.name.trim()) return false
+    return showCount ? item.count > 0 : true
+  })
   const empty = ranked.length === 0
 
   return (
@@ -154,9 +158,11 @@ export function CountedRankList({
                 <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                   {item.name}
                 </span>
-                <span className="shrink-0 text-[0.7rem] font-semibold text-muted-foreground tabular-nums">
-                  {fmt(item.count)}
-                </span>
+                {showCount ? (
+                  <span className="shrink-0 text-[0.7rem] font-semibold text-muted-foreground tabular-nums">
+                    {fmt(item.count)}
+                  </span>
+                ) : null}
               </div>
             </li>
           ))}

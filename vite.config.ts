@@ -4,7 +4,7 @@ import path from "node:path"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import wasm from "vite-plugin-wasm"
-import { defineConfig, type Plugin } from "vite"
+import { defineConfig, loadEnv, type Plugin } from "vite"
 
 const host = process.env.TAURI_DEV_HOST
 const wasmEntry = path.resolve(__dirname, "src/wasm-pkg/social_wrapped_wasm.js")
@@ -76,54 +76,66 @@ function mockFixtures(): Plugin {
 }
 
 // https://vite.dev/config/
-export default defineConfig(async () => ({
-  plugins: [
-    ensureWasmBuilt(),
-    wasmOptional(),
-    mockFixtures(),
-    react(),
-    tailwindcss(),
-    wasm(),
-  ],
+export default defineConfig(async ({ mode }) => {
+  // Vite's own import.meta.env.BASE_URL is the app path ("/"), not .env BASE_URL.
+  const env = loadEnv(mode, process.cwd(), "")
+  const apiBaseUrl = (env.BASE_URL || "https://api.wrapped.dastaran.com").replace(
+    /\/+$/,
+    "",
+  )
 
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  //
-  // 1. prevent Vite from obscuring rust errors
-  clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
-  server: {
-    port: 1420,
-    strictPort: true,
-    host: host || false,
-    hmr: host
-      ? {
-          protocol: "ws",
-          host,
-          port: 1421,
-        }
-      : undefined,
-    watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+  return {
+    define: {
+      "import.meta.env.API_BASE_URL": JSON.stringify(apiBaseUrl),
     },
-    fs: {
-      allow: ["..", ...mockDirs],
+    plugins: [
+      ensureWasmBuilt(),
+      wasmOptional(),
+      mockFixtures(),
+      react(),
+      tailwindcss(),
+      wasm(),
+    ],
+
+    // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
+    //
+    // 1. prevent Vite from obscuring rust errors
+    clearScreen: false,
+    // 2. tauri expects a fixed port, fail if that port is not available
+    server: {
+      port: 1420,
+      strictPort: true,
+      host: host || false,
+      hmr: host
+        ? {
+            protocol: "ws",
+            host,
+            port: 1421,
+          }
+        : undefined,
+      watch: {
+        // 3. tell Vite to ignore watching `src-tauri`
+        ignored: ["**/src-tauri/**"],
+      },
+      fs: {
+        allow: ["..", ...mockDirs],
+      },
     },
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-      // Must not use `@remotion` — that shadows `@remotion/player` and other packages.
-      "@sw-remotion": path.resolve(__dirname, "./remotion"),
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+        // Must not use `@remotion` — that shadows `@remotion/player` and other packages.
+        "@sw-remotion": path.resolve(__dirname, "./remotion"),
+      },
     },
-  },
-  build: {
-    // Native top-level await — no vite-plugin-top-level-await / esbuild needed
-    target: "esnext",
-  },
-  worker: {
-    // Import workers (WASM parsing) need ES module format + the same wasm resolution.
-    format: "es" as const,
-    plugins: () => [wasmOptional(), wasm()],
-  },
-}))
+    build: {
+      // Native top-level await — no vite-plugin-top-level-await / esbuild needed
+      target: "esnext",
+    },
+    worker: {
+      // Import workers (WASM parsing) need ES module format + the same wasm resolution.
+      format: "es" as const,
+      plugins: () => [wasmOptional(), wasm()],
+    },
+  }
+})

@@ -29,6 +29,12 @@ type WasmModuleExports = {
     fileName: string | null | undefined,
     onProgress: WasmProgressCallback
   ) => string
+  preview_facebook_bytes: (data: Uint8Array) => string
+  analyze_facebook_bytes_with_progress: (
+    data: Uint8Array,
+    meName: string | null | undefined,
+    onProgress: WasmProgressCallback
+  ) => string
   preview_instagram_bytes: (data: Uint8Array) => string
   analyze_instagram_bytes_with_progress: (
     data: Uint8Array,
@@ -91,6 +97,8 @@ declare module "@/wasm-pkg/social_wrapped_wasm" {
   export const analyze_telegram_bytes_with_progress: WasmModuleExports["analyze_telegram_bytes_with_progress"]
   export const preview_whatsapp_bytes: WasmModuleExports["preview_whatsapp_bytes"]
   export const analyze_whatsapp_bytes_with_progress: WasmModuleExports["analyze_whatsapp_bytes_with_progress"]
+  export const preview_facebook_bytes: WasmModuleExports["preview_facebook_bytes"]
+  export const analyze_facebook_bytes_with_progress: WasmModuleExports["analyze_facebook_bytes_with_progress"]
   export const preview_instagram_bytes: WasmModuleExports["preview_instagram_bytes"]
   export const analyze_instagram_bytes_with_progress: WasmModuleExports["analyze_instagram_bytes_with_progress"]
   export const preview_linkedin_bytes: WasmModuleExports["preview_linkedin_bytes"]
@@ -122,6 +130,8 @@ declare module "@/wasm-pkg/social_wrapped_wasm.js" {
   export const analyze_telegram_bytes_with_progress: WasmModuleExports["analyze_telegram_bytes_with_progress"]
   export const preview_whatsapp_bytes: WasmModuleExports["preview_whatsapp_bytes"]
   export const analyze_whatsapp_bytes_with_progress: WasmModuleExports["analyze_whatsapp_bytes_with_progress"]
+  export const preview_facebook_bytes: WasmModuleExports["preview_facebook_bytes"]
+  export const analyze_facebook_bytes_with_progress: WasmModuleExports["analyze_facebook_bytes_with_progress"]
   export const preview_instagram_bytes: WasmModuleExports["preview_instagram_bytes"]
   export const analyze_instagram_bytes_with_progress: WasmModuleExports["analyze_instagram_bytes_with_progress"]
   export const preview_linkedin_bytes: WasmModuleExports["preview_linkedin_bytes"]
@@ -153,6 +163,8 @@ declare module "../wasm-pkg/social_wrapped_wasm.js" {
   export const analyze_telegram_bytes_with_progress: WasmModuleExports["analyze_telegram_bytes_with_progress"]
   export const preview_whatsapp_bytes: WasmModuleExports["preview_whatsapp_bytes"]
   export const analyze_whatsapp_bytes_with_progress: WasmModuleExports["analyze_whatsapp_bytes_with_progress"]
+  export const preview_facebook_bytes: WasmModuleExports["preview_facebook_bytes"]
+  export const analyze_facebook_bytes_with_progress: WasmModuleExports["analyze_facebook_bytes_with_progress"]
   export const preview_instagram_bytes: WasmModuleExports["preview_instagram_bytes"]
   export const analyze_instagram_bytes_with_progress: WasmModuleExports["analyze_instagram_bytes_with_progress"]
   export const preview_linkedin_bytes: WasmModuleExports["preview_linkedin_bytes"]
