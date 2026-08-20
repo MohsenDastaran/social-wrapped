@@ -8,8 +8,9 @@
 #   _03-macos → _04-linux-deb → _05-linux-rpm → _06-linux-appimage
 # RPM bundles arrive as name-version-release.arch.rpm (hyphens); order-assets
 # rewrites them to the underscore scheme so they sit with .deb, not at the top.
-# download-table then writes an OS/Arch badge table into the release body
-# (only platforms that actually uploaded; no store listings we don't have).
+# download-table then writes the website link plus an OS/Arch badge table into
+# the release body (only platforms that actually uploaded; no store listings
+# we don't have).
 # Version in filenames comes from the release tag (e.g. v0.2.5 → 0.2.5), not package.json.
 
 name: Release
@@ -705,8 +706,21 @@ jobs:
             return
           }
 
+          const websiteUrl = "https://wrapped.dastaran.com/"
+          const websiteBadge = `<a href="${websiteUrl}"><img alt="Website wrapped.dastaran.com" src="${shield(
+            {
+              label: "Website",
+              message: "wrapped.dastaran.com",
+              color: "059669",
+              labelColor: "064e3b",
+              logo: "googlechrome",
+            }
+          )}" /></a>`
+
           const table = [
             "## Downloads",
+            "",
+            `${websiteBadge} — use in the browser (no install). Native installers below.`,
             "",
             "<table>",
             "<thead><tr><th align=\"left\">OS / Arch</th><th align=\"left\">Compatibility</th></tr></thead>",
