@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import { AnimatedLines } from "@/components/animated-lines"
 import { DOWNLOAD_URL } from "@/lib/app-links"
 import { syncUserStats } from "@/lib/user-stats"
+import { isTauri } from "@tauri-apps/api/core"
 import { ArrowDown, Download } from "lucide-react"
 
 function scrollToPlatforms() {
@@ -123,20 +124,22 @@ export function Hero() {
                   <ArrowDown className="size-3.5" />
                 </a>
               </motion.div>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                transition={{ duration: 0.2 }}
-              >
-                <a
-                  href={DOWNLOAD_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full bg-background/75 px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border/70"
+              {!isTauri() ? (
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  transition={{ duration: 0.2 }}
                 >
-                  Get the app
-                  <Download className="size-3.5" />
-                </a>
-              </motion.div>
+                  <a
+                    href={DOWNLOAD_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full bg-background/75 px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border/70"
+                  >
+                    Get the app
+                    <Download className="size-3.5" />
+                  </a>
+                </motion.div>
+              ) : null}
             </div>
           </motion.div>
         </div>
