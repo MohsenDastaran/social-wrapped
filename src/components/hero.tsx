@@ -6,9 +6,14 @@ import { useEffect, useState } from "react"
 
 import { AnimatedLines } from "@/components/animated-lines"
 import { DOWNLOAD_URL } from "@/lib/app-links"
+import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
 import { syncUserStats } from "@/lib/user-stats"
 import { isTauri } from "@tauri-apps/api/core"
 import { ArrowDown, Download } from "lucide-react"
+
+function isAndroidApp() {
+  return isTauri() && /android/i.test(navigator.userAgent)
+}
 
 function scrollToPlatforms() {
   const el = document.getElementById("platforms")
@@ -23,12 +28,19 @@ export function Hero() {
   const [userCount, setUserCount] = useState(0)
   const [userVisits, setUserVisits] = useState(0)
 
-  const stats = [
-    { value: 100, suffix: "%", label: "Export stays here" },
-    { value: 0, suffix: "", label: "Data uploads" },
-    { value: userCount, suffix: "", label: "Users" },
-    { value: userVisits, suffix: "", label: "Visits" },
-  ]
+  const stats = isAndroidApp()
+    ? [
+        { value: 100, suffix: "%", label: "Export stays here" },
+        { value: 0, suffix: "", label: "Data uploads" },
+        { value: 0, suffix: "", label: "API requests" },
+        { value: HIGH_PRIORITY_PLATFORMS.length, suffix: "", label: "Platforms" },
+      ]
+    : [
+        { value: 100, suffix: "%", label: "Export stays here" },
+        { value: 0, suffix: "", label: "Data uploads" },
+        { value: userCount, suffix: "", label: "Users" },
+        { value: userVisits, suffix: "", label: "Visits" },
+      ]
 
   useEffect(() => {
     const frameId = requestAnimationFrame(() => {
@@ -41,6 +53,8 @@ export function Hero() {
   }, [])
 
   useEffect(() => {
+    if (isAndroidApp()) return
+
     let cancelled = false
     void syncUserStats().then((stats) => {
       if (cancelled || stats == null) return
