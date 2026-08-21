@@ -6,12 +6,15 @@ import {
   type ChangeEvent,
   type DragEvent,
 } from "react"
-import { ArrowLeft, CircleHelp, FileUp, Upload, X } from "lucide-react"
+import { ArrowLeft, FileUp, Upload, X } from "lucide-react"
 import { Link, useNavigate, useSearchParams } from "react-router"
 
 import { AppLoader } from "@/components/app-loader"
 import LightRays from "@/components/LightRays"
-import { PlatformImportHelpDialog } from "@/components/platform-import-help-dialog"
+import {
+  PlatformImportHelpDialog,
+  PlatformImportHelpTrigger,
+} from "@/components/platform-import-help-dialog"
 import { PlatformLogo } from "@/components/platform-logo"
 import { GoogleProductLogo } from "@/components/wrap/google/google-product-logo"
 import { GOOGLE_IMPORT_PRODUCTS } from "@/components/wrap/google/google-products"
@@ -347,14 +350,7 @@ export function PlatformImportView({
           <PlatformImportHelpDialog
             platform={platform}
             trigger={
-              <Button
-                variant="outline"
-                size="default"
-                className="rounded-full border-primary/50 bg-primary/15 text-primary shadow-md ring-1 shadow-primary/45 ring-primary/30 transition-shadow hover:border-primary/65 hover:bg-primary/25 hover:shadow-lg hover:shadow-primary/55"
-              >
-                <CircleHelp data-icon="inline-start" />
-                Need help?
-              </Button>
+              <PlatformImportHelpTrigger platform={platform} layout="full" />
             }
           />
         </div>

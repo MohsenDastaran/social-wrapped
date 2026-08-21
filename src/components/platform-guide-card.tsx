@@ -2,6 +2,10 @@ import { FileArchive, Lock, Upload } from "lucide-react"
 import { Link } from "react-router"
 
 import { PlatformCardFace } from "@/components/platform-card-face"
+import {
+  PlatformImportHelpDialog,
+  PlatformImportHelpTrigger,
+} from "@/components/platform-import-help-dialog"
 import { PlatformLogo } from "@/components/platform-logo"
 import { Card, CardDescription, CardTitle } from "@/components/ui/card"
 import {
@@ -9,7 +13,6 @@ import {
   platformImportAreaViewTransitionName,
   platformImportPath,
   platformLogoViewTransitionName,
-  PLATFORM_CATEGORY_LABELS,
   type PlatformConfig,
 } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
@@ -106,23 +109,7 @@ export function PlatformImportCard({
               />
             </span>
           </span>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.65rem] font-bold tracking-[0.16em] uppercase shadow-sm",
-              disabled
-                ? "bg-muted text-muted-foreground ring-1 ring-border"
-                : "bg-primary text-primary-foreground ring-1 shadow-primary/35 ring-primary/50"
-            )}
-          >
-            {disabled ? (
-              <>
-                <Lock className="size-3" aria-hidden />
-                Soon
-              </>
-            ) : (
-              PLATFORM_CATEGORY_LABELS[platform.category]
-            )}
-          </span>
+          <span className="h-11 w-[3.75rem] shrink-0 sm:w-8" aria-hidden />
         </div>
 
         <div>
@@ -160,6 +147,31 @@ export function PlatformImportCard({
           )}
         </div>
       </div>
+
+      {disabled ? null : (
+        <Link
+          to={importPath}
+          viewTransition
+          aria-label={`Import ${platform.name}`}
+          className="absolute inset-0 z-10 outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        />
+      )}
+
+      <div
+        className="absolute top-4 end-4 z-20 flex h-11 items-center"
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+        }}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <PlatformImportHelpDialog
+          platform={platform}
+          trigger={
+            <PlatformImportHelpTrigger platform={platform} layout="compact" />
+          }
+        />
+      </div>
     </Card>
   )
 
@@ -167,16 +179,5 @@ export function PlatformImportCard({
     return <div aria-disabled="true">{featuredCard}</div>
   }
 
-  return (
-    <Link
-      to={importPath}
-      viewTransition
-      className={cn(
-        "group/home-card block w-full text-start outline-none",
-        "focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      )}
-    >
-      {featuredCard}
-    </Link>
-  )
+  return featuredCard
 }

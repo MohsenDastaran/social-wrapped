@@ -1,5 +1,5 @@
-import type { ReactElement, ReactNode } from "react"
-import { ExternalLink } from "lucide-react"
+import type { ComponentProps, ReactElement, ReactNode } from "react"
+import { CircleHelp, ExternalLink } from "lucide-react"
 
 import { PlatformLogo } from "@/components/platform-logo"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,68 @@ function SectionHeading({ children }: { children: ReactNode }) {
     <h3 className="mb-2 font-heading text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
       {children}
     </h3>
+  )
+}
+
+const HELP_LABEL = "Need help?"
+
+function helpTriggerSurfaceClass(platform: PlatformConfig) {
+  return cn(
+    "rounded-full border bg-background/80 text-foreground shadow-sm backdrop-blur-sm",
+    "hover:bg-background hover:text-foreground",
+    platform.accentClass
+  )
+}
+
+type PlatformImportHelpTriggerProps = ComponentProps<typeof Button> & {
+  platform: PlatformConfig
+  layout: "compact" | "full"
+}
+
+/** Compact (card) or always-expanded (import page) trigger for the help dialog. */
+export function PlatformImportHelpTrigger({
+  platform,
+  layout,
+  className,
+  ...props
+}: PlatformImportHelpTriggerProps) {
+  if (layout === "full") {
+    return (
+      <Button
+        variant="outline"
+        className={cn(helpTriggerSurfaceClass(platform), className)}
+        {...props}
+      >
+        <CircleHelp data-icon="inline-start" />
+        {HELP_LABEL}
+      </Button>
+    )
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="icon-sm"
+      aria-label={HELP_LABEL}
+      className={cn(
+        "group/fab relative h-8 w-[3.75rem] justify-start gap-0 overflow-hidden rounded-full px-2 text-[0.65rem] font-medium tracking-wide",
+        "border-foreground/10 bg-background/90 text-muted-foreground shadow-sm backdrop-blur-sm",
+        "transition-[width,color,background-color] duration-300 ease-out",
+        "hover:bg-background hover:text-foreground hover:border-foreground/20",
+        "sm:w-8 sm:hover:w-[3.75rem] sm:focus-visible:w-[3.75rem] sm:aria-expanded:w-[3.75rem]",
+        platform.accentClass,
+        className
+      )}
+      {...props}
+    >
+      <CircleHelp
+        aria-hidden
+        className="absolute top-1/2 left-2 size-3.5 -translate-y-1/2 transition-[left,transform] duration-300 sm:left-1/2 sm:-translate-x-1/2 sm:group-hover/fab:left-2 sm:group-hover/fab:translate-x-0 sm:group-focus-visible/fab:left-2 sm:group-focus-visible/fab:translate-x-0 sm:group-aria-expanded/fab:left-2 sm:group-aria-expanded/fab:translate-x-0"
+      />
+      <span className="ml-5 pr-1 opacity-100 transition-opacity duration-300 sm:opacity-0 sm:group-hover/fab:opacity-100 sm:group-focus-visible/fab:opacity-100 sm:group-aria-expanded/fab:opacity-100">
+        Help
+      </span>
+    </Button>
   )
 }
 
