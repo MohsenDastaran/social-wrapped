@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { openExternalUrl } from "@/lib/app-links"
 import {
   getPlatformImportDoc,
   type PlatformImportDoc,
@@ -72,7 +73,7 @@ export function PlatformImportHelpTrigger({
         "group/fab relative h-8 w-[3.75rem] justify-start gap-0 overflow-hidden rounded-full px-2 text-[0.65rem] font-medium tracking-wide",
         "border-foreground/10 bg-background/90 text-muted-foreground shadow-sm backdrop-blur-sm",
         "transition-[width,color,background-color] duration-300 ease-out",
-        "hover:bg-background hover:text-foreground hover:border-foreground/20",
+        "hover:border-foreground/20 hover:bg-background hover:text-foreground",
         "sm:w-8 sm:hover:w-[3.75rem] sm:focus-visible:w-[3.75rem] sm:aria-expanded:w-[3.75rem]",
         platform.accentClass,
         className
@@ -163,18 +164,18 @@ export function PlatformImportHelpDialog({
             scrollYClass
           )}
         >
-          {!enabled ? (
-            <p className="mb-5 rounded-xl bg-muted/70 px-3.5 py-3 text-sm leading-relaxed text-muted-foreground ring-1 ring-border/50">
-              Import isn’t enabled yet — you can still prepare an export with
-              the steps below.
-            </p>
-          ) : null}
-          <div className="flex justify-center">
+          <div className="flex flex-col gap-6">
+            {!enabled ? (
+              <p className="rounded-xl bg-muted/70 px-3.5 py-3 text-sm leading-relaxed text-muted-foreground ring-1 ring-border/50">
+                Import isn’t enabled yet — you can still prepare an export with
+                the steps below.
+              </p>
+            ) : null}
+
             {officialExportUrl ? (
               <Button
                 variant="outline"
-                size="default"
-                className="mb-4 w-full justify-center sm:w-auto"
+                className="w-full justify-center"
                 nativeButton={false}
                 render={
                   <a
@@ -183,110 +184,93 @@ export function PlatformImportHelpDialog({
                     rel="noreferrer"
                   />
                 }
+                onClick={(event) => {
+                  event.preventDefault()
+                  void openExternalUrl(officialExportUrl)
+                }}
               >
                 <ExternalLink data-icon="inline-start" />
                 {officialExportLabel}
               </Button>
             ) : null}
-          </div>
-          <div className="mb-7 space-y-4 rounded-xl bg-muted/40 px-3.5 py-4 ring-1 ring-border/40">
-            <div>
-              <SectionHeading>Export path</SectionHeading>
-              <p className="text-sm leading-relaxed text-foreground/80">
-                {platform.exportPath}
-              </p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+
+            <section>
+              <h3 className="mb-3 font-heading text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+                How to download &amp; import
+              </h3>
+              <ol className="flex flex-col gap-4">
+                {platform.steps.map((step, index) => (
+                  <li key={step} className="flex gap-3">
+                    <span
+                      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-foreground font-heading text-xs font-semibold text-background tabular-nums"
+                      aria-hidden
+                    >
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0 pt-0.5">
+                      <p className="font-heading text-sm leading-snug font-medium tracking-tight text-foreground sm:text-base">
+                        {step}
+                      </p>
+                      {index === platform.steps.length - 1 &&
+                      platform.importHint ? (
+                        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                          {platform.importHint}
+                        </p>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </section>
+
+            {importDoc ? (
+              <section>
+                <SectionHeading>Documentation</SectionHeading>
+                <h4 className="mb-2 font-heading text-base font-semibold tracking-tight text-foreground">
+                  {importDoc.title}
+                </h4>
+                <div className="flex flex-col gap-2.5">
+                  {importDoc.paragraphs.map((paragraph) => (
+                    <p
+                      key={paragraph}
+                      className="text-sm leading-relaxed text-foreground/80"
+                    >
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            <div className="flex flex-col gap-4 rounded-xl bg-muted/40 px-3.5 py-4 ring-1 ring-border/40">
+              <div>
+                <SectionHeading>Export path</SectionHeading>
+                <p className="text-sm leading-relaxed text-foreground/80">
+                  {platform.exportPath}
+                </p>
+              </div>
               <div>
                 <SectionHeading>Formats</SectionHeading>
                 <p className="text-sm leading-relaxed text-foreground/80">
                   {platform.formats}
                 </p>
               </div>
-              <div className="sm:col-span-2">
+              <div>
                 <SectionHeading>What you can analyze</SectionHeading>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {platform.extractable}
                 </p>
               </div>
             </div>
+
+            {enabled ? (
+              <p className="rounded-xl bg-primary/10 px-3.5 py-3 text-sm leading-relaxed text-foreground ring-1 ring-primary/20">
+                Processing stays on your device. Your archive is not uploaded
+                for analysis.
+              </p>
+            ) : null}
           </div>
-
-          {importDoc ? (
-            <section className="mb-7">
-              <SectionHeading>Documentation</SectionHeading>
-              <h4 className="mb-3 font-heading text-base font-semibold tracking-tight text-foreground">
-                {importDoc.title}
-              </h4>
-              <div className="space-y-3">
-                {importDoc.paragraphs.map((paragraph) => (
-                  <p
-                    key={paragraph}
-                    className="text-sm leading-relaxed text-foreground/80"
-                  >
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-            </section>
-          ) : officialExportUrl ? (
-            <div className="mb-7">
-              <Button
-                variant="outline"
-                size="default"
-                className="w-full sm:w-auto"
-                nativeButton={false}
-                render={
-                  <a
-                    href={officialExportUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  />
-                }
-              >
-                <ExternalLink data-icon="inline-start" />
-                {officialExportLabel}
-              </Button>
-            </div>
-          ) : null}
-
-          <section>
-            <h3 className="mb-4 font-heading text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-              How to download &amp; import
-            </h3>
-            <ol className="space-y-5">
-              {platform.steps.map((step, index) => (
-                <li key={step} className="flex gap-3.5">
-                  <span
-                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground font-heading text-sm font-semibold text-background tabular-nums"
-                    aria-hidden
-                  >
-                    {index + 1}
-                  </span>
-                  <div className="min-w-0 pt-1">
-                    <p className="font-heading text-base leading-snug font-medium tracking-tight text-foreground sm:text-lg">
-                      {step}
-                    </p>
-                    {index === platform.steps.length - 1 &&
-                    platform.importHint ? (
-                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                        {platform.importHint}
-                      </p>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </section>
-
-          {enabled ? (
-            <p className="mt-7 rounded-xl bg-primary/10 px-3.5 py-3 text-sm leading-relaxed text-foreground ring-1 ring-primary/20">
-              Processing stays on your device. Your archive is not uploaded for
-              analysis.
-            </p>
-          ) : null}
         </div>
-
         <DialogFooter className="shrink-0 border-t border-border/60 px-5 py-3 sm:px-7">
           <DialogClose
             render={
