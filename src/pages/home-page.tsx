@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { ArrowUpRight, ShieldCheck, XIcon } from "lucide-react"
+import { ArrowUpRight, Download, ShieldCheck, XIcon } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Link } from "react-router"
 
@@ -16,6 +16,7 @@ import {
   isGettingStartedDismissed,
   showGettingStarted,
 } from "@/lib/getting-started"
+import { ANDROID_DOWNLOAD_URL, isAndroidApp } from "@/lib/app-links"
 import {
   HIGH_PRIORITY_PLATFORMS,
   PLATFORM_CATEGORY_ORDER,
@@ -197,20 +198,40 @@ export function HomePage() {
                   </AlertTitle>
                   <AlertDescription className="col-start-auto mt-0.5 text-xs leading-snug text-muted-foreground">
                     No accounts, No data uploads — your archive is analyzed on
-                    this device. This site may load a visitor count; that is not
-                    your export.
+                    this device. Android version doesn't have internet
+                    permission.
                   </AlertDescription>
                 </div>
 
-                <Button
-                  size="sm"
-                  className="w-fit shrink-0 rounded-full"
-                  render={<Link to="/privacy" onClick={handlePrivacyClick} />}
-                  nativeButton={false}
-                >
-                  Peek at Privacy
-                  <ArrowUpRight data-icon="inline-end" />
-                </Button>
+                <div className="flex w-fit shrink-0 flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    className="w-fit shrink-0 rounded-full"
+                    render={<Link to="/privacy" onClick={handlePrivacyClick} />}
+                    nativeButton={false}
+                  >
+                    Peek at Privacy
+                    <ArrowUpRight data-icon="inline-end" />
+                  </Button>
+                  {isAndroidApp() ? null : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-fit shrink-0 rounded-full"
+                      render={
+                        <a
+                          href={ANDROID_DOWNLOAD_URL}
+                          target="_blank"
+                          rel="noreferrer"
+                        />
+                      }
+                      nativeButton={false}
+                    >
+                      Get Android
+                      <Download data-icon="inline-end" />
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <Button

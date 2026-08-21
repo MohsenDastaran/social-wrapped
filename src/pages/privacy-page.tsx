@@ -73,8 +73,13 @@ export function PrivacyPage() {
               <span className="font-medium text-foreground">
                 Offline proof:
               </span>{" "}
-              install the desktop or Android app, turn on airplane mode, and
-              import — if it still works, your data never needed our servers.
+              install the desktop app, turn on airplane mode, and import — if it
+              still works, your data never needed our servers. The Android APK
+              goes further: it ships{" "}
+              <span className="font-medium text-foreground">
+                without internet permission
+              </span>
+              , so the OS cannot let that build talk to the network at all.
             </li>
             <li>
               <span className="font-medium text-foreground">
@@ -115,8 +120,8 @@ export function PrivacyPage() {
             the site. Those requests are not a pipeline for chats or wrap
             results.
           </p>
-          <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Desktop and Android builds work with the internet off: install from{" "}
+          <p className="mb-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Desktop builds work with the internet off: install from{" "}
             <a
               href={DOWNLOAD_URL}
               target="_blank"
@@ -130,6 +135,13 @@ export function PrivacyPage() {
             Opening GitHub, export-help links, or checking for updates needs a
             network — that is expected and still not your archive leaving the
             device.
+          </p>
+          <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Android is the same local app, with a harder guarantee: the release
+            APK does not declare the internet permission. Android will not grant
+            that build a network, so an export you import on the phone has no
+            path off the device through Social Wrapped. Prefer the arm64-v8a APK
+            on phones.
           </p>
         </section>
 
@@ -184,9 +196,7 @@ export function PrivacyPage() {
               large upload of your archive.
             </li>
             <li>
-              <span className="font-medium text-foreground">
-                Phone / desktop app:
-              </span>{" "}
+              <span className="font-medium text-foreground">Desktop app:</span>{" "}
               install from{" "}
               <a
                 href={DOWNLOAD_URL}
@@ -197,9 +207,19 @@ export function PrivacyPage() {
                 GitHub Releases
               </a>
               {", "}
-              turn on Airplane Mode (or disable Wi‑Fi and mobile data), then
-              import a file already on the device. If analysis still works,
-              those files never needed the internet.
+              turn on Airplane Mode (or disable Wi‑Fi and Ethernet), then import
+              a file already on the device. If analysis still works, those files
+              never needed the internet.
+            </li>
+            <li>
+              <span className="font-medium text-foreground">Android app:</span>{" "}
+              install the APK from the same releases page (arm64-v8a on newer
+              phones). It is built{" "}
+              <span className="font-medium text-foreground">
+                without internet permission
+              </span>{" "}
+              — check App info → Permissions, or the APK manifest. Import a
+              file. Same local analysis as desktop.
             </li>
           </ul>
         </section>

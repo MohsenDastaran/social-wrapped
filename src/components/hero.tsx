@@ -5,15 +5,11 @@ import NumberFlow, { continuous } from "@number-flow/react"
 import { useEffect, useState } from "react"
 
 import { AnimatedLines } from "@/components/animated-lines"
-import { DOWNLOAD_URL } from "@/lib/app-links"
+import { DOWNLOAD_URL, isAndroidApp } from "@/lib/app-links"
 import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
 import { syncUserStats } from "@/lib/user-stats"
 import { isTauri } from "@tauri-apps/api/core"
 import { ArrowDown, Download } from "lucide-react"
-
-function isAndroidApp() {
-  return isTauri() && /android/i.test(navigator.userAgent)
-}
 
 function scrollToPlatforms() {
   const el = document.getElementById("platforms")

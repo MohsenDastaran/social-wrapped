@@ -17,13 +17,13 @@ Social Wrapped is built so a Telegram dump, a Google Takeout ZIP, or an Instagra
 | **Official exports only** | You download data from Telegram, Google Takeout, Meta, Spotify, etc. using **their** export tools. We never ask for your social-network password or OAuth into those accounts. |
 | **On-device engine** | Parsing and scoring run in the app (including WebAssembly compiled from Rust). The engine process is **your** machine, not a server we operate. |
 | **Local storage** | Saved wraps live in **IndexedDB** on this device. Settings and retention only affect that local store. |
-| **You can prove it** | DevTools Network while importing: no large archive upload. Native apps: airplane mode — if a wrap still runs, the archive never needed the internet. |
+| **You can prove it** | DevTools Network while importing: no large archive upload. Desktop: airplane mode — if a wrap still runs, the archive never needed the internet. Android: the APK has no `INTERNET` permission, so the OS cannot grant this app a network. |
 
 We do **not** ask you to trust a privacy policy alone. The public repo exists so you (or someone you trust) can read how files are chosen, handed to the analyzer, and written back to disk.
 
 Optional network is **not** used for your archive. The website may `GET` a visitor count (and may show ads later). Opening GitHub or checking for an app update also uses the network. None of that uploads chats, Takeout dumps, or wrap results.
 
-Desktop and Android apps from [GitHub Releases](https://github.com/MohsenDastaran/social-wrapped/releases/latest) work with the internet off: install, turn on airplane mode, import as usual.
+Desktop apps from [GitHub Releases](https://github.com/MohsenDastaran/social-wrapped/releases/latest) work with the internet off: install, turn on airplane mode, import as usual. The Android APK is the same local analysis, built **without** the `INTERNET` permission — Android will not let that app open a network connection, so an archive imported on the phone has no path off the device through this app.
 
 ---
 
@@ -76,14 +76,21 @@ These checks only require watching your device.
 4. You **may** see a small `GET` for the public visitor count. That is not your export. Ads, if added later, would also be unrelated to wrap files.
 5. If a request appears, inspect URL, size, and payload. Analysis must not upload the dump.
 
-### Phone / desktop app
+### Desktop app
 
 1. Install from [GitHub Releases](https://github.com/MohsenDastaran/social-wrapped/releases/latest).
-2. Turn on **Airplane Mode** (or disable Wi‑Fi and mobile data / disconnect Ethernet).
+2. Turn on **Airplane Mode** (or disable Wi‑Fi and disconnect Ethernet).
 3. Open a saved wrap or import a file already on the device.
 4. If analysis still works, those files never needed the internet.
 
 External links (GitHub, official export help) will fail offline — that is expected. The visitor-count request will fail too; wrapping still works.
+
+### Android app
+
+1. Install the APK from the same [GitHub Releases](https://github.com/MohsenDastaran/social-wrapped/releases/latest) page. Prefer **arm64-v8a** on phones.
+2. Confirm the build has no internet permission (App info → Permissions, or the APK `AndroidManifest`).
+3. Import a file already on the phone. Analysis runs locally, like the website and desktop app.
+4. Because the OS refuses a network for this app, you do not need airplane mode to know the archive cannot leave through Social Wrapped.
 
 ---
 
