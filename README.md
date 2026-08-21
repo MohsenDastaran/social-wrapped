@@ -1,6 +1,6 @@
 # Social Wrapped
 
-Local-first year-in-review for **official** social and media exports. Telegram dumps, Takeout ZIPs, Instagram archives, and similar files are parsed **on your device** — not uploaded for “insights.”
+Local-first review for **official** social media and other platform exports. Telegram, Google ZIPs, Instagram archives, and similar files are parsed **on your device** — **not data upload**
 
 ## Start
 
@@ -68,4 +68,3 @@ bun run tauri dev    # desktop — see docs/desktop-build.md
 ```
 
 Read access to private [`social-wrapped-core`](https://github.com/MohsenDastaran/social-wrapped-core) is required **to build the analyzer from source**. The public tree is enough to inspect import and storage. Prebuilt [releases](https://github.com/MohsenDastaran/social-wrapped/releases/latest) include the engine and still process archives locally.
-
