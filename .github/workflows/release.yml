@@ -94,33 +94,33 @@ jobs:
           - platform: ubuntu-22.04
             args: --apk --split-per-abi --target aarch64
             mobile: android
-            asset_pattern: '[name]_[version]_01-android-arm64[ext]'
+            asset_pattern: "[name]_[version]_01-android-arm64[ext]"
             rust_targets: aarch64-linux-android,wasm32-unknown-unknown
           - platform: ubuntu-22.04
             args: --apk
             mobile: android
-            asset_pattern: '[name]_[version]_01-android-universal[ext]'
+            asset_pattern: "[name]_[version]_01-android-universal[ext]"
             rust_targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android,wasm32-unknown-unknown
           - platform: windows-latest
-            args: ''
-            mobile: ''
-            asset_pattern: '[name]_[version]_02-windows_[arch][setup][ext]'
+            args: ""
+            mobile: ""
+            asset_pattern: "[name]_[version]_02-windows_[arch][setup][ext]"
             rust_targets: wasm32-unknown-unknown
           - platform: macos-latest
             args: --target aarch64-apple-darwin
-            mobile: ''
-            asset_pattern: '[name]_[version]_03-macos_[arch][ext]'
+            mobile: ""
+            asset_pattern: "[name]_[version]_03-macos_[arch][ext]"
             rust_targets: aarch64-apple-darwin,wasm32-unknown-unknown
           - platform: macos-latest
             args: --target x86_64-apple-darwin
-            mobile: ''
-            asset_pattern: '[name]_[version]_03-macos_[arch][ext]'
+            mobile: ""
+            asset_pattern: "[name]_[version]_03-macos_[arch][ext]"
             rust_targets: x86_64-apple-darwin,wasm32-unknown-unknown
           - platform: ubuntu-22.04
-            args: ''
-            mobile: ''
+            args: ""
+            mobile: ""
             # Linux: order-assets inserts _04/_05/_06 after the version.
-            asset_pattern: ''
+            asset_pattern: ""
             rust_targets: wasm32-unknown-unknown
 
     runs-on: ${{ matrix.platform }}
@@ -177,7 +177,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
 
       - name: Setup Android SDK
         if: matrix.mobile == 'android'
@@ -224,7 +224,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: '. -> target'
+          workspaces: ". -> target"
           key: ${{ matrix.mobile || 'desktop' }}-${{ matrix.args }}
 
       - name: Install frontend dependencies
@@ -604,7 +604,7 @@ jobs:
             rows.push({
               os: joinBadges(badges),
               compat:
-                "8.0 or later<br>No internet permission — analysis stays on device",
+                "8.0 or later<br>No internet permission",
             })
           }
 
