@@ -603,7 +603,8 @@ jobs:
             })
             rows.push({
               os: joinBadges(badges),
-              compat: "8.0 or later",
+              compat:
+                "8.0 or later<br>No internet permission — analysis stays on device",
             })
           }
 
@@ -721,6 +722,8 @@ jobs:
             "## Downloads",
             "",
             `${websiteBadge} — use in the browser (no install). Native installers below.`,
+            "",
+            "Android APKs are built **without the INTERNET permission**. The OS cannot grant those builds a network; analysis is local, same as desktop.",
             "",
             "<table>",
             "<thead><tr><th align=\"left\">OS / Arch</th><th align=\"left\">Compatibility</th></tr></thead>",

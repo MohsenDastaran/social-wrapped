@@ -1,46 +1,71 @@
 # Social Wrapped
 
-Local-first wrap for **official** social and media exports (Tauri + React). Your Telegram dump, Takeout ZIP, or Instagram archive is analyzed **on your device** — never uploaded for “insights.”
+Local-first year-in-review for **official** social and media exports. Telegram dumps, Takeout ZIPs, Instagram archives, and similar files are parsed **on your device** — not uploaded for “insights.”
 
-The website may load a small **visitor count** (and ads later). That is not your export. Desktop builds work with the internet off. The **Android** APK is built **without** the `INTERNET` permission, so the OS cannot give this app a network — same on-device analysis as everywhere else, with no path for an archive to leave the phone. [Download the latest release](https://github.com/MohsenDastaran/social-wrapped/releases/latest).
+## Start
 
-**Full product & trust guide:** [docs/app.md](./docs/app.md)
+- **Use** — [wrapped.dastaran.com](https://wrapped.dastaran.com/)
+- **Download** — [latest GitHub Release](https://github.com/MohsenDastaran/social-wrapped/releases/latest) (Windows, macOS, Linux, Android)
 
-## Your data is safe here
+The website may load a small visitor count (and maybe ads later). That is not your export. Desktop apps run with the internet off. **Android APKs ship without the `INTERNET` permission** — the OS cannot grant those builds a network, so an archive imported on the phone has no path off the device through this app. Prefer the **arm64-v8a** APK on newer phones.
 
-This repository is public so you can **verify** that exports stay local:
+## Privacy
 
-- No Social Wrapped account is required to run a wrap.
-- Files are picked on disk, parsed in-app (including WASM), and stored in **IndexedDB** on this device.
-- We do not upload chats, Takeout dumps, or wrap results. Optional network (visitor count, future ads, GitHub links) is not a pipeline for your archive.
-- Desktop: turn on airplane mode after install and import as usual. A wrap that still works offline never needed our servers for your data.
-- Android: the published APK does not request internet access. Analysis is still local; the system blocks this app from opening a network connection, so you do not have to trust airplane mode on the phone.
+No Social Wrapped account is required. You request archives from the platforms you already use; we never ask for those passwords or OAuth. Files are chosen on disk, parsed in-app (including WASM), and stored in **IndexedDB** on this device.
 
-The analytics engine (`crates/core`) is a **private git submodule**. It still runs **only on your machine**. Closed source does not mean the cloud.
+The public repo is the app shell (UI, import, storage). Optional network — visitor count, future ads, GitHub or update links — is not a pipeline for chats, Takeout dumps, or wrap results.
 
-**Want to review the core?** Open an issue titled **Core review request** (or contact [the maintainer](https://github.com/MohsenDastaran)). We grant read access to [`social-wrapped-core`](https://github.com/MohsenDastaran/social-wrapped-core) for good-faith review — journalists, researchers, security people, or anyone who wants a second pair of eyes on the parsers.
+The analytics engine (`crates/core`) is a **private git submodule**. It still runs **only on your machine**. Closed source does not mean the cloud. For a good-faith review of the parsers, open an issue titled **Core review request** (or contact [the maintainer](https://github.com/MohsenDastaran)).
 
-Details, verification steps, and architecture: **[docs/app.md](./docs/app.md)**.
+**Verify:** in the browser, watch DevTools → Network while importing — no large archive upload. On desktop, airplane mode after install; if a wrap still runs, those files never needed our servers. On Android, check App info → Permissions (or the APK manifest) for no internet access.
 
-## Clone
+## Platforms
+
+Imports stay on device. Exact fields depend on what the platform put in the archive. How to request each file: in-app import help and [docs/target-platforms.md](./docs/target-platforms.md).
+
+| Platform    | Typical export                                                                                                                     |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Telegram    | Desktop JSON (`result.json` or export folder / ZIP)                                                                                |
+| WhatsApp    | Account information ZIP, or a per-chat `.txt` / ZIP                                                                                |
+| X (Twitter) | Full account archive ZIP                                                                                                           |
+| Google      | Takeout ZIP(s) — YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos metadata, Gmail **headers**, Drive **library metadata** |
+| YouTube     | Via Google Takeout                                                                                                                 |
+| Instagram   | Meta “export to device” JSON ZIP                                                                                                   |
+| Facebook    | Meta Accounts Centre JSON ZIP                                                                                                      |
+| TikTok      | In-app data download ZIP (prefer TXT)                                                                                              |
+| Spotify     | Privacy data download (extended streaming history)                                                                                 |
+| Apple Music | Official data export                                                                                                               |
+| LinkedIn    | Settings → Download your data (full archive ZIP)                                                                                   |
+| ChatGPT     | Settings → Data controls → Export data (ZIP)                                                                                       |
+
+Typical flow: save the official ZIP/JSON on disk → pick it in Social Wrapped → parse on device → charts, stories, and optional local video. Media binaries inside exports are generally skipped; metadata and text are used. Share images and video are rendered locally.
+
+## Architecture
+
+```
+Official export (ZIP / JSON / TXT)
+        │
+        ▼
+  Public app shell  — file pickers, ZIP walk, UI, IndexedDB
+        │
+        ▼
+  crates/core (submodule)  — parsers + analytics (WASM / native, local)
+        │
+        ▼
+  Wrap results on this device  — charts, stories, optional local video
+```
+
+Tauri 2 desktop/Android; the same UI runs in the browser. Data-flow audit points: [`src/platform/import.ts`](./src/platform/import.ts), [`src/lib/wrap-history.ts`](./src/lib/wrap-history.ts). In-app copy: Privacy page.
+
+## Develop
 
 ```bash
 git clone --recurse-submodules https://github.com/MohsenDastaran/social-wrapped.git
 cd social-wrapped
 bun install
-```
-
-You need read access to the private [`social-wrapped-core`](https://github.com/MohsenDastaran/social-wrapped-core) repo **to build the analyzer from source**. To inspect how imports and storage work, the public tree is enough. Prebuilt apps on GitHub Releases include the engine and still process archives locally.
-
-```bash
 bun run dev          # browser UI
 bun run tauri dev    # desktop — see docs/desktop-build.md
 ```
 
-## Docs
+Read access to private [`social-wrapped-core`](https://github.com/MohsenDastaran/social-wrapped-core) is required **to build the analyzer from source**. The public tree is enough to inspect import and storage. Prebuilt [releases](https://github.com/MohsenDastaran/social-wrapped/releases/latest) include the engine and still process archives locally.
 
-| Doc | Topic |
-| --- | --- |
-| [docs/app.md](./docs/app.md) | Product, privacy, core review, platforms |
-| [docs/target-platforms.md](./docs/target-platforms.md) | Export formats |
-| [docs/desktop-build.md](./docs/desktop-build.md) | Desktop / Android / CI |
