@@ -19,11 +19,7 @@ export const PLATFORM_ENABLED = {
 export type PlatformId = keyof typeof PLATFORM_ENABLED
 
 export type PlatformCategory =
-  | "messaging"
-  | "social"
-  | "music"
-  | "google"
-  | "ai"
+  "messaging" | "social" | "music" | "google" | "ai"
 
 export const PLATFORM_CATEGORY_ORDER = [
   "messaging",
@@ -68,9 +64,11 @@ export type PlatformConfig = {
   accept: string
 }
 
-export function groupPlatformsByCategory(
+export function groupPlatformsByCategory(platforms: PlatformConfig[]): {
+  category: PlatformCategory
+  label: string
   platforms: PlatformConfig[]
-): { category: PlatformCategory; label: string; platforms: PlatformConfig[] }[] {
+}[] {
   return PLATFORM_CATEGORY_ORDER.flatMap((category) => {
     const items = platforms.filter((platform) => platform.category === category)
     if (items.length === 0) return []
@@ -327,7 +325,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
       "from-red-500/25 via-orange-400/10 to-transparent dark:from-red-400/20 dark:via-orange-500/5",
     summary: "Pull watch and search history via Google Takeout.",
     exportPath: "Google Takeout → YouTube and YouTube Music",
-    formats: "HTML, CSV (ZIP)",
+    formats: "ZIP",
     extractable:
       "Watch history, search history, playlists, comments, subscriptions, and channel info.",
     steps: [
@@ -353,7 +351,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     summary:
       "Request a data archive from Settings & Privacy on desktop (not mobile).",
     exportPath: "Me → Settings & Privacy → Data privacy → Download your data",
-    formats: "CSV (ZIP)",
+    formats: "ZIP",
     extractable:
       "Connections, messages, reactions, comments, shares, invitations, endorsements, and job applications.",
     steps: [
