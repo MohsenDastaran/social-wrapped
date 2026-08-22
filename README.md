@@ -1,6 +1,6 @@
 # Social Wrapped
 
-Local-first review for **official** social media and other platform exports. Telegram, Google ZIPs, Instagram archives, and similar files are parsed **on your device** — **not data upload**
+Local review for **official** social media and other platform exports. Telegram, Google ZIPs, Instagram archives, and similar files are parsed **on your device** — **no data upload**
 
 ## Start
 
