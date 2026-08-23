@@ -16,6 +16,7 @@ import {
   isGettingStartedDismissed,
   showGettingStarted,
 } from "@/lib/getting-started"
+import { isWebsiteTourComplete } from "@/lib/website-tour"
 import { ANDROID_DOWNLOAD_URL, isAndroidApp } from "@/lib/app-links"
 import {
   HIGH_PRIORITY_PLATFORMS,
@@ -135,7 +136,11 @@ export function HomePage() {
   useEffect(() => {
     const views = bumpOnboardingViews()
     const inOnboarding = views <= ONBOARDING_MAX_VIEWS
-    if (inOnboarding && !isGettingStartedDismissed()) {
+    if (
+      inOnboarding &&
+      !isGettingStartedDismissed() &&
+      isWebsiteTourComplete()
+    ) {
       showGettingStarted()
     }
     setShowTrustAlert(

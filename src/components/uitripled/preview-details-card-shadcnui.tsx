@@ -6,13 +6,13 @@ import {
   useReducedMotion,
   type Variants,
 } from "framer-motion"
-import { ArrowUpRight, Sparkles, Star, XIcon } from "lucide-react"
+import { ArrowUpRight, Compass, Sparkles, XIcon } from "lucide-react"
 import { useEffect, useId, useMemo, useState } from "react"
 
 import { PlatformLogo } from "@/components/platform-logo"
 import { Button } from "@/components/ui/button"
-
-const SOURCE_URL = "https://github.com/MohsenDastaran/social-wrapped"
+import { hideGettingStarted } from "@/lib/getting-started"
+import { showWebsiteTour } from "@/lib/website-tour"
 
 const gettingStartedSteps = [
   { label: "01", value: "Download your data" },
@@ -114,12 +114,6 @@ export function PreviewDetailsCard({
             >
               Don&apos;t know what to do?
             </h3>
-            <p
-              id={descriptionId}
-              className="text-sm leading-relaxed text-muted-foreground"
-            >
-              Three simple steps to your wrap demo.
-            </p>
           </div>
 
           <AnimatePresence>
@@ -135,41 +129,21 @@ export function PreviewDetailsCard({
                 role="region"
                 aria-live="polite"
               >
-                <div className="mb-4 flex items-center justify-between text-[11px] tracking-[0.36em] text-(--muted-foreground)/70 uppercase">
-                  How it works
-                  <span className="rounded-full bg-primary/15 px-3 py-1 text-[0.65rem] font-semibold text-primary/85">
-                    3 steps
-                  </span>
-                </div>
-                <ul className="flex flex-col gap-3">
-                  {gettingStartedSteps.map((item) => (
-                    <li
-                      key={item.label}
-                      className="flex items-center justify-between gap-3 text-sm text-(--muted-foreground)/80"
-                    >
-                      <span className="text-[11px] tracking-[0.28em] text-(--muted-foreground)/70 uppercase">
-                        {item.label}
-                      </span>
-                      <span className="font-medium text-muted-foreground">
-                        {item.value}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <a
-                  href={SOURCE_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-4 flex items-center justify-between gap-3 rounded-xl px-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-auto w-full justify-between rounded-xl px-1 py-1 text-sm text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    hideGettingStarted()
+                    showWebsiteTour()
+                  }}
                 >
                   <span className="inline-flex items-center gap-2 font-medium">
-                    <Star className="size-3.5 text-primary" aria-hidden />
-                    Say wow :) & Give us a
-                    <span className="font-medium text-foreground">Star</span>
+                    <Compass data-icon="inline-start" className="text-primary" />
+                    Replay the tour
                   </span>
-                  <ArrowUpRight className="size-4 shrink-0" aria-hidden />
-                </a>
+                  <ArrowUpRight data-icon="inline-end" />
+                </Button>
 
                 {onTryDemo ? (
                   <div className="mt-4 flex flex-col gap-2">
