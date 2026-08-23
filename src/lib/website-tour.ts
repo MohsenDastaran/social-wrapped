@@ -1,5 +1,3 @@
-import { isTauri } from "@tauri-apps/api/core"
-
 const WEBSITE_TOUR_KEY = "social-wrapped:website-tour-complete"
 
 type WebsiteTourState = {
@@ -48,9 +46,8 @@ export function completeWebsiteTour() {
   }
 }
 
-/** First visit on the public website only — native apps skip this. */
+/** First visit until the walkthrough is marked complete (website and native). */
 export function shouldShowWebsiteTour() {
   if (typeof window === "undefined") return false
-  if (isTauri()) return false
   return !isWebsiteTourComplete()
 }

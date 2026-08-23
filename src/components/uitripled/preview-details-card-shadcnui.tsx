@@ -154,7 +154,7 @@ export function PreviewDetailsCard({
                 {onTryDemo ? (
                   <div className="mt-4 flex flex-col gap-2">
                     <p className="text-[11px] tracking-[0.28em] text-(--muted-foreground)/70 uppercase">
-                      Try a{" "}
+                      Or try a{" "}
                       <span className="font-semibold text-primary">demo</span>{" "}
                       with
                     </p>

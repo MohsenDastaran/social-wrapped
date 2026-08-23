@@ -4,7 +4,14 @@ import * as React from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
+import { AppLoader } from "@/components/app-loader";
 import { Button } from "@/components/ui/button";
+import {
+  isMediaReady,
+  isVideoUrl,
+  preloadMediaUrls,
+  subscribeMediaReady,
+} from "@/lib/preload-media";
 import { cn } from "@/lib/utils";
 
 export type StepFlowItem = {
@@ -12,8 +19,11 @@ export type StepFlowItem = {
   serial?: string;
   title: string;
   description?: string;
+  /** Image or video URL (mp4, webm, ogg, mov). */
   image: string;
   imageAlt?: string;
+  /** Poster shown while a video buffers, or when motion is reduced. */
+  poster?: string;
 };
 
 export type StepFlowProps = {
@@ -71,6 +81,99 @@ const defaultSteps: StepFlowItem[] = [
   },
 ];
 
+const MEDIA_CLASS =
+  "h-full max-h-full min-h-0 w-full rounded-[20px] border border-black/10 object-cover shadow-[0_24px_60px_-30px_rgba(0,0,0,0.45)] lg:rounded-[24px] dark:border-white/10";
+
+function useMediaReady(src: string | undefined) {
+  return React.useSyncExternalStore(
+    React.useCallback(
+      (onStoreChange: () => void) => {
+        if (!src) return () => {};
+        return subscribeMediaReady(src, onStoreChange);
+      },
+      [src],
+    ),
+    () => !src || isMediaReady(src),
+    () => !src,
+  );
+}
+
+function StepMedia({
+  step,
+  reduceMotion,
+}: {
+  step: StepFlowItem;
+  reduceMotion: boolean;
+}) {
+  const src = step.image;
+  const poster = step.poster;
+  const ready = useMediaReady(src);
+  const isVideo = isVideoUrl(src);
+  const showPoster = Boolean(isVideo && poster && reduceMotion);
+  const mediaKey = step.id ?? step.title;
+  const motionProps = {
+    initial: reduceMotion
+      ? { opacity: 1 }
+      : { opacity: 0, scale: 1.04, y: 10, filter: "blur(14px)" },
+    animate: reduceMotion
+      ? { opacity: 1 }
+      : { opacity: 1, scale: 1, y: 0, filter: "blur(0px)" },
+    exit: reduceMotion
+      ? { opacity: 0 }
+      : { opacity: 0, scale: 0.985, y: -8, filter: "blur(10px)" },
+    transition: reduceMotion
+      ? { duration: 0.1 }
+      : { type: "spring" as const, bounce: 0, duration: 0.7 },
+  };
+
+  return (
+    <>
+      {ready ? null : (
+        <div className="absolute inset-0 z-10 flex items-center justify-center">
+          <AppLoader size="md" fullscreen={false} label="Loading media" />
+        </div>
+      )}
+      <AnimatePresence mode="wait">
+        {ready ? (
+          showPoster ? (
+            <motion.img
+              key={`${mediaKey}-poster`}
+              src={poster}
+              alt={step.imageAlt ?? step.title}
+              className={MEDIA_CLASS}
+              {...motionProps}
+            />
+          ) : isVideo ? (
+            <motion.video
+              key={mediaKey}
+              src={src}
+              poster={poster}
+              muted
+              loop
+              playsInline
+              autoPlay={!reduceMotion}
+              aria-label={step.imageAlt ?? step.title}
+              className={MEDIA_CLASS}
+              ref={(el) => {
+                if (el && !reduceMotion) void el.play().catch(() => undefined)
+              }}
+              {...motionProps}
+            />
+          ) : (
+            <motion.img
+              key={mediaKey}
+              src={src}
+              alt={step.imageAlt ?? step.title}
+              className={MEDIA_CLASS}
+              {...motionProps}
+            />
+          )
+        ) : null}
+      </AnimatePresence>
+    </>
+  );
+}
+
 export function StepFlow({
   steps = defaultSteps,
   defaultStep = 0,
@@ -110,6 +213,10 @@ export function StepFlow({
     },
     [farthestIndex, isControlled, lastIndex, lockFutureSteps, onStepChange],
   );
+
+  React.useEffect(() => {
+    preloadMediaUrls(safeSteps.flatMap((item) => [item.image, item.poster]));
+  }, [safeSteps]);
 
   React.useEffect(() => {
     if (activeIndex > farthestIndex) setFarthestIndex(activeIndex);
@@ -243,34 +350,7 @@ export function StepFlow({
             imageClassName,
           )}
         >
-          <AnimatePresence mode="wait">
-            <motion.img
-              key={activeStep.id ?? activeStep.title}
-              src={activeStep.image}
-              alt={activeStep.imageAlt ?? activeStep.title}
-              className="h-full max-h-full min-h-0 w-full rounded-[20px] border border-black/10 object-cover shadow-[0_24px_60px_-30px_rgba(0,0,0,0.45)] lg:rounded-[24px] dark:border-white/10"
-              initial={
-                reduceMotion
-                  ? { opacity: 1 }
-                  : { opacity: 0, scale: 1.04, y: 10, filter: "blur(14px)" }
-              }
-              animate={
-                reduceMotion
-                  ? { opacity: 1 }
-                  : { opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }
-              }
-              exit={
-                reduceMotion
-                  ? { opacity: 0 }
-                  : { opacity: 0, scale: 0.985, y: -8, filter: "blur(10px)" }
-              }
-              transition={
-                reduceMotion
-                  ? { duration: 0.1 }
-                  : { type: "spring", bounce: 0, duration: 0.7 }
-              }
-            />
-          </AnimatePresence>
+          <StepMedia step={activeStep} reduceMotion={reduceMotion} />
         </div>
       </div>
 
