@@ -14,12 +14,6 @@ import { Button } from "@/components/ui/button"
 import { hideGettingStarted } from "@/lib/getting-started"
 import { showWebsiteTour } from "@/lib/website-tour"
 
-const gettingStartedSteps = [
-  { label: "01", value: "Download your data" },
-  { label: "02", value: "Import it in Social Wrapped" },
-  { label: "03", value: "See the analytics" },
-]
-
 type DemoPlatformId = "telegram" | "instagram"
 
 type PreviewDetailsCardProps = {
