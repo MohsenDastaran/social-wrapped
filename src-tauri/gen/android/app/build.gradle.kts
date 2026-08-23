@@ -23,10 +23,10 @@ val keystoreProperties = Properties().apply {
 
 android {
     compileSdk = 36
-    namespace = "com.mohsendastaran.social-wrapped"
+    namespace = "com.mohsendastaran.social_wrapped"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        applicationId = "com.mohsendastaran.social-wrapped"
+        applicationId = "com.mohsendastaran.social_wrapped"
         minSdk = 24
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()

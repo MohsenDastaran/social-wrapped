@@ -1,4 +1,4 @@
-package com.mohsendastaran.social-wrapped
+package com.mohsendastaran.social_wrapped
 
 import android.annotation.SuppressLint
 import android.os.Bundle
