@@ -1,5 +1,12 @@
 import React from "react"
-import { AbsoluteFill, Img, interpolate, useCurrentFrame } from "remotion"
+import {
+  AbsoluteFill,
+  Img,
+  interpolate,
+  spring,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion"
 import { Audio } from "@remotion/media"
 import { TransitionSeries, linearTiming } from "@remotion/transitions"
 
@@ -56,7 +63,7 @@ const WHIP = 52
 const SCENE_MARKER = 300 // ~5s
 const SCENE_CHART = 390 // ~6.5s
 const SCENE_STATS = 540 // ~9s
-const SCENE_LOGOS = 330 // ~5.5s
+const SCENE_LOGOS = 390 // ~6.5s — headline, logos, and three facts
 const MAX_CHARTS = 9
 
 /** Deep-dive chart order (after early activity / sent-received beats). */
@@ -353,6 +360,193 @@ export function appleMusicStickerExtras(slides: VideoChartSlide[]): {
   add("sp-top-tracks", SCENE_AM_TEASER)
   // heatmap + hours use shared slidesIncludeHeatmap / slidesIncludeClock
   return { frames, whips }
+}
+
+function OutroFact({
+  title,
+  detail,
+  delay,
+}: {
+  title: string
+  detail: string
+  delay: number
+}) {
+  const frame = useCurrentFrame()
+  const { fps } = useVideoConfig()
+  const enter = spring({
+    fps,
+    frame: frame - delay,
+    config: { damping: 16, stiffness: 120, mass: 0.7 },
+  })
+  const opacity = interpolate(enter, [0, 1], [0, 1])
+  const y = interpolate(enter, [0, 1], [24, 0])
+
+  return (
+    <div
+      style={{
+        opacity,
+        transform: `translateY(${y}px)`,
+        display: "flex",
+        width: "100%",
+        maxWidth: 820,
+        alignItems: "stretch",
+        gap: 22,
+        borderRadius: 22,
+        border: "1px solid rgba(236, 253, 245, 0.14)",
+        background: "rgba(236, 253, 245, 0.06)",
+        padding: "26px 30px 26px 26px",
+      }}
+    >
+      <div
+        style={{
+          width: 5,
+          flexShrink: 0,
+          borderRadius: 99,
+          background: MARKER,
+        }}
+      />
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          minWidth: 0,
+        }}
+      >
+        <div
+          style={{
+            fontFamily:
+              'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+            fontSize: 34,
+            fontWeight: 700,
+            color: INK,
+            letterSpacing: "-0.03em",
+            lineHeight: 1.15,
+          }}
+        >
+          {title}
+        </div>
+        <div
+          style={{
+            fontFamily:
+              'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+            fontSize: 24,
+            fontWeight: 500,
+            color: MUTED,
+            lineHeight: 1.35,
+          }}
+        >
+          {detail}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function OutroTagline({ text, delay }: { text: string; delay: number }) {
+  const frame = useCurrentFrame()
+  const { fps } = useVideoConfig()
+  const enter = spring({
+    fps,
+    frame: frame - delay,
+    config: { damping: 18, stiffness: 110, mass: 0.8 },
+  })
+
+  return (
+    <div
+      style={{
+        opacity: interpolate(enter, [0, 1], [0, 1]),
+        transform: `translateY(${interpolate(enter, [0, 1], [16, 0])}px)`,
+        fontFamily:
+          'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+        fontSize: 26,
+        fontWeight: 600,
+        color: MUTED,
+        letterSpacing: "-0.02em",
+      }}
+    >
+      {text}
+    </div>
+  )
+}
+
+function OutroLockup() {
+  return (
+    <SceneShell>
+      <AbsoluteFill
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "88px 64px 110px",
+          gap: 26,
+        }}
+      >
+        <div
+          style={{
+            position: "relative",
+            height: 168,
+            width: "100%",
+            flexShrink: 0,
+          }}
+        >
+          <MarkerHighlight
+            before="Use "
+            highlight="Social Wrapped"
+            after=""
+            markerColor={MARKER}
+            baseColor={INK}
+            highlightedTextColor="#041512"
+            backgroundColor="transparent"
+            fontSize={52}
+            fontWeight={700}
+            speed={1.05}
+          />
+        </div>
+        <div
+          style={{
+            position: "relative",
+            height: 108,
+            width: "100%",
+            flexShrink: 0,
+          }}
+        >
+          <LogoEnter
+            logos={SUPPORTED_PLATFORM_LOGOS}
+            diameter={84}
+            overlap={24}
+            ringColor={BG}
+            orientation="horizontal"
+            stagger={6}
+            speed={1}
+          />
+        </div>
+        <div
+          style={{
+            display: "flex",
+            width: "100%",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 14,
+          }}
+        >
+          <OutroFact
+            delay={42}
+            title="Free"
+            detail="No account. No paywall. Open source."
+          />
+          <OutroFact delay={60} title="Fast" detail="Rendered in seconds." />
+          <OutroFact
+            delay={78}
+            title="Local"
+            detail="Your export is parsed on this device."
+          />
+        </div>
+        <OutroTagline delay={100} text="wrapped.dastaran.com" />
+      </AbsoluteFill>
+    </SceneShell>
+  )
 }
 
 /** Must be TransitionSeries.Transition itself — wrappers fail Remotion's child-type check. */
@@ -871,42 +1065,7 @@ export const SocialWrappedVideo: React.FC<SocialWrappedVideoProps> = ({
         />
 
         <TransitionSeries.Sequence durationInFrames={SCENE_LOGOS}>
-          <SceneShell>
-            <AbsoluteFill style={{ top: "-28%" }}>
-              <MarkerHighlight
-                before="Use "
-                highlight="Social Wrapped"
-                after=""
-                markerColor={MARKER}
-                baseColor={INK}
-                highlightedTextColor="#041512"
-                backgroundColor="transparent"
-                fontSize={58}
-                fontWeight={700}
-                speed={1.05}
-              />
-            </AbsoluteFill>
-            <AbsoluteFill style={{ top: "8%" }}>
-              <LogoEnter
-                logos={SUPPORTED_PLATFORM_LOGOS}
-                diameter={96}
-                overlap={28}
-                ringColor={BG}
-                orientation="horizontal"
-                stagger={7}
-                speed={1}
-              />
-            </AbsoluteFill>
-            {/* <AbsoluteFill style={{ top: "34%" }}>
-              <SoftBlurIn
-                text="& more"
-                fontSize={32}
-                fontWeight={600}
-                color={MUTED}
-                speed={1.15}
-              />
-            </AbsoluteFill> */}
-          </SceneShell>
+          <OutroLockup />
         </TransitionSeries.Sequence>
       </TransitionSeries>
     </AbsoluteFill>
