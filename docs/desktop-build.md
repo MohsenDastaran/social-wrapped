@@ -75,24 +75,26 @@ Config: `src-tauri/tauri.conf.json` (`bundle.targets: "all"`). Icons live in `sr
 
 Publishing a GitHub Release runs [`.github/workflows/release.yml`](../.github/workflows/release.yml), which builds for:
 
-- Android **arm64-v8a** APK (phones) + **universal** APK
+- Android **arm64-v8a** APK, **universal** APK, and **Play Store AAB**
 - Windows x64 (`.msi`, NSIS `.exe`)
 - macOS Apple Silicon + Intel (`.dmg`)
 - Linux x64 (`.deb`, `.rpm`, `.AppImage`)
 
 Installers are uploaded as **assets on that Release**. Asset names are prefixed so GitHub’s alphabetical list shows:
 
-`01a` arm64-v8a APK → `01b` universal APK → `02` Windows → `03` macOS → `04` deb → `05` rpm → `06` AppImage
+`01a` arm64-v8a APK → `01b` universal APK → `01c` Play AAB → `02` Windows → `03` macOS → `04` deb → `05` rpm → `06` AppImage
 
-**Android note:** Without `--split-per-abi`, an aarch64-only build is still named `*_universal.apk` and overwrites the other APK on the release. CI builds arm64 with `--apk --split-per-abi --target aarch64` and universal separately. Prefer the **arm64-v8a** asset on phones.
+**Android note:** Without `--split-per-abi`, an aarch64-only build is still named `*_universal.apk` and overwrites the other APK on the release. CI builds arm64 with `--apk --split-per-abi --target aarch64`, universal APK separately, and a universal **AAB** (`--aab`) for Play Console. Prefer the **arm64-v8a** APK on phones; upload the **`.aab`** to Play Store.
 
-Local signed release APK:
+Local signed release:
 
 ```bash
 cp src-tauri/gen/android/keystore.properties.example src-tauri/gen/android/keystore.properties
 bun run android:build
 # arm64 only:
 bunx tauri android build --apk --target aarch64
+# Play Store bundle:
+bunx tauri android build --aab
 ```
 
 You can also run the workflow manually from **Actions → Release** (build only; no upload / reorder unless a release event provided an id).

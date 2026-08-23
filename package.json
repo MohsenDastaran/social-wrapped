@@ -16,7 +16,8 @@
     "tauri": "tauri",
     "android:dev": "tauri android dev",
     "android:dev:device": "tauri android dev --host",
-    "android:build": "tauri android build --apk"
+    "android:build": "tauri android build --apk",
+    "android:aab": "tauri android build --aab"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
