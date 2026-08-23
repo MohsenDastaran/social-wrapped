@@ -129,21 +129,27 @@ export function PreviewDetailsCard({
                 role="region"
                 aria-live="polite"
               >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-auto w-full justify-between rounded-xl px-1 py-1 text-sm text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    hideGettingStarted()
-                    showWebsiteTour()
-                  }}
-                >
-                  <span className="inline-flex items-center gap-2 font-medium">
-                    <Compass data-icon="inline-start" className="text-primary" />
-                    Replay the tour
-                  </span>
-                  <ArrowUpRight data-icon="inline-end" />
-                </Button>
+                <div className="relative">
+                  {shouldReduceMotion ? null : (
+                    <span
+                      aria-hidden
+                      className="absolute -inset-1 animate-pulse rounded-xl bg-primary/35 blur-md"
+                    />
+                  )}
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="relative w-full justify-between rounded-xl"
+                    onClick={() => {
+                      hideGettingStarted()
+                      showWebsiteTour()
+                    }}
+                  >
+                    <Compass data-icon="inline-start" />
+                    Watch the tutorial Again
+                    <ArrowUpRight data-icon="inline-end" />
+                  </Button>
+                </div>
 
                 {onTryDemo ? (
                   <div className="mt-4 flex flex-col gap-2">

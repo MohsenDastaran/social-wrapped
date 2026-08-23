@@ -26,13 +26,17 @@ export function Hero() {
 
   const stats = isAndroidApp()
     ? [
-        { value: 100, suffix: "%", label: "Export stays here" },
+        { value: 100, suffix: "%", label: "Exports stays here" },
         { value: 0, suffix: "", label: "Data uploads" },
         { value: 0, suffix: "", label: "API requests" },
-        { value: HIGH_PRIORITY_PLATFORMS.length, suffix: "", label: "Platforms" },
+        {
+          value: HIGH_PRIORITY_PLATFORMS.length,
+          suffix: "",
+          label: "Platforms",
+        },
       ]
     : [
-        { value: 100, suffix: "%", label: "Export stays here" },
+        { value: 100, suffix: "%", label: "Exports stays here" },
         { value: 0, suffix: "", label: "Data uploads" },
         { value: userCount, suffix: "", label: "Users" },
         { value: userVisits, suffix: "", label: "Visits" },

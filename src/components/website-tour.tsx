@@ -114,7 +114,7 @@ export function WebsiteTour() {
     >
       <DialogContent
         showCloseButton={false}
-        className="flex! top-[50%] max-h-[min(96dvh,calc(100%-0.75rem))] w-[calc(100%-0.75rem)] max-w-5xl translate-y-[-50%] flex-col gap-0 overflow-hidden p-0 sm:max-h-[min(92dvh,calc(100%-1.5rem))] sm:w-[calc(100%-1.5rem)] sm:max-w-6xl lg:max-w-[76rem]"
+        className="flex! top-[50%] h-[min(96dvh,calc(100%-0.75rem))] max-h-[min(96dvh,calc(100%-0.75rem))] w-[calc(100%-0.75rem)] max-w-5xl translate-y-[-50%] flex-col gap-0 overflow-hidden p-0 sm:h-[min(92dvh,calc(100%-1.5rem))] sm:max-h-[min(92dvh,calc(100%-1.5rem))] sm:w-[calc(100%-1.5rem)] sm:max-w-6xl lg:max-w-[76rem]"
       >
         <DialogHeader className="shrink-0 gap-1 px-4 pt-4 pb-2 text-start sm:px-5 sm:pt-5">
           <DialogTitle className="font-heading text-base font-semibold sm:text-lg">
@@ -153,7 +153,7 @@ export function WebsiteTour() {
           <Button
             type="button"
             size="sm"
-            className="rounded-full"
+            className="min-w-32 rounded-full"
             onClick={goNext}
           >
             {isLast ? "Enter the app" : "Next"}

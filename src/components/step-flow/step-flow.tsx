@@ -146,10 +146,10 @@ export function StepFlow({
         className,
       )}
     >
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2 md:items-center lg:grid-cols-[minmax(0,0.94fr)_minmax(280px,1.08fr)] lg:gap-8 lg:overflow-hidden">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2 md:items-stretch lg:grid-cols-[minmax(0,0.94fr)_minmax(280px,1.08fr)] lg:gap-8 lg:overflow-hidden">
         <div
           className={cn(
-            "relative order-2 flex flex-col justify-center rounded-[22px] p-1 sm:p-2 lg:order-1 lg:min-h-0 lg:justify-center",
+            "relative order-2 flex min-h-0 flex-col justify-center rounded-[22px] p-1 sm:p-2 lg:order-1",
             textClassName,
           )}
         >
@@ -157,17 +157,20 @@ export function StepFlow({
             <span className="text-sm font-medium tracking-wide text-neutral-500 sm:text-base dark:text-neutral-400">
               {activeStep.serial ?? String(activeIndex + 1).padStart(2, "0")}
             </span>
-            <h3 className="text-balance text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl dark:text-white">
+            <h3 className="min-h-16 text-balance text-2xl font-semibold tracking-tight text-neutral-950 sm:min-h-20 sm:text-3xl dark:text-white">
               {activeStep.title}
             </h3>
-            {activeStep.description ? (
-              <p className="max-w-xl text-sm leading-6 text-neutral-600 sm:text-base dark:text-neutral-300">
-                {activeStep.description}
-              </p>
-            ) : null}
+            <p className="min-h-24 max-w-xl text-sm leading-6 text-neutral-600 sm:min-h-28 sm:text-base dark:text-neutral-300">
+              {activeStep.description}
+            </p>
           </div>
 
-          <div className="hidden lg:flex lg:flex-1 lg:flex-col lg:justify-center lg:gap-1">
+          <div
+            className="hidden lg:grid lg:min-h-0 lg:flex-1 lg:gap-1"
+            style={{
+              gridTemplateRows: `repeat(${safeSteps.length}, minmax(0, 1fr))`,
+            }}
+          >
             {safeSteps.map((item, index) => {
               const isActive = activeIndex === index;
               const isLocked = lockFutureSteps && index > farthestIndex;
@@ -178,7 +181,7 @@ export function StepFlow({
                   disabled={isLocked}
                   onClick={() => setActiveIndex(index)}
                   className={cn(
-                    "group relative z-10 flex w-full flex-col items-start rounded-2xl px-4 py-2.5 text-start outline-none transition-[color,background-color,transform] duration-200",
+                    "group relative z-10 flex h-full min-h-0 w-full flex-col items-start justify-center overflow-hidden rounded-2xl px-4 py-2 text-start outline-none transition-[color,background-color,transform] duration-200",
                     isLocked ? "cursor-not-allowed" : "cursor-pointer",
                     !isActive &&
                       !isLocked &&
@@ -219,27 +222,14 @@ export function StepFlow({
                     {item.title}
                   </span>
                   {item.description ? (
-                    <AnimatePresence initial={false}>
-                      {isActive ? (
-                        <motion.span
-                          className="mt-1.5 max-w-[34rem] text-sm leading-5 text-neutral-600"
-                          initial={
-                            reduceMotion
-                              ? { opacity: 1 }
-                              : { opacity: 0, y: 6 }
-                          }
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={
-                            reduceMotion
-                              ? { opacity: 0 }
-                              : { opacity: 0, y: -4 }
-                          }
-                          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                        >
-                          {item.description}
-                        </motion.span>
-                      ) : null}
-                    </AnimatePresence>
+                    <span
+                      className={cn(
+                        "mt-1.5 line-clamp-2 min-h-10 max-w-[34rem] text-sm leading-5 text-neutral-600",
+                        isActive ? "visible" : "invisible",
+                      )}
+                    >
+                      {item.description}
+                    </span>
                   ) : null}
                 </button>
               );
@@ -249,7 +239,7 @@ export function StepFlow({
 
         <div
           className={cn(
-            "relative order-1 flex h-40 items-center justify-center overflow-hidden rounded-[20px] bg-neutral-200 p-2 sm:h-52 md:h-full md:min-h-[240px] md:p-4 lg:order-2 lg:min-h-0 lg:p-6 dark:bg-neutral-900",
+            "relative order-1 flex h-40 shrink-0 items-center justify-center overflow-hidden rounded-[20px] bg-neutral-200 p-2 sm:h-52 md:h-auto md:min-h-0 md:p-4 lg:order-2 lg:p-6 dark:bg-neutral-900",
             imageClassName,
           )}
         >
@@ -258,7 +248,7 @@ export function StepFlow({
               key={activeStep.id ?? activeStep.title}
               src={activeStep.image}
               alt={activeStep.imageAlt ?? activeStep.title}
-              className="h-full max-h-full min-h-0 w-full rounded-[20px] border border-black/10 object-cover shadow-[0_24px_60px_-30px_rgba(0,0,0,0.45)] lg:max-h-[560px] lg:rounded-[24px] dark:border-white/10"
+              className="h-full max-h-full min-h-0 w-full rounded-[20px] border border-black/10 object-cover shadow-[0_24px_60px_-30px_rgba(0,0,0,0.45)] lg:rounded-[24px] dark:border-white/10"
               initial={
                 reduceMotion
                   ? { opacity: 1 }
