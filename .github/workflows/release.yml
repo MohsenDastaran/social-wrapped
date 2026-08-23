@@ -333,9 +333,25 @@ jobs:
             return res.status === 204 ? null : res.json()
           }
 
-          const assets = await gh(
+          const listed = await gh(
             `/repos/${owner}/${repo}/releases/${releaseId}/assets?per_page=100`
           )
+
+          // macOS users install from the .dmg. The .app.tar.gz is only the
+          // .app folder packed so GitHub can host it — not an updater artifact
+          // (this project has no updater). Drop it from the release.
+          const assets = []
+          for (const asset of listed) {
+            if (/\.app\.tar\.gz(\.sig)?$/i.test(asset.name)) {
+              console.log(`Removing ${asset.name}`)
+              await gh(
+                `/repos/${owner}/${repo}/releases/assets/${asset.id}`,
+                { method: "DELETE" }
+              )
+              continue
+            }
+            assets.push(asset)
+          }
 
           const SORT_AFTER_VERSION =
             /_\d{2}-(?:android|windows|macos|linux)(?:[-_]|$)/i
@@ -351,11 +367,7 @@ jobs:
             if (bare.endsWith(".msi") || bare.endsWith(".exe")) {
               return "02-windows"
             }
-            if (
-              bare.endsWith(".dmg") ||
-              bare.endsWith(".app") ||
-              bare.includes(".app.tar")
-            ) {
+            if (bare.endsWith(".dmg")) {
               return "03-macos"
             }
             if (bare.endsWith(".deb")) return "04-linux-deb"
