@@ -82,7 +82,7 @@ const defaultSteps: StepFlowItem[] = [
 ];
 
 const MEDIA_CLASS =
-  "h-full max-h-full min-h-0 w-full rounded-[20px] border border-black/10 object-cover shadow-[0_24px_60px_-30px_rgba(0,0,0,0.45)] lg:rounded-[24px] dark:border-white/10";
+  "h-full max-h-full min-h-0 w-full rounded-[20px] border border-black/10 object-contain shadow-[0_24px_60px_-30px_rgba(0,0,0,0.45)] md:object-cover lg:rounded-[24px] dark:border-white/10";
 
 function useMediaReady(src: string | undefined) {
   return React.useSyncExternalStore(
@@ -253,21 +253,21 @@ export function StepFlow({
         className,
       )}
     >
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2 md:items-stretch lg:grid-cols-[minmax(0,0.94fr)_minmax(280px,1.08fr)] lg:gap-8 lg:overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden md:grid md:grid-cols-2 md:items-stretch md:gap-4 md:overflow-y-auto lg:grid-cols-[minmax(0,0.94fr)_minmax(280px,1.08fr)] lg:gap-8 lg:overflow-hidden">
         <div
           className={cn(
-            "relative order-2 flex min-h-0 flex-col justify-center rounded-[22px] p-1 sm:p-2 lg:order-1",
+            "relative order-2 flex shrink-0 flex-col justify-center rounded-[22px] p-1 sm:p-2 lg:order-1 lg:min-h-0 lg:flex-1",
             textClassName,
           )}
         >
-          <div className="flex flex-col gap-2 px-2 py-1 sm:px-4 lg:hidden">
-            <span className="text-sm font-medium tracking-wide text-neutral-500 sm:text-base dark:text-neutral-400">
+          <div className="flex flex-col gap-1.5 px-1 py-1 sm:gap-2 sm:px-4 lg:hidden">
+            <span className="text-xs font-medium tracking-wide text-neutral-500 sm:text-sm dark:text-neutral-400">
               {activeStep.serial ?? String(activeIndex + 1).padStart(2, "0")}
             </span>
-            <h3 className="min-h-16 text-balance text-2xl font-semibold tracking-tight text-neutral-950 sm:min-h-20 sm:text-3xl dark:text-white">
+            <h3 className="text-balance text-xl font-semibold tracking-tight text-neutral-950 sm:text-2xl dark:text-white">
               {activeStep.title}
             </h3>
-            <p className="min-h-24 max-w-xl text-sm leading-6 text-neutral-600 sm:min-h-28 sm:text-base dark:text-neutral-300">
+            <p className="line-clamp-4 max-w-xl text-sm leading-5 text-neutral-600 sm:line-clamp-none sm:text-base sm:leading-6 dark:text-neutral-300">
               {activeStep.description}
             </p>
           </div>
@@ -346,7 +346,7 @@ export function StepFlow({
 
         <div
           className={cn(
-            "relative order-1 flex h-40 shrink-0 items-center justify-center overflow-hidden rounded-[20px] bg-neutral-200 p-2 sm:h-52 md:h-auto md:min-h-0 md:p-4 lg:order-2 lg:p-6 dark:bg-neutral-900",
+            "relative order-1 flex min-h-52 flex-1 items-center justify-center overflow-hidden rounded-[20px] bg-neutral-200 p-1.5 sm:min-h-64 sm:p-2 md:min-h-0 md:p-4 lg:order-2 lg:p-6 dark:bg-neutral-900",
             imageClassName,
           )}
         >

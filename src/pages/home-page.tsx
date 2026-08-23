@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import {
   ONBOARDING_MAX_VIEWS,
   bumpOnboardingViews,
-  isGettingStartedDismissed,
+  shouldAutoShowGettingStarted,
   showGettingStarted,
 } from "@/lib/getting-started"
 import { isWebsiteTourComplete } from "@/lib/website-tour"
@@ -135,16 +135,12 @@ export function HomePage() {
 
   useEffect(() => {
     const views = bumpOnboardingViews()
-    const inOnboarding = views <= ONBOARDING_MAX_VIEWS
-    if (
-      inOnboarding &&
-      !isGettingStartedDismissed() &&
-      isWebsiteTourComplete()
-    ) {
+    if (shouldAutoShowGettingStarted() && isWebsiteTourComplete()) {
       showGettingStarted()
     }
     setShowTrustAlert(
-      inOnboarding && isTrustAlertVisible(readTrustAlertState())
+      views <= ONBOARDING_MAX_VIEWS &&
+        isTrustAlertVisible(readTrustAlertState())
     )
   }, [])
 

@@ -11,7 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { showGettingStarted } from "@/lib/getting-started"
+import {
+  shouldAutoShowGettingStarted,
+  showGettingStarted,
+} from "@/lib/getting-started"
 import { preloadStepMedia } from "@/lib/preload-media"
 import {
   completeWebsiteTour,
@@ -41,7 +44,7 @@ const TOUR_STEPS: StepFlowItem[] = [
     serial: "03",
     title: "Download the export",
     description:
-      "Read the instructions for each platform, then download the export from the platform, then choose the file here.",
+      "Read the instructions for each platform, then download the export from the platform.",
     image: "/images/tour/3.png",
     imageAlt: "People illustrations",
   },
@@ -95,7 +98,9 @@ export function WebsiteTour() {
   function finishTour() {
     completeWebsiteTour()
     setOpen(false)
-    showGettingStarted()
+    if (shouldAutoShowGettingStarted()) {
+      showGettingStarted()
+    }
   }
 
   function goPrevious() {

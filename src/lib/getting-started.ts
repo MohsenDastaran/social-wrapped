@@ -86,3 +86,10 @@ export function bumpOnboardingViews(): number {
   writeOnboardingViews(next)
   return next
 }
+
+/** Reminder card after the first visit, while onboarding still applies. */
+export function shouldAutoShowGettingStarted() {
+  if (isGettingStartedDismissed()) return false
+  const views = readOnboardingViews()
+  return views > 1 && views <= ONBOARDING_MAX_VIEWS
+}
