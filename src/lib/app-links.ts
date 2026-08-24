@@ -1,8 +1,10 @@
 import { isTauri } from "@tauri-apps/api/core"
 
+/** Public GitHub repository. */
+export const REPO_URL = "https://github.com/MohsenDastaran/social-wrapped"
+
 /** Latest desktop, Android, and other installers. */
-export const DOWNLOAD_URL =
-  "https://github.com/MohsenDastaran/social-wrapped/releases/latest"
+export const DOWNLOAD_URL = `${REPO_URL}/releases/latest`
 
 /** Same release page — prefer the arm64-v8a APK on phones. */
 export const ANDROID_DOWNLOAD_URL = DOWNLOAD_URL

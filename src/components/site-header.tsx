@@ -6,6 +6,7 @@ import { DonateDialog } from "@/components/donate-dialog"
 import { ModeToggle } from "@/components/mode-toggle"
 import { MorphNavMenu } from "@/components/ui/animated/morph-nav-menu"
 import { Button } from "@/components/ui/button"
+import { openExternalUrl, REPO_URL } from "@/lib/app-links"
 import { showGettingStarted } from "@/lib/getting-started"
 
 export function SiteHeader() {
@@ -47,6 +48,21 @@ export function SiteHeader() {
               </Button>
             }
           />
+          <Button
+            variant="outline"
+            size="icon-sm"
+            className="size-9 rounded-full"
+            aria-label="GitHub repository"
+            title="GitHub"
+            onClick={() => void openExternalUrl(REPO_URL)}
+          >
+            <img
+              src="/images/platforms/github.svg"
+              alt=""
+              draggable={false}
+              className="size-4 dark:invert"
+            />
+          </Button>
           <ModeToggle />
         </div>
       </div>
