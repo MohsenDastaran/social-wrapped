@@ -101,15 +101,6 @@ export function PreviewDetailsCard({
             )}
           </div>
 
-          <div className="flex flex-col gap-2 text-start">
-            <h3
-              id={`${previewId}-title`}
-              className="text-xl font-semibold text-muted-foreground sm:text-2xl"
-            >
-              Don&apos;t know what to do?
-            </h3>
-          </div>
-
           <AnimatePresence>
             {isActive && (
               <motion.div
