@@ -5,7 +5,7 @@ export type PlatformImportDoc = {
   title: string
   paragraphs: string[]
   /** Official page for exporting or downloading data for this platform. */
-  officialExportUrl: string
+  officialExportUrl?: string
   officialExportLabel?: string
 }
 
@@ -103,6 +103,22 @@ export const PLATFORM_IMPORT_DOCS: Partial<
     ],
     officialExportUrl: "https://chatgpt.com/#settings",
     officialExportLabel: "Open ChatGPT settings",
+  },
+  sms: {
+    title: "SMS on this Android phone",
+    paragraphs: [
+      "SMS analysis is Android-only. The website and desktop apps cannot read your texts.",
+      "The Android APK has no internet permission. When you allow SMS access, Social Wrapped reads threads already stored on this phone and builds the wrap locally.",
+      "Nothing is uploaded. If you deny SMS access, this wrap cannot run.",
+    ],
+  },
+  calls: {
+    title: "Call history on this Android phone",
+    paragraphs: [
+      "Call analysis is Android-only. The website and desktop apps cannot read your call log.",
+      "The Android APK has no internet permission. When you allow call log access, Social Wrapped reads history already stored on this phone and builds the wrap locally.",
+      "Nothing is uploaded. If you deny call log access, this wrap cannot run.",
+    ],
   },
 }
 

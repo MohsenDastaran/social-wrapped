@@ -1,9 +1,12 @@
 import type { PlatformLogoId } from "@/components/platform-logo"
+import { isAndroidApp } from "@/lib/app-links"
 
 /** Single source of truth for whether a platform is available to use. */
 export const PLATFORM_ENABLED = {
   telegram: true,
   whatsapp: true,
+  sms: true,
+  calls: true,
   x: true,
   google: true,
   instagram: true,
@@ -17,6 +20,13 @@ export const PLATFORM_ENABLED = {
 } as const satisfies Record<PlatformLogoId, boolean>
 
 export type PlatformId = keyof typeof PLATFORM_ENABLED
+
+/** SMS / call logs stay on-device; only the Android app can read them. */
+export const ANDROID_ONLY_PLATFORMS = ["sms", "calls"] as const satisfies readonly PlatformId[]
+
+export function isAndroidOnlyPlatform(id: PlatformId): boolean {
+  return (ANDROID_ONLY_PLATFORMS as readonly string[]).includes(id)
+}
 
 export type PlatformCategory =
   "messaging" | "social" | "music" | "google" | "ai"
@@ -38,7 +48,9 @@ export const PLATFORM_CATEGORY_LABELS: Record<PlatformCategory, string> = {
 }
 
 export function isPlatformEnabled(id: PlatformId): boolean {
-  return PLATFORM_ENABLED[id]
+  if (!PLATFORM_ENABLED[id]) return false
+  if (isAndroidOnlyPlatform(id)) return isAndroidApp()
+  return true
 }
 
 export type PlatformConfig = {
@@ -62,6 +74,10 @@ export type PlatformConfig = {
   acceptedFiles: string[]
   /** HTML `accept` attribute for the file picker */
   accept: string
+  /** File export vs on-device Android read (SMS / call log). */
+  importSource?: "file" | "device"
+  /** When true, cards stay locked except in the Android app. */
+  androidOnly?: boolean
 }
 
 export function groupPlatformsByCategory(platforms: PlatformConfig[]): {
@@ -139,6 +155,62 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
       "Upload an Account information report ZIP for profile & connections, or a chat export (.txt / ZIP) for detailed messaging analytics. Everything is processed on your device.",
     acceptedFiles: [".zip"],
     accept: ".zip,application/zip",
+  },
+  {
+    id: "sms",
+    name: "SMS",
+    category: "messaging",
+    androidOnly: true,
+    importSource: "device",
+    accentClass: "border-teal-500/50",
+    gradientClass:
+      "from-teal-500/25 via-cyan-400/10 to-transparent dark:from-teal-400/20 dark:via-cyan-500/5",
+    summary:
+      "Android only — wrap texts already on this phone. Offline, no internet permission.",
+    exportPath: "Android app → grant SMS access → analyze on this device",
+    formats: "On this phone",
+    extractable:
+      "Threads, send/receive volume, busiest contacts, late-night texts, and timing patterns from your SMS inbox.",
+    steps: [
+      "Open Social Wrapped on Android (desktop and the website stay locked).",
+      "Open Home → SMS and allow SMS access when Android asks.",
+      "Analysis runs on this phone. Messages never leave the device.",
+    ],
+    importHint:
+      "The Android APK has no internet permission, so this wrap cannot be uploaded.",
+    importTitle: "Analyze SMS",
+    importDescription:
+      "Read texts already stored on this Android phone. Nothing is uploaded — the app has no internet permission.",
+    acceptedFiles: ["On this phone"],
+    accept: "",
+  },
+  {
+    id: "calls",
+    name: "Calls",
+    category: "messaging",
+    androidOnly: true,
+    importSource: "device",
+    accentClass: "border-amber-500/50",
+    gradientClass:
+      "from-amber-500/25 via-orange-400/10 to-transparent dark:from-amber-400/20 dark:via-orange-500/5",
+    summary:
+      "Android only — wrap call history already on this phone. Offline, no internet permission.",
+    exportPath: "Android app → grant call log access → analyze on this device",
+    formats: "On this phone",
+    extractable:
+      "Incoming, outgoing, and missed calls, talk time, busiest numbers, and when you call most.",
+    steps: [
+      "Open Social Wrapped on Android (desktop and the website stay locked).",
+      "Open Home → Calls and allow call log access when Android asks.",
+      "Analysis runs on this phone. Call history never leaves the device.",
+    ],
+    importHint:
+      "The Android APK has no internet permission, so this wrap cannot be uploaded.",
+    importTitle: "Analyze calls",
+    importDescription:
+      "Read call history already stored on this Android phone. Nothing is uploaded — the app has no internet permission.",
+    acceptedFiles: ["On this phone"],
+    accept: "",
   },
   {
     id: "x",

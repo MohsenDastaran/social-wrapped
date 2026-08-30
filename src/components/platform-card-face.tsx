@@ -1,4 +1,4 @@
-import { Lock, Upload } from "lucide-react"
+import { Lock, Smartphone, Upload } from "lucide-react"
 
 import { PlatformLogo } from "@/components/platform-logo"
 import {
@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
+  isAndroidOnlyPlatform,
   isPlatformEnabled,
   platformImportAreaViewTransitionName,
   type PlatformConfig,
@@ -27,6 +28,7 @@ export function PlatformCardFace({
   className,
 }: PlatformCardFaceProps) {
   const disabled = !isPlatformEnabled(platform.id)
+  const androidOnly = isAndroidOnlyPlatform(platform.id)
 
   return (
     <Card
@@ -58,6 +60,11 @@ export function PlatformCardFace({
           >
             {!disabled ? (
               "Available"
+            ) : androidOnly ? (
+              <>
+                <Smartphone className="size-2.5" aria-hidden />
+                Android
+              </>
             ) : (
               <>
                 <Lock className="size-2.5" aria-hidden />
