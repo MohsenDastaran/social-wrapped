@@ -9,6 +9,9 @@ type GhostingChartProps = {
   youLabel?: string
   themLabel?: string
   selfName: string
+  /** 1:1 chat title — participant names that are not this contact are You. */
+  contactName?: string
+  isDirectChat?: boolean
   className?: string
 }
 
@@ -19,6 +22,23 @@ function namesMatch(a: string, b: string): boolean {
   return x === y || x.includes(y) || y.includes(x)
 }
 
+function isYouParticipant(
+  name: string,
+  selfName: string,
+  youLabel: string,
+  contactName: string | undefined,
+  isDirectChat: boolean
+): boolean {
+  if (namesMatch(name, selfName) || namesMatch(name, youLabel)) {
+    return true
+  }
+  if (isDirectChat && contactName?.trim()) {
+    if (namesMatch(name, contactName)) return false
+    return true
+  }
+  return false
+}
+
 /** Donut: who left messages unanswered for 24h+ in this chat. */
 export function GhostingChart({
   ghosting,
@@ -26,13 +46,15 @@ export function GhostingChart({
   youLabel = "You",
   themLabel = "Them",
   selfName,
+  contactName,
+  isDirectChat = false,
   className,
 }: GhostingChartProps) {
   const parts = ghosting?.participants ?? []
   let you = 0
   let them = 0
   for (const p of parts) {
-    if (namesMatch(p.name, selfName) || namesMatch(p.name, youLabel)) {
+    if (isYouParticipant(p.name, selfName, youLabel, contactName, isDirectChat)) {
       you += p.count
     } else {
       them += p.count

@@ -165,6 +165,8 @@ export function WrapChatAnalytics({
               ghosting={a.ghosting}
               exportName={`chat-${chat.chatId}-ghosting`}
               selfName={selfName}
+              contactName={chat.chatName || display.title}
+              isDirectChat={!chat.isGroup && !isSavedMessages}
               youLabel="You"
               themLabel={
                 display.isDeleted
