@@ -8,7 +8,7 @@ import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import { ComparisonKpiCard } from "@/components/wrap/comparison-kpi-card"
 import { chatDisplay } from "@/components/wrap/chat-display"
 import { ProfanityRankingCard } from "@/components/wrap/profanity-ranking-card"
-import { fmt, fmtDuration, fmtResponseTime } from "@/components/wrap/chart-theme"
+import { fmt, fmtResponseTime } from "@/components/wrap/chart-theme"
 import {
   TopEmojisCard,
   type EmojiScope,
@@ -18,10 +18,7 @@ import type {
   EmojiEntry,
   EmojiStats,
 } from "@/platform/analytics-types"
-import {
-  talkTimeComparisonRows,
-  unansweredCallGhosting,
-} from "@/lib/call-analytics"
+import { unansweredCallGhosting } from "@/lib/call-analytics"
 import { filterEmojiEntries } from "@/lib/emoji"
 import {
   omitHumanChatMetrics,
@@ -75,12 +72,6 @@ export function WrapChatAnalytics({
     selfName,
     youLabel,
     chat.chatName || display.title
-  )
-  const talkRows = talkTimeComparisonRows(
-    a.contentMix?.byParticipant,
-    selfName,
-    youLabel,
-    themLabel
   )
 
   const responseRows = a.responseTime.participants.map((p) => ({
@@ -228,63 +219,34 @@ export function WrapChatAnalytics({
         kindLabels={copy.isCalls ? { voice: "Answered" } : undefined}
       />
 
-      {!isSavedMessages ? (
+      {!isSavedMessages && !copy.isCalls ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {!copy.isCalls ? (
-            <ComparisonKpiCard
-              title="Response time"
-              description="Avg & median reply delay"
-              exportName={`chat-${chat.chatId}-response`}
-              exportLines={a.responseTime.participants.map(
-                (p) => `${p.name} ${fmtResponseTime(p.avgSecs)}`
-              )}
-              rows={responseRows}
-              metrics={[
-                {
-                  key: "avgMin",
-                  label: "Average",
-                  accent: "teal",
-                  format: (m) => (m < 1 ? "<1m" : `${m}m`),
-                },
-                {
-                  key: "medianMin",
-                  label: "Median",
-                  accent: "amber",
-                  format: (m) => (m < 1 ? "<1m" : `${m}m`),
-                },
-              ]}
-              highlightKey="avgMin"
-              lowerIsBetter
-              highlightLabel="Fastest"
-            />
-          ) : (
-            <ComparisonKpiCard
-              title="Talk time"
-              description="Answered calls only"
-              exportName={`chat-${chat.chatId}-talk-time`}
-              exportLines={talkRows.map(
-                (r) =>
-                  `${r.name} avg ${fmtDuration(r.values.avgSecs)} · total ${fmtDuration(r.values.totalSecs)}`
-              )}
-              rows={talkRows}
-              metrics={[
-                {
-                  key: "avgSecs",
-                  label: "Average",
-                  accent: "teal",
-                  format: fmtDuration,
-                },
-                {
-                  key: "totalSecs",
-                  label: "Total",
-                  accent: "amber",
-                  format: fmtDuration,
-                },
-              ]}
-              highlightKey="avgSecs"
-              highlightLabel="Longer"
-            />
-          )}
+          <ComparisonKpiCard
+            title="Response time"
+            description="Avg & median reply delay"
+            exportName={`chat-${chat.chatId}-response`}
+            exportLines={a.responseTime.participants.map(
+              (p) => `${p.name} ${fmtResponseTime(p.avgSecs)}`
+            )}
+            rows={responseRows}
+            metrics={[
+              {
+                key: "avgMin",
+                label: "Average",
+                accent: "teal",
+                format: (m) => (m < 1 ? "<1m" : `${m}m`),
+              },
+              {
+                key: "medianMin",
+                label: "Median",
+                accent: "amber",
+                format: (m) => (m < 1 ? "<1m" : `${m}m`),
+              },
+            ]}
+            highlightKey="avgMin"
+            lowerIsBetter
+            highlightLabel="Fastest"
+          />
 
           {!copy.hideTextCards ? (
             <ComparisonKpiCard
@@ -304,7 +266,7 @@ export function WrapChatAnalytics({
             />
           ) : null}
 
-          {!hideHuman && !copy.isCalls ? (
+          {!hideHuman ? (
             <ComparisonKpiCard
               title="Who starts / closes"
               description="After 6h+ of silence"

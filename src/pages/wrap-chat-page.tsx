@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Hash, Timer } from "lucide-react"
+import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Hash, Moon, Timer } from "lucide-react"
 import { Link, Navigate, useParams } from "react-router"
 
 import { AppLoader } from "@/components/app-loader"
@@ -10,7 +10,6 @@ import { chatDisplay } from "@/components/wrap/chat-display"
 import { WrapChatAnalytics } from "@/components/wrap/wrap-chat-analytics"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { fmt, fmtDuration } from "@/components/wrap/chart-theme"
-import { averageTalkSecs } from "@/lib/call-analytics"
 import { getPlatform, wrapUiCopy } from "@/lib/platforms"
 import { getWrap, wrapPath, type WrapRecord } from "@/lib/wrap-history"
 
@@ -63,13 +62,8 @@ export function WrapChatPage() {
   const a = chat.analytics
   const isSavedMessages = display.isSavedMessages
   const copy = wrapUiCopy(wrap.platformId)
-  const avgTalkSecs = Math.round(
-    averageTalkSecs(
-      a.contentMix?.totalVoiceDurationSecs ?? 0,
-      a.contentMix?.types
-    )
-  )
   const totalTalkSecs = a.contentMix?.totalVoiceDurationSecs ?? 0
+  const lateNightCalls = a.lateNight.totalLateNight ?? 0
 
   return (
     <div className="-mt-4 flex w-full max-w-4xl flex-col items-stretch gap-6 text-start sm:-mt-6 sm:gap-8 md:max-w-4xl lg:max-w-5xl">
@@ -136,8 +130,8 @@ export function WrapChatPage() {
       ) : (
         <div
           className={
-            copy.isCalls && (avgTalkSecs > 0 || totalTalkSecs > 0)
-              ? "grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3"
+            copy.isCalls
+              ? "grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3"
               : "grid grid-cols-3 gap-2 sm:gap-3"
           }
         >
@@ -159,12 +153,20 @@ export function WrapChatPage() {
             icon={Hash}
             accent="emerald"
           />
-          {copy.isCalls && avgTalkSecs > 0 ? (
+          {copy.isCalls ? (
             <WrapKpi
-              label="Avg talk"
-              value={fmtDuration(avgTalkSecs)}
+              label="Talk time"
+              value={fmtDuration(totalTalkSecs)}
               icon={Timer}
               accent="teal"
+            />
+          ) : null}
+          {copy.isCalls ? (
+            <WrapKpi
+              label="Late night"
+              value={fmt(lateNightCalls)}
+              icon={Moon}
+              accent="amber"
             />
           ) : null}
         </div>
