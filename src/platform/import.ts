@@ -1369,6 +1369,14 @@ export function importPlatformFiles(
     return Promise.reject(new Error("No files selected."))
   }
 
+  if (platform.importSource === "device") {
+    return Promise.reject(
+      new Error(
+        `${platform.name} analysis reads this Android phone directly. Use the on-device button instead of a file.`
+      )
+    )
+  }
+
   for (const file of files) {
     validateFile(platform, file)
   }

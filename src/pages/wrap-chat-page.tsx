@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Hash } from "lucide-react"
+import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Hash, Moon, Timer } from "lucide-react"
 import { Link, Navigate, useParams } from "react-router"
 
 import { AppLoader } from "@/components/app-loader"
@@ -9,8 +9,8 @@ import { ScrollProgressIndicator } from "@/components/ui/animated/skiper89"
 import { chatDisplay } from "@/components/wrap/chat-display"
 import { WrapChatAnalytics } from "@/components/wrap/wrap-chat-analytics"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
-import { fmt } from "@/components/wrap/chart-theme"
-import { getPlatform } from "@/lib/platforms"
+import { fmt, fmtDuration } from "@/components/wrap/chart-theme"
+import { getPlatform, wrapUiCopy } from "@/lib/platforms"
 import { getWrap, wrapPath, type WrapRecord } from "@/lib/wrap-history"
 
 /** Per-contact analytics — `/wrap/:wrapId/chat/:chatId`. */
@@ -61,6 +61,9 @@ export function WrapChatPage() {
   const display = chatDisplay(chat)
   const a = chat.analytics
   const isSavedMessages = display.isSavedMessages
+  const copy = wrapUiCopy(wrap.platformId)
+  const totalTalkSecs = a.contentMix?.totalVoiceDurationSecs ?? 0
+  const lateNightCalls = a.lateNight.totalLateNight ?? 0
 
   return (
     <div className="-mt-4 flex w-full max-w-4xl flex-col items-stretch gap-6 text-start sm:-mt-6 sm:gap-8 md:max-w-4xl lg:max-w-5xl">
@@ -106,27 +109,40 @@ export function WrapChatPage() {
             {display.subtitle}
           </p>
         ) : null}
+        {chat.handle &&
+        chat.handle.trim() &&
+        chat.handle.trim().toLowerCase() !== display.title.trim().toLowerCase() ? (
+          <p className="mt-0.5 text-xs text-muted-foreground tabular-nums sm:text-sm">
+            {chat.handle}
+          </p>
+        ) : null}
       </header>
 
       {isSavedMessages ? (
         <div className="grid grid-cols-1 gap-2 sm:max-w-xs sm:gap-3">
           <WrapKpi
-            label="Total messages"
+            label={copy.isCalls ? "Total calls" : "Total messages"}
             value={fmt(a.totalMessages)}
             icon={Hash}
             accent="emerald"
           />
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div
+          className={
+            copy.isCalls
+              ? "grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3"
+              : "grid grid-cols-3 gap-2 sm:gap-3"
+          }
+        >
           <WrapKpi
-            label="Sent"
+            label={copy.outgoing}
             value={fmt(a.sentMessages)}
             icon={ArrowUpRight}
             accent="violet"
           />
           <WrapKpi
-            label="Received"
+            label={copy.incoming}
             value={fmt(a.receivedMessages)}
             icon={ArrowDownLeft}
             accent="sky"
@@ -137,6 +153,22 @@ export function WrapChatPage() {
             icon={Hash}
             accent="emerald"
           />
+          {copy.isCalls ? (
+            <WrapKpi
+              label="Talk time"
+              value={fmtDuration(totalTalkSecs)}
+              icon={Timer}
+              accent="teal"
+            />
+          ) : null}
+          {copy.isCalls ? (
+            <WrapKpi
+              label="Late night"
+              value={fmt(lateNightCalls)}
+              icon={Moon}
+              accent="amber"
+            />
+          ) : null}
         </div>
       )}
 
@@ -145,6 +177,7 @@ export function WrapChatPage() {
         selfName={wrap.analytics.displayName || wrap.stats.displayName}
         wrapId={wrap.id}
         category={platform?.category}
+        platformId={wrap.platformId}
       />
     </div>
   )

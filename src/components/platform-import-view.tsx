@@ -6,7 +6,7 @@ import {
   type ChangeEvent,
   type DragEvent,
 } from "react"
-import { ArrowLeft, FileUp, Upload, X } from "lucide-react"
+import { ArrowLeft, FileUp, ShieldCheck, Smartphone, Upload, X } from "lucide-react"
 import { Link, useNavigate, useSearchParams } from "react-router"
 
 import { AppLoader } from "@/components/app-loader"
@@ -34,6 +34,7 @@ import {
 import { cn } from "@/lib/utils"
 import { saveWrap, wrapEntryPath } from "@/lib/wrap-history"
 import { formatInvokeError } from "@/platform/api"
+import { importDevicePlatform } from "@/platform/device-import"
 import { importPlatformFiles, type ImportProgress } from "@/platform/import"
 
 let demoImportStarted = false
@@ -108,6 +109,7 @@ export function PlatformImportView({
   )
   const loading = progress !== null
   const selectedCount = files.length
+  const deviceImport = platform.importSource === "device"
 
   useEffect(() => {
     if (selectedCount === 0) return
@@ -234,6 +236,29 @@ export function PlatformImportView({
     void runAnalyze(files)
   }
 
+  async function runDeviceAnalyze() {
+    setError("")
+    setProgress({
+      phase: "reading",
+      percent: 8,
+      overallPercent: 8,
+      current: 0,
+      total: 1,
+    })
+    try {
+      const { analytics } = await importDevicePlatform(platform.id)
+      const wrap = await saveWrap({
+        platformId: platform.id,
+        fileName: platform.name,
+        analytics,
+      })
+      navigate(wrapEntryPath(wrap), { replace: true })
+    } catch (err) {
+      setError(formatInvokeError(err))
+      setProgress(null)
+    }
+  }
+
   useEffect(() => {
     if (demoImportStarted) return
     if (searchParams.get("demo") !== "1") return
@@ -263,7 +288,11 @@ export function PlatformImportView({
   }, [platform.id, searchParams, setSearchParams])
 
   const progressHint =
-    platform.id === "whatsapp"
+    platform.importSource === "device"
+      ? progress?.phase === "computing"
+        ? `Building your ${platform.name} wrap`
+        : `Reading ${platform.name.toLowerCase()} on this phone`
+    : platform.id === "whatsapp"
       ? progress?.phase === "computing"
         ? "Building your wrap from this chat"
         : "Reading your WhatsApp export"
@@ -308,7 +337,7 @@ export function PlatformImportView({
 
   return (
     <>
-      {hasSelectedFiles ? (
+      {hasSelectedFiles || (deviceImport && loading) ? (
         <div
           className="pointer-events-none fixed inset-0 z-1 overflow-hidden"
           aria-hidden
@@ -419,12 +448,84 @@ export function PlatformImportView({
               </ul>
             </div>
           ) : null}
-          <p className="mt-3 text-xs font-medium text-muted-foreground">
-            Accepted: {acceptedFiles.join(", ")}
-            {multi ? " · multiple ZIPs OK" : null}
-          </p>
+          {deviceImport ? (
+            <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Smartphone className="size-3.5" aria-hidden />
+              Android · on this phone
+            </p>
+          ) : (
+            <p className="mt-3 text-xs font-medium text-muted-foreground">
+              Accepted: {acceptedFiles.join(", ")}
+              {multi ? " · multiple ZIPs OK" : null}
+            </p>
+          )}
         </header>
 
+        {deviceImport ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border bg-muted/30 px-6 py-10 text-center">
+              <span
+                style={{
+                  viewTransitionName: platformImportAreaViewTransitionName(
+                    platform.id
+                  ),
+                }}
+                className="flex size-16 items-center justify-center rounded-full bg-background ring-1 ring-foreground/10"
+              >
+                <ShieldCheck className="size-6 text-primary" aria-hidden />
+              </span>
+              <div>
+                <p className="font-heading text-base font-semibold tracking-tight">
+                  {platform.id === "sms"
+                    ? "Read texts on this phone"
+                    : "Read call history on this phone"}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Offline wrap — no internet permission, nothing uploaded.
+                </p>
+              </div>
+            </div>
+
+            {error ? (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            ) : null}
+
+            <Button
+              type="button"
+              size="lg"
+              className="w-full"
+              disabled={loading}
+              onClick={() => void runDeviceAnalyze()}
+            >
+              {progress ? (
+                <>
+                  <AppLoader
+                    size="sm"
+                    label={
+                      progress.phase === "computing"
+                        ? "Computing stats"
+                        : "Reading this phone"
+                    }
+                    className="shrink-0"
+                  />
+                  <span className="tabular-nums">
+                    {progress.phase === "computing"
+                      ? "Computing stats…"
+                      : "Reading this phone…"}{" "}
+                    {progress.overallPercent}%
+                  </span>
+                </>
+              ) : platform.id === "sms" ? (
+                "Analyze SMS"
+              ) : (
+                "Analyze calls"
+              )}
+            </Button>
+          </div>
+        ) : (
+          <>
         <input
           ref={inputRef}
           id={inputId}
@@ -571,6 +672,8 @@ export function PlatformImportView({
             "Analyze files"
           )}
         </Button>
+          </>
+        )}
 
         {progress && !identityPrompt ? (
           <div className="mt-3" aria-hidden>

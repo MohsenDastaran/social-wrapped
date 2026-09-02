@@ -407,6 +407,7 @@ export function WrapPage() {
           analytics={wrap.analytics}
           wrapId={wrap.id}
           category={platform?.category}
+          platformId={wrap.platformId}
         />
       )}
 
@@ -414,10 +415,13 @@ export function WrapPage() {
         <WrapTopContacts
           analytics={wrap.analytics}
           category={platform?.category}
+          platformId={wrap.platformId}
           description={
             wrap.platformId === "x"
               ? "X’s archive stores DMs by account ID. Names come from people you’ve mentioned or replied to in tweets; groups use their archive name when set."
-              : undefined
+              : wrap.platformId === "sms"
+                ? "People you text most. Names come from this phone’s contacts when you allow contacts access."
+                : undefined
           }
           onSelect={(chatId) => {
             navigate(wrapChatPath(wrap.id, chatId))

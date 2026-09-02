@@ -19,3 +19,8 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Tauri loads DeviceInboxPlugin by class name; minify would drop commands.
+-keep class com.mohsendastaran.social_wrapped.DeviceInboxPlugin { *; }
+-keep class com.mohsendastaran.social_wrapped.DeviceInboxReader { *; }
+-keep class com.mohsendastaran.social_wrapped.ReadInboxArgs { *; }

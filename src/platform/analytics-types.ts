@@ -236,6 +236,8 @@ export type ChatResult = {
   isDeleted?: boolean
   /** Telegram Saved Messages (notes to self). */
   isSavedMessages?: boolean
+  /** Phone number when `chatName` is a contact name. */
+  handle?: string
 }
 
 export type WrapAnalytics = {

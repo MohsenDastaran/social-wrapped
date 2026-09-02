@@ -1,4 +1,4 @@
-import { FileArchive, Lock, Upload } from "lucide-react"
+import { FileArchive, Lock, Smartphone, Upload } from "lucide-react"
 import { Link } from "react-router"
 
 import { PlatformCardFace } from "@/components/platform-card-face"
@@ -9,6 +9,7 @@ import {
 import { PlatformLogo } from "@/components/platform-logo"
 import { Card, CardDescription, CardTitle } from "@/components/ui/card"
 import {
+  isAndroidOnlyPlatform,
   isPlatformEnabled,
   platformImportAreaViewTransitionName,
   platformImportPath,
@@ -34,9 +35,14 @@ export function PlatformImportCard({
   className,
 }: PlatformImportCardProps) {
   const disabled = !isPlatformEnabled(platform.id)
+  const androidOnly = isAndroidOnlyPlatform(platform.id)
+  const deviceImport = platform.importSource === "device"
   const importPath = platformImportPath(platform.id)
   const cardDescription =
-    description ?? `Ready for ${platform.acceptedFiles.join(" or ")} exports.`
+    description ??
+    (deviceImport
+      ? platform.summary
+      : `Ready for ${platform.acceptedFiles.join(" or ")} exports.`)
 
   if (!featured) {
     if (disabled) {
@@ -123,9 +129,17 @@ export function PlatformImportCard({
 
         <div className="flex items-center justify-between gap-3 pt-0.5">
           <span className="inline-flex min-w-0 items-center gap-1.5 text-[0.7rem] font-medium text-muted-foreground">
-            <FileArchive className="size-3.5 shrink-0" aria-hidden />
+            {androidOnly ? (
+              <Smartphone className="size-3.5 shrink-0" aria-hidden />
+            ) : (
+              <FileArchive className="size-3.5 shrink-0" aria-hidden />
+            )}
             <span className="truncate">
-              {platform.acceptedFiles.join(" · ")}
+              {androidOnly
+                ? disabled
+                  ? "Android only"
+                  : "On this phone"
+                : platform.acceptedFiles.join(" · ")}
             </span>
           </span>
           {!disabled ? (
@@ -152,7 +166,9 @@ export function PlatformImportCard({
         <Link
           to={importPath}
           viewTransition
-          aria-label={`Import ${platform.name}`}
+          aria-label={
+            deviceImport ? `Analyze ${platform.name}` : `Import ${platform.name}`
+          }
           className="absolute inset-0 z-10 outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         />
       )}

@@ -162,17 +162,48 @@ export const CONTENT_MIX_COLORS: Record<
       dark: ["#d6d3d1", "#a8a29e", "#78716c"],
     },
   },
+  missed: {
+    label: "Missed",
+    colors: {
+      light: ["#fecaca", "#ef4444", "#b91c1c"],
+      dark: ["#fca5a5", "#f87171", "#dc2626"],
+    },
+  },
+  rejected: {
+    label: "Rejected / declined",
+    colors: {
+      light: ["#fed7aa", "#f97316", "#c2410c"],
+      dark: ["#fdba74", "#fb923c", "#ea580c"],
+    },
+  },
+  blocked: {
+    label: "Blocked",
+    colors: {
+      light: ["#e7e5e4", "#57534d", "#292524"],
+      dark: ["#a8a29e", "#78716c", "#44403c"],
+    },
+  },
+  voicemail: {
+    label: "Voicemail",
+    colors: {
+      light: ["#ddd6fe", "#8b5cf6", "#5b21b6"],
+      dark: ["#c4b5fd", "#a78bfa", "#7c3aed"],
+    },
+  },
 }
 
-export function contentMixPieConfig(kinds: string[]): PieConfig {
+export function contentMixPieConfig(
+  kinds: string[],
+  kindLabels?: Record<string, string>
+): PieConfig {
   return Object.fromEntries(
     kinds.map((key, i) => {
       const preset = CONTENT_MIX_COLORS[key]
       return [
         key,
-        preset ?? {
-          label: key,
-          colors: paletteColors(i),
+        {
+          label: kindLabels?.[key] ?? preset?.label ?? key,
+          colors: preset?.colors ?? paletteColors(i),
         },
       ]
     })

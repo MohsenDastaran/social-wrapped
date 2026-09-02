@@ -11,14 +11,12 @@ pub fn load_telegram_mock() -> Result<String, String> {
     let relative = "telegram/result.json";
 
     if !mock.fixture_exists(relative) {
-        return Err(
-            "Mock file not found.\n\n\
+        return Err("Mock file not found.\n\n\
              Place your Telegram export at:\n\
                crates/core/mock/telegram/result.json\n\
              or:\n\
                crates/core/src/mock/telegram/result.json"
-                .to_string(),
-        );
+            .to_string());
     }
 
     let path = mock.resolve_fixture(relative);

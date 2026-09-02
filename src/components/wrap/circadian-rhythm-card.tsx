@@ -18,6 +18,9 @@ type CircadianRhythmCardProps = {
   /** Per-person series — used on contact drill-down (you vs them). */
   participants?: CircadianParticipant[]
   className?: string
+  title?: string
+  seriesName?: string
+  itemNoun?: string
 }
 
 /**
@@ -28,10 +31,13 @@ export function CircadianRhythmCard({
   hourlyTotal,
   participants,
   className,
+  title = "Messaging by hour",
+  seriesName = "Messages",
+  itemNoun = "messages",
 }: CircadianRhythmCardProps) {
   const series: CircadianSeries[] = (() => {
     if (hourlyTotal && hourlyTotal.some((n) => n > 0)) {
-      return [{ name: "Messages", hourly: hourlyTotal }]
+      return [{ name: seriesName, hourly: hourlyTotal }]
     }
     if (participants && participants.length > 0) {
       return participants.map((p) => ({ name: p.name, hourly: p.hourly }))
@@ -62,11 +68,11 @@ export function CircadianRhythmCard({
 
   return (
     <WrapChartCard
-      title="Messaging by hour"
+      title={title}
       description={
         sleepHint
           ? `Peak ${peak} · ${sleepHint}`
-          : `Peak ${peak} · ${fmt(totalMsgs)} messages`
+          : `Peak ${peak} · ${fmt(totalMsgs)} ${itemNoun}`
       }
       exportName={exportName}
       exportSize="compact"

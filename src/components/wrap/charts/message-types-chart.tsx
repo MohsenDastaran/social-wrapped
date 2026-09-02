@@ -28,6 +28,14 @@ type MessageTypesChartProps = {
    * When set (and more than one has data), a segmented toggle appears.
    */
   scopes?: MessageTypesScope[]
+  title?: string
+  itemNoun?: string
+  voiceLabel?: string
+  /** Kind hidden until the user opts in. Default `normal` (SMS / chat). */
+  omitKind?: string
+  /** Short label for the omit toggle, e.g. `normal` or `answered`. */
+  omitKindLabel?: string
+  kindLabels?: Record<string, string>
 }
 
 /** Pie of message content types, with optional “hide normal” + scope toggle. */
@@ -36,8 +44,16 @@ export function MessageTypesChart({
   totalVoiceDurationSecs = 0,
   exportName,
   scopes,
+  title = "Message types",
+  itemNoun = "messages",
+  voiceLabel = "voice",
+  omitKind = "normal",
+  omitKindLabel,
+  kindLabels,
 }: MessageTypesChartProps) {
-  const [hideNormal, setHideNormal] = useState(true)
+  const [hideOmitted, setHideOmitted] = useState(true)
+  const omitLabel = omitKindLabel ?? omitKind
+  const typeLabel = (t: ContentTypeCount) => kindLabels?.[t.kind] ?? t.label
 
   const usableScopes = useMemo(
     () =>
@@ -53,10 +69,11 @@ export function MessageTypesChart({
   const voiceSecs =
     activeScope?.totalVoiceDurationSecs ?? totalVoiceDurationSecs
 
-  const hasNormal = baseTypes.some((t) => t.kind === "normal" && t.count > 0)
+  const hasOmitted = baseTypes.some((t) => t.kind === omitKind && t.count > 0)
   const source = useMemo(
-    () => (hideNormal ? baseTypes.filter((t) => t.kind !== "normal") : baseTypes),
-    [hideNormal, baseTypes]
+    () =>
+      hideOmitted ? baseTypes.filter((t) => t.kind !== omitKind) : baseTypes,
+    [hideOmitted, baseTypes, omitKind]
   )
   const total = source.reduce((sum, t) => sum + t.count, 0)
   const data = source.map((t) => ({
@@ -66,24 +83,28 @@ export function MessageTypesChart({
   }))
   const keys = data.map((t) => t.kind)
   const scopeSuffix = activeScope && showToggle ? `-${activeScope.id}` : ""
+  const hiddenDescription =
+    omitKind === "voice"
+      ? `Share among unanswered ${itemNoun} only`
+      : `Share among non-normal ${itemNoun} only`
 
   return (
     <WrapChartCard
-      title="Message types"
+      title={title}
       description={
         baseTypes.length === 0
           ? "Re-import your export to unlock the type breakdown"
-          : hideNormal
-            ? "Share among non-normal messages only"
+          : hideOmitted
+            ? hiddenDescription
             : voiceSecs > 0
-              ? `${fmtDuration(voiceSecs)} of voice · share by type`
-              : "Share of messages by content type"
+              ? `${fmtDuration(voiceSecs)} of ${voiceLabel} · share by type`
+              : `Share of ${itemNoun} by type`
       }
       exportName={`${exportName}${scopeSuffix}`}
       exportSize="compact"
       exportLines={source.map((t) => {
         const pct = total > 0 ? (t.count / total) * 100 : 0
-        return `${t.label} ${fmt(t.count)} (${pct.toFixed(1)}%)`
+        return `${typeLabel(t)} ${fmt(t.count)} (${pct.toFixed(1)}%)`
       })}
       className="@container/msg-types"
       headerExtra={
@@ -95,7 +116,7 @@ export function MessageTypesChart({
             <div
               className="flex max-w-full items-center gap-1 overflow-x-auto rounded-lg bg-muted p-0.5"
               role="group"
-              aria-label="Message types scope"
+              aria-label={`${title} scope`}
             >
               {usableScopes.map((scope) => (
                 <ScopeButton
@@ -108,28 +129,32 @@ export function MessageTypesChart({
               ))}
             </div>
           ) : null}
-          {hasNormal ? (
+          {hasOmitted ? (
             <Button
               type="button"
-              variant={hideNormal ? "default" : "outline"}
+              variant={hideOmitted ? "default" : "outline"}
               size="xs"
-              onClick={() => setHideNormal((v) => !v)}
-              aria-pressed={hideNormal}
+              onClick={() => setHideOmitted((v) => !v)}
+              aria-pressed={hideOmitted}
               aria-label={
-                hideNormal ? "Show normal messages" : "Hide normal messages"
+                hideOmitted
+                  ? `Show ${omitLabel} ${itemNoun}`
+                  : `Hide ${omitLabel} ${itemNoun}`
               }
               className="shrink-0"
             >
-              {hideNormal ? (
+              {hideOmitted ? (
                 <Eye data-icon="inline-start" />
               ) : (
                 <EyeOff data-icon="inline-start" />
               )}
               <span className="hidden @min-[420px]/msg-types:inline">
-                {hideNormal ? "Show normal" : "Hide normal"}
+                {hideOmitted ? `Show ${omitLabel}` : `Hide ${omitLabel}`}
               </span>
               <span className="@min-[420px]/msg-types:hidden">
-                {hideNormal ? "Normal" : "Hide"}
+                {hideOmitted
+                  ? omitLabel.replace(/^\w/, (c) => c.toUpperCase())
+                  : "Hide"}
               </span>
             </Button>
           ) : null}
@@ -143,7 +168,7 @@ export function MessageTypesChart({
           data={data}
           dataKey="count"
           nameKey="kind"
-          config={contentMixPieConfig(keys)}
+          config={contentMixPieConfig(keys, kindLabels)}
         >
           <EChartsPieChart.Legend isClickable lines={2} />
           <EChartsPieChart.Tooltip />
@@ -157,9 +182,11 @@ export function MessageTypesChart({
         </EChartsPieChart>
       ) : (
         <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
-          {hideNormal
-            ? "No non-normal messages in this set."
-            : "No type data yet. Re-import after updating to see normal, link, emoji, image, video, and more."}
+          {hideOmitted
+            ? omitKind === "voice"
+              ? `No unanswered ${itemNoun} in this set.`
+              : `No non-normal ${itemNoun} in this set.`
+            : "No type data yet. Re-import after updating to see the breakdown."}
         </div>
       )}
     </WrapChartCard>

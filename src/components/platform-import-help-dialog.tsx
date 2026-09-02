@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactElement, ReactNode } from "react"
-import { CircleHelp, ExternalLink } from "lucide-react"
+import { CircleHelp, Download, ExternalLink } from "lucide-react"
 
 import { PlatformLogo } from "@/components/platform-logo"
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { openExternalUrl } from "@/lib/app-links"
+import { ANDROID_DOWNLOAD_URL, isAndroidApp, openExternalUrl } from "@/lib/app-links"
 import {
   getPlatformImportDoc,
   type PlatformImportDoc,
@@ -167,9 +167,32 @@ export function PlatformImportHelpDialog({
           <div className="flex flex-col gap-6">
             {!enabled ? (
               <p className="rounded-xl bg-muted/70 px-3.5 py-3 text-sm leading-relaxed text-muted-foreground ring-1 ring-border/50">
-                Import isn’t enabled yet — you can still prepare an export with
-                the steps below.
+                {platform.androidOnly
+                  ? "Available only in the Android app. That build has no internet permission, so this wrap stays on your phone."
+                  : "Import isn’t enabled yet — you can still prepare an export with the steps below."}
               </p>
+            ) : null}
+
+            {!enabled && platform.androidOnly && !isAndroidApp() ? (
+              <Button
+                variant="outline"
+                className="w-full justify-center"
+                nativeButton={false}
+                render={
+                  <a
+                    href={ANDROID_DOWNLOAD_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                  />
+                }
+                onClick={(event) => {
+                  event.preventDefault()
+                  void openExternalUrl(ANDROID_DOWNLOAD_URL)
+                }}
+              >
+                <Download data-icon="inline-start" />
+                Get the Android app
+              </Button>
             ) : null}
 
             {officialExportUrl ? (
@@ -196,7 +219,9 @@ export function PlatformImportHelpDialog({
 
             <section>
               <h3 className="mb-3 font-heading text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-                How to download &amp; import
+                {platform.importSource === "device"
+                  ? "How it works"
+                  : "How to download & import"}
               </h3>
               <ol className="flex flex-col gap-4">
                 {platform.steps.map((step, index) => (

@@ -75,18 +75,28 @@ type RaceModel = {
 type ContactBarRaceChartProps = {
   chats: ChatResult[]
   title?: string
+  itemNoun?: string
 }
 
 export function ContactBarRaceChart({
   chats,
   title = "Contact race",
+  itemNoun = "messages",
 }: ContactBarRaceChartProps) {
   const race = useMemo(() => buildRace(chats), [chats])
   if (!race || race.frames.length < 2 || race.racers.length < 2) return null
-  return <RaceCard race={race} title={title} />
+  return <RaceCard race={race} title={title} itemNoun={itemNoun} />
 }
 
-function RaceCard({ race, title }: { race: RaceModel; title: string }) {
+function RaceCard({
+  race,
+  title,
+  itemNoun,
+}: {
+  race: RaceModel
+  title: string
+  itemNoun: string
+}) {
   const reduceMotion = useReducedMotion()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -236,7 +246,7 @@ function RaceCard({ race, title }: { race: RaceModel; title: string }) {
     <div className="relative">
       <WrapChartCard
         title={title}
-        description={`Cumulative messages by month · top ${fmt(race.racers.length)}`}
+        description={`Cumulative ${itemNoun} by month · top ${fmt(race.racers.length)}`}
         exportName="contact-bar-race"
         exportSize="wide"
         hideExport
