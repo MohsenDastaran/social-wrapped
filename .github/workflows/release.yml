@@ -4,13 +4,13 @@
 #   - Publish a GitHub Release (release published), or
 #   - Actions → Release → Run workflow (pick an existing tag like v0.2.5)
 # Assets (GitHub sorts alphabetically; sort key sits after the tag version):
-#   name_X.Y.Z_01-android-arm64 → _01-android-universal →
+#   name_X.Y.Z_01-android-arm64 → _01-android-universal → _01-android-play (AAB) →
 #   _02-windows → _03-macos → _04-linux-deb → _05-linux-rpm → _06-linux-appimage
 # RPM bundles arrive as name-version-release.arch.rpm (hyphens); order-assets
 # rewrites them to the underscore scheme so they sit with .deb, not at the top.
 # download-table then writes the website link plus an OS/Arch badge table into
-# the release body (only platforms that actually uploaded; no store listings
-# we don't have).
+# the release body (APKs and desktop installers only; the Play AAB stays in
+# assets, not the Downloads table).
 # Version in filenames comes from the release tag (e.g. v0.2.5 → 0.2.5), not package.json.
 
 name: Release
@@ -100,6 +100,12 @@ jobs:
             args: --apk
             mobile: android
             asset_pattern: "[name]_[version]_01-android-universal[ext]"
+            rust_targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android,wasm32-unknown-unknown
+          # Play Console upload: universal AAB (Play splits per device).
+          - platform: ubuntu-22.04
+            args: --aab
+            mobile: android
+            asset_pattern: "[name]_[version]_01-android-play[ext]"
             rust_targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android,wasm32-unknown-unknown
           - platform: windows-latest
             args: ""
@@ -331,14 +337,12 @@ jobs:
             `/repos/${owner}/${repo}/releases/${releaseId}/assets?per_page=100`
           )
 
-          // Drop assets that should not appear on the GitHub Release:
-          // macOS .app.tar.gz (users install the .dmg) and Android AAB (Play Console only).
+          // macOS users install from the .dmg. The .app.tar.gz is only the
+          // .app folder packed so GitHub can host it — not an updater artifact
+          // (this project has no updater). Drop it from the release.
           const assets = []
           for (const asset of listed) {
-            if (
-              /\.app\.tar\.gz(\.sig)?$/i.test(asset.name) ||
-              /\.aab(\.sig)?$/i.test(asset.name)
-            ) {
+            if (/\.app\.tar\.gz(\.sig)?$/i.test(asset.name)) {
               console.log(`Removing ${asset.name}`)
               await gh(
                 `/repos/${owner}/${repo}/releases/assets/${asset.id}`,
@@ -354,6 +358,7 @@ jobs:
 
           function sortKeyFor(name) {
             const bare = name.replace(/\.sig$/i, "").toLowerCase()
+            if (bare.endsWith(".aab")) return "01-android-play"
             if (bare.endsWith(".apk")) {
               return bare.includes("arm64") || bare.includes("aarch64")
                 ? "01-android-arm64"
@@ -602,21 +607,19 @@ jobs:
           const rows = []
 
           if (androidApks.length) {
-            const badges = [
-              ...androidApks.map((asset) => {
-                const n = lower(asset.name)
-                const message = n.includes("universal")
-                  ? "APK | Universal"
-                  : `APK | ${archLabel(asset.name)}`
-                return badge(asset, {
-                  label: "Android",
-                  message,
-                  color: "3DDC84",
-                  labelColor: "1B5E20",
-                  logo: "android",
-                })
-              }),
-            ]
+            const badges = androidApks.map((asset) => {
+              const n = lower(asset.name)
+              const message = n.includes("universal")
+                ? "APK | Universal"
+                : `APK | ${archLabel(asset.name)}`
+              return badge(asset, {
+                label: "Android",
+                message,
+                color: "3DDC84",
+                labelColor: "1B5E20",
+                logo: "android",
+              })
+            })
             rows.push({
               os: joinBadges(badges),
               compat:
