@@ -38,6 +38,7 @@ class DeviceInboxReader(private val context: Context) {
     val body: String,
     val kind: String,
     val durationSecs: Int,
+    val address: String = "",
   )
 
   private val contactNames = HashMap<String, String>()
@@ -60,7 +61,8 @@ class DeviceInboxReader(private val context: Context) {
           .put("isGroup", event.isGroup)
           .put("body", event.body)
           .put("kind", event.kind)
-          .put("durationSecs", event.durationSecs),
+          .put("durationSecs", event.durationSecs)
+          .put("address", event.address),
       )
     }
     return JSONObject().put("kind", kind).put("events", arr).toString()
@@ -112,6 +114,7 @@ class DeviceInboxReader(private val context: Context) {
               body = body,
               kind = if (body.isBlank()) "other" else "text",
               durationSecs = 0,
+              address = address,
             ),
           )
         }
@@ -177,6 +180,7 @@ class DeviceInboxReader(private val context: Context) {
               body = body,
               kind = if (body.isBlank()) "file" else "text",
               durationSecs = 0,
+              address = if (isGroup) "" else address,
             ),
           )
         }
@@ -255,7 +259,6 @@ class DeviceInboxReader(private val context: Context) {
           val cached = cursor.getStringOrEmpty(nameIdx)
           val duration = (cursor.getLongOrNull(durationIdx) ?: 0L).toInt().coerceAtLeast(0)
           val isMine = type == CallLog.Calls.OUTGOING_TYPE
-          val answered = type == CallLog.Calls.INCOMING_TYPE || type == CallLog.Calls.OUTGOING_TYPE
           val key = threadKey(number).ifEmpty { "unknown" }
           val name =
             cached.ifBlank { displayName(number, key) }.ifBlank { number.ifBlank { "Unknown" } }
@@ -270,13 +273,35 @@ class DeviceInboxReader(private val context: Context) {
               isMine = isMine,
               isGroup = false,
               body = "",
-              kind = if (answered && duration > 0) "voice" else "other",
+              kind = callKind(type, duration),
               durationSecs = duration,
+              address = formatAddress(number),
             ),
           )
         }
       }
     return events
+  }
+
+  private fun callKind(type: Int, duration: Int): String {
+    return when (type) {
+      CallLog.Calls.REJECTED_TYPE -> "rejected"
+      CallLog.Calls.BLOCKED_TYPE -> "blocked"
+      CallLog.Calls.VOICEMAIL_TYPE -> "voicemail"
+      CallLog.Calls.MISSED_TYPE -> "missed"
+      CallLog.Calls.INCOMING_TYPE,
+      CallLog.Calls.OUTGOING_TYPE,
+      CallLog.Calls.ANSWERED_EXTERNALLY_TYPE,
+      -> if (duration > 0) "answered" else "missed"
+      else -> if (duration > 0) "answered" else "missed"
+    }
+  }
+
+  private fun formatAddress(raw: String): String {
+    val trimmed = raw.trim()
+    if (trimmed.isEmpty()) return ""
+    val region = Locale.getDefault().country.ifBlank { "US" }
+    return PhoneNumberUtils.formatNumber(trimmed, region)?.takeIf { it.isNotBlank() } ?: trimmed
   }
 
   private fun displayName(address: String, key: String): String {

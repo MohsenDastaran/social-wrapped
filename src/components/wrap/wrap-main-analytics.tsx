@@ -4,11 +4,16 @@ import { WordCloudChart } from "@/components/wrap/charts/word-cloud-chart"
 import { CircadianRhythmCard } from "@/components/wrap/circadian-rhythm-card"
 import { TopEmojisCard } from "@/components/wrap/top-emojis-card"
 import { ProfanityRankingCard } from "@/components/wrap/profanity-ranking-card"
-import { fmt, SENT_RECEIVED_PIE } from "@/components/wrap/chart-theme"
+import { ComparisonKpiCard } from "@/components/wrap/comparison-kpi-card"
+import { fmt, fmtDuration, SENT_RECEIVED_PIE } from "@/components/wrap/chart-theme"
 import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import type { WrapAnalytics } from "@/platform/analytics-types"
+import {
+  averageTalkSecs,
+  longestTalkRows,
+} from "@/lib/call-analytics"
 import {
   omitHumanChatMetrics,
   wrapUiCopy,
@@ -17,9 +22,11 @@ import {
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  Clock,
   Hash,
   MessagesSquare,
   Phone,
+  Timer,
 } from "lucide-react"
 import { EChartsPieChart } from "@/components/evilcharts/charts/echarts-pie-chart"
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
@@ -43,6 +50,11 @@ export function WrapMainAnalytics({
   const hideHuman = omitHumanChatMetrics(category)
   const copy = wrapUiCopy(platformId)
   const EntityIcon = copy.isCalls ? Phone : MessagesSquare
+  const totalTalkSecs = a.contentMix?.totalVoiceDurationSecs ?? 0
+  const avgTalkSecs = Math.round(
+    averageTalkSecs(totalTalkSecs, a.contentMix?.types)
+  )
+  const talkRows = copy.isCalls ? longestTalkRows(analytics, 8) : []
 
   const sentRecvTotal = a.volume.sent + a.volume.received
   const sentReceived = [
@@ -109,6 +121,22 @@ export function WrapMainAnalytics({
           icon={EntityIcon}
           accent="sky"
         />
+        {copy.isCalls && avgTalkSecs > 0 ? (
+          <WrapKpi
+            label="Avg talk"
+            value={fmtDuration(avgTalkSecs)}
+            icon={Timer}
+            accent="violet"
+          />
+        ) : null}
+        {copy.isCalls && totalTalkSecs > 0 ? (
+          <WrapKpi
+            label="Total talk"
+            value={fmtDuration(totalTalkSecs)}
+            icon={Clock}
+            accent="teal"
+          />
+        ) : null}
       </div>
 
       <ActivityOverTimeChart
@@ -152,7 +180,39 @@ export function WrapMainAnalytics({
         title={copy.typesTitle}
         itemNoun={copy.volumeNoun}
         voiceLabel={copy.typesVoiceLabel}
+        omitKind={copy.isCalls ? "voice" : "normal"}
+        omitKindLabel={copy.isCalls ? "answered calls" : "normal"}
+        kindLabels={copy.isCalls ? { voice: "Answered" } : undefined}
       />
+
+      {copy.isCalls && talkRows.length > 0 ? (
+        <ComparisonKpiCard
+          title="Who you talk longest"
+          description="Average answered-call length"
+          exportName="main-talk-time"
+          exportLines={talkRows.map(
+            (r) =>
+              `${r.name} avg ${fmtDuration(r.values.avgSecs)} · total ${fmtDuration(r.values.totalSecs)}`
+          )}
+          rows={talkRows}
+          metrics={[
+            {
+              key: "avgSecs",
+              label: "Average",
+              accent: "teal",
+              format: fmtDuration,
+            },
+            {
+              key: "totalSecs",
+              label: "Total",
+              accent: "amber",
+              format: fmtDuration,
+            },
+          ]}
+          highlightKey="avgSecs"
+          highlightLabel="Longest"
+        />
+      ) : null}
 
       {!copy.hideTextCards ? (
         <WordCloudChart
@@ -190,6 +250,7 @@ export function WrapMainAnalytics({
         <CalendarHeatmap
           days={a.heatmap.days}
           title={copy.heatmapTitle}
+          itemNoun={copy.volumeNoun}
           exportName="main-heatmap"
         />
       )}

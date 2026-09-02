@@ -3,6 +3,16 @@ import { WrapChartCard } from "@/components/wrap/wrap-chart-card"
 import { SENT_RECEIVED_PIE, fmt } from "@/components/wrap/chart-theme"
 import type { GhostingStats } from "@/platform/analytics-types"
 
+export type GhostingChartCopy = {
+  title?: string
+  emptyDescription?: string
+  emptyHint?: string
+  /** e.g. "ghost moments" / "unanswered calls" */
+  momentNoun?: string
+  /** e.g. "ghosts more" / "doesn't pick up more" */
+  morePhrase?: string
+}
+
 type GhostingChartProps = {
   ghosting: GhostingStats | undefined
   exportName: string
@@ -13,6 +23,7 @@ type GhostingChartProps = {
   contactName?: string
   isDirectChat?: boolean
   className?: string
+  copy?: GhostingChartCopy
 }
 
 function namesMatch(a: string, b: string): boolean {
@@ -39,7 +50,7 @@ function isYouParticipant(
   return false
 }
 
-/** Donut: who left messages unanswered for 24h+ in this chat. */
+/** Donut: who left the other hanging in this chat (messages or unanswered calls). */
 export function GhostingChart({
   ghosting,
   exportName,
@@ -49,7 +60,16 @@ export function GhostingChart({
   contactName,
   isDirectChat = false,
   className,
+  copy,
 }: GhostingChartProps) {
+  const title = copy?.title ?? "Ghosting index"
+  const momentNoun = copy?.momentNoun ?? "ghost moments"
+  const morePhrase = copy?.morePhrase ?? "ghosts more"
+  const emptyDescription =
+    copy?.emptyDescription ?? "No 24h+ unanswered gaps in this chat"
+  const emptyHint =
+    copy?.emptyHint ??
+    "Re-import your export to unlock ghosting stats, or this chat has no 24h+ reply gaps."
   const parts = ghosting?.participants ?? []
   let you = 0
   let them = 0
@@ -94,14 +114,14 @@ export function GhostingChart({
 
   const description =
     total === 0
-      ? "No 24h+ unanswered gaps in this chat"
-      : `${fmt(total)} ghost moments · ${
-          winner === "Tie" ? "even split" : `${winner} ghosts more`
+      ? emptyDescription
+      : `${fmt(total)} ${momentNoun} · ${
+          winner === "Tie" ? "even split" : `${winner} ${morePhrase}`
         }`
 
   return (
     <WrapChartCard
-      title="Ghosting index"
+      title={title}
       description={description}
       exportName={exportName}
       exportSize="compact"
@@ -135,8 +155,7 @@ export function GhostingChart({
           </EChartsPieChart>
         ) : (
           <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
-            Re-import your export to unlock ghosting stats, or this chat has no
-            24h+ reply gaps.
+            {emptyHint}
           </div>
         )}
       </div>

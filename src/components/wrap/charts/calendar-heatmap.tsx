@@ -59,6 +59,7 @@ type CalendarHeatmapProps = {
   days: HeatmapDay[]
   title?: string
   description?: string
+  itemNoun?: string
   exportName: string
   className?: string
 }
@@ -67,6 +68,7 @@ export function CalendarHeatmap({
   days,
   title = "Messaging heatmap",
   description,
+  itemNoun = "messages",
   exportName,
   className,
 }: CalendarHeatmapProps) {
@@ -113,7 +115,7 @@ export function CalendarHeatmap({
       title={title}
       description={
         description ??
-        `${fmt(total)} messages · ${fmt(activeDays)} active days in ${year}`
+        `${fmt(total)} ${itemNoun} · ${fmt(activeDays)} active days in ${year}`
       }
       exportName={exportName}
       exportSize="wide"

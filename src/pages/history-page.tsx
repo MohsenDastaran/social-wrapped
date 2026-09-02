@@ -17,7 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { getPlatform } from "@/lib/platforms"
+import { getPlatform, wrapVolumeNoun } from "@/lib/platforms"
 import { cn } from "@/lib/utils"
 import {
   deleteWrap,
@@ -50,8 +50,9 @@ function formatBytes(size: number): string {
 function wrapMetaLine(wrap: WrapSummary): string {
   const date = formatDate(wrap.createdAt)
   const messages = wrap.stats.totalMessages
+  const noun = wrapVolumeNoun(wrap.platformId)
   if (messages > 0) {
-    return `${formatCount(messages)} messages · ${date}`
+    return `${formatCount(messages)} ${noun} · ${date}`
   }
   const bytes = wrap.stats.fileSizeBytes || 0
   if (bytes > 0) {

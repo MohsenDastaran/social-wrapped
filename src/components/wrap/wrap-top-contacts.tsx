@@ -1,11 +1,15 @@
 import { ContactBarRaceChart } from "@/components/wrap/charts/contact-bar-race-chart"
 import { chatDisplay } from "@/components/wrap/chat-display"
-import { fmt } from "@/components/wrap/chart-theme"
+import { fmt, fmtDuration } from "@/components/wrap/chart-theme"
 import { Button } from "@/components/ui/button"
 import { useDomExport } from "@/hooks/use-dom-export"
 import type { ChatResult, WrapAnalytics } from "@/platform/analytics-types"
 import { cn } from "@/lib/utils"
 import { scrollYClass } from "@/lib/scroll"
+import {
+  chatAverageTalkSecs,
+  longestTalkChats,
+} from "@/lib/call-analytics"
 import {
   wrapEntityLabel,
   wrapUiCopy,
@@ -20,6 +24,7 @@ import {
   Ghost,
   Loader2,
   MessagesSquare,
+  Phone,
   Search,
   UserX,
   Users,
@@ -124,6 +129,7 @@ export function WrapTopContacts({
           )
           .slice(0, 5)
   ).filter(isNotSaved)
+  const longestTalks = copy.isCalls ? longestTalkChats(analytics, 5) : []
 
   if (
     !savedMessages &&
@@ -131,7 +137,8 @@ export function WrapTopContacts({
     recent.length === 0 &&
     faded.length === 0 &&
     groups.length === 0 &&
-    ghosters.length === 0
+    ghosters.length === 0 &&
+    longestTalks.length === 0
   ) {
     return null
   }
@@ -166,7 +173,19 @@ export function WrapTopContacts({
           chats={faded}
           onSelect={onSelect}
         />
-        {!copy.hideTextCards ? (
+        {copy.isCalls ? (
+          <InsightListCard
+            title="Longest talks"
+            description="Highest average answered-call length"
+            icon={Phone}
+            exportName="longest-talks"
+            chats={longestTalks}
+            onSelect={onSelect}
+            valueFn={(chat) => Math.round(chatAverageTalkSecs(chat))}
+            formatFn={fmtDuration}
+            barClassName="bg-violet-600 dark:bg-violet-400"
+          />
+        ) : !copy.hideTextCards ? (
           <InsightListCard
             title="Ghosting experts"
             description="Left your messages unanswered for 24h+"
@@ -194,6 +213,7 @@ export function WrapTopContacts({
         <ContactBarRaceChart
           chats={directory}
           title={entityLabel === "chat" ? "Chat race" : copy.raceTitle}
+          itemNoun={copy.volumeNoun}
         />
       ) : null}
 
@@ -298,6 +318,7 @@ function InsightListCard({
   chats,
   onSelect,
   valueFn,
+  formatFn = fmt,
   barClassName = "bg-teal-600 dark:bg-teal-400",
 }: {
   title: string
@@ -308,6 +329,7 @@ function InsightListCard({
   onSelect: (chatId: number) => void
   /** Override the numeric metric (default: total messages). */
   valueFn?: (chat: ChatResult) => number
+  formatFn?: (value: number) => string
   barClassName?: string
 }) {
   const { ref, exporting, exportError, exportPng } =
@@ -367,7 +389,7 @@ function InsightListCard({
                       {d.title}
                     </p>
                     <p className="shrink-0 text-[0.65rem] text-muted-foreground tabular-nums">
-                      {fmt(value)}
+                      {formatFn(value)}
                     </p>
                   </div>
                   {d.subtitle ? (
