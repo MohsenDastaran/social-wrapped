@@ -11,6 +11,10 @@ import {
   longestTalkChats,
 } from "@/lib/call-analytics"
 import {
+  isSmsBroadcastContact,
+  smsBroadcastContacts,
+} from "@/lib/sms-analytics"
+import {
   wrapEntityLabel,
   wrapUiCopy,
   type PlatformCategory,
@@ -18,6 +22,7 @@ import {
 } from "@/lib/platforms"
 import {
   Bookmark,
+  Building2,
   ChevronRight,
   Clock3,
   Download,
@@ -78,6 +83,7 @@ export function WrapTopContacts({
   platformId,
 }: WrapTopContactsProps) {
   const copy = wrapUiCopy(platformId)
+  const isSms = platformId === "sms"
   const entityLabel = wrapEntityLabel(category)
   const sectionDescription =
     description ??
@@ -105,18 +111,21 @@ export function WrapTopContacts({
     for (const list of lists) {
       for (const chat of list ?? []) {
         if (!isNotSaved(chat) || chat.isGroup) continue
+        if (isSms && isSmsBroadcastContact(chat)) continue
         if (!byId.has(chat.chatId)) byId.set(chat.chatId, chat)
       }
     }
     return [...byId.values()].sort(
       (a, b) => b.analytics.totalMessages - a.analytics.totalMessages
     )
-  }, [analytics])
+  }, [analytics, isSms])
+  const isPersonal = (c: ChatResult) =>
+    isNotSaved(c) && !(isSms && isSmsBroadcastContact(c))
   const topContacts = (
     analytics.topContacts?.length ? analytics.topContacts : directory
-  ).filter(isNotSaved)
-  const recent = (analytics.recentContacts ?? []).filter(isNotSaved)
-  const faded = (analytics.fadedContacts ?? []).filter(isNotSaved)
+  ).filter(isPersonal)
+  const recent = (analytics.recentContacts ?? []).filter(isPersonal)
+  const faded = (analytics.fadedContacts ?? []).filter(isPersonal)
   const groups = analytics.topGroups ?? []
   const ghosters = (
     analytics.topGhosters?.length
@@ -128,8 +137,18 @@ export function WrapTopContacts({
               contactGhostScore(b, selfName) - contactGhostScore(a, selfName)
           )
           .slice(0, 5)
-  ).filter(isNotSaved)
+  ).filter(isPersonal)
   const longestTalks = copy.isCalls ? longestTalkChats(analytics, 5) : []
+  const broadcast = isSms
+    ? smsBroadcastContacts(
+        [
+          ...(analytics.chats ?? []),
+          ...(analytics.topContacts ?? []),
+          ...(analytics.recentContacts ?? []),
+        ],
+        8
+      )
+    : []
 
   if (
     !savedMessages &&
@@ -138,7 +157,8 @@ export function WrapTopContacts({
     faded.length === 0 &&
     groups.length === 0 &&
     ghosters.length === 0 &&
-    longestTalks.length === 0
+    longestTalks.length === 0 &&
+    broadcast.length === 0
   ) {
     return null
   }
@@ -197,7 +217,18 @@ export function WrapTopContacts({
             barClassName="bg-rose-600 dark:bg-rose-400"
           />
         ) : null}
-        {!copy.hideTextCards ? (
+        {isSms ? (
+          <InsightListCard
+            title="Banks & services"
+            description="Mostly inbound — banks, OTPs, and services"
+            icon={Building2}
+            exportName="sms-broadcast-contacts"
+            chats={broadcast}
+            onSelect={onSelect}
+            valueFn={(chat) => chat.analytics.receivedMessages}
+            barClassName="bg-stone-600 dark:bg-stone-400"
+          />
+        ) : !copy.hideTextCards ? (
           <InsightListCard
             title="Top groups"
             description="Group chats by lifetime volume"

@@ -555,7 +555,7 @@ export function wrapUiCopy(platformId: string | undefined): WrapUiCopy {
     }
   }
 
-  return {
+  const messaging: WrapUiCopy = {
     isCalls: false,
     hideTextCards: false,
     volumeNoun: "messages",
@@ -583,6 +583,16 @@ export function wrapUiCopy(platformId: string | undefined): WrapUiCopy {
     searchLabel: "Search contacts",
     searchPlaceholder: "Search a contact…",
   }
+
+  if (platformId === "sms") {
+    return {
+      ...messaging,
+      peopleDescription:
+        "People you actually text. Banks, OTPs, and other inbound-only senders are listed separately.",
+    }
+  }
+
+  return messaging
 }
 
 /** Account-level volume noun for wrap copy (call log vs everything else). */
