@@ -174,6 +174,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
     steps: [
       "Open Social Wrapped on Android (desktop and the website stay locked).",
       "Open Home → SMS and allow SMS access when Android asks.",
+      "If SMS stays locked, allow restricted settings first: Settings → Apps → Social Wrapped → More → Allow restricted settings, then grant SMS. Some phones hide this after a sideload install.",
       "Analysis runs on this phone. Messages never leave the device.",
     ],
     importHint:

@@ -111,7 +111,11 @@ export const PLATFORM_IMPORT_DOCS: Partial<
       "The Android APK has no internet permission. When you allow SMS access, Social Wrapped reads threads already stored on this phone and builds the wrap locally.",
       "Contacts access is optional: allow it to show names instead of numbers. Denying contacts still analyzes every thread.",
       "Nothing is uploaded. If you deny SMS access, this wrap cannot run.",
+      "On some phones (especially after installing the APK from outside Google Play), Android hides SMS behind Restricted settings. If the permission prompt never appears, or SMS stays off: open Settings → Apps → Social Wrapped → More → Allow restricted settings, then grant SMS access.",
     ],
+    officialExportUrl:
+      "https://support.google.com/android/answer/12623953?hl=en",
+    officialExportLabel: "Allow restricted settings (Android Help)",
   },
   calls: {
     title: "Call history on this Android phone",
