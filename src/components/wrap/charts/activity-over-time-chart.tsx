@@ -29,6 +29,7 @@ type ActivityOverTimeChartProps = {
   exportName?: string
   sentLabel?: string
   receivedLabel?: string
+  emptyLabel?: string
   /** @default "line" */
   defaultChartType?: ChartType
 }
@@ -44,6 +45,7 @@ export function ActivityOverTimeChart({
   exportName = "main-activity-over-time",
   sentLabel = "Sent",
   receivedLabel = "Received",
+  emptyLabel = "No messages in this range.",
   defaultChartType = "line",
 }: ActivityOverTimeChartProps) {
   const yearCount = useMemo(() => countDistinctYears(series), [series])
@@ -233,7 +235,7 @@ export function ActivityOverTimeChart({
 
         {data.length === 0 ? (
           <p className="flex flex-1 items-center justify-center px-4 text-sm text-muted-foreground">
-            No messages in this range.
+            {emptyLabel}
           </p>
         ) : (
           <div className="min-h-0 flex-1">

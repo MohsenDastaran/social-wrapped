@@ -11,14 +11,15 @@ import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import type { WrapAnalytics } from "@/platform/analytics-types"
 import {
   omitHumanChatMetrics,
-  wrapVolumeNoun,
+  wrapUiCopy,
   type PlatformCategory,
 } from "@/lib/platforms"
 import {
   ArrowDownLeft,
   ArrowUpRight,
-  MessagesSquare,
   Hash,
+  MessagesSquare,
+  Phone,
 } from "lucide-react"
 import { EChartsPieChart } from "@/components/evilcharts/charts/echarts-pie-chart"
 import { CalendarHeatmap } from "@/components/wrap/charts/calendar-heatmap"
@@ -40,7 +41,8 @@ export function WrapMainAnalytics({
   if (!analytics?.account) return null
   const a = analytics.account
   const hideHuman = omitHumanChatMetrics(category)
-  const volumeNoun = wrapVolumeNoun(platformId)
+  const copy = wrapUiCopy(platformId)
+  const EntityIcon = copy.isCalls ? Phone : MessagesSquare
 
   const sentRecvTotal = a.volume.sent + a.volume.received
   const sentReceived = [
@@ -59,6 +61,10 @@ export function WrapMainAnalytics({
       )}%`,
     },
   ]
+  const pieConfig = {
+    sent: { ...SENT_RECEIVED_PIE.sent!, label: copy.outgoing },
+    received: { ...SENT_RECEIVED_PIE.received!, label: copy.incoming },
+  }
 
   return (
     <section className="flex flex-col gap-4">
@@ -73,21 +79,20 @@ export function WrapMainAnalytics({
           />
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Across all {fmt(analytics.chatCount)} chats · {fmt(a.totalMessages)}{" "}
-          {volumeNoun}
+          Across all {fmt(analytics.chatCount)} {copy.entityPlural} ·{" "}
+          {fmt(a.totalMessages)} {copy.volumeNoun}
         </p>
       </header>
 
-      {/* Overview KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <WrapKpi
-          label="Sent"
+          label={copy.outgoing}
           value={fmt(a.sentMessages)}
           icon={ArrowUpRight}
           accent="teal"
         />
         <WrapKpi
-          label="Received"
+          label={copy.incoming}
           value={fmt(a.receivedMessages)}
           icon={ArrowDownLeft}
           accent="amber"
@@ -99,23 +104,29 @@ export function WrapMainAnalytics({
           accent="emerald"
         />
         <WrapKpi
-          label="Chats"
+          label={copy.entityPlural.replace(/^\w/, (c) => c.toUpperCase())}
           value={fmt(analytics.chatCount)}
-          icon={MessagesSquare}
+          icon={EntityIcon}
           accent="sky"
         />
       </div>
 
-      <ActivityOverTimeChart series={a.activityOverTime} />
+      <ActivityOverTimeChart
+        series={a.activityOverTime}
+        title={copy.activityTitle}
+        sentLabel={copy.outgoing}
+        receivedLabel={copy.incoming}
+        emptyLabel={copy.activityEmpty}
+      />
 
       <WrapChartCard
-        title="Sent vs received"
-        description="Outbound vs inbound share"
+        title={copy.vsTitle}
+        description={copy.vsDescription}
         exportName="main-sent-vs-received"
         exportSize="compact"
         exportLines={[
-          `Sent ${fmt(a.sentMessages)} (${sentReceived[0]?.pctLabel ?? "0%"})`,
-          `Received ${fmt(a.receivedMessages)} (${sentReceived[1]?.pctLabel ?? "0%"})`,
+          `${copy.outgoing} ${fmt(a.sentMessages)} (${sentReceived[0]?.pctLabel ?? "0%"})`,
+          `${copy.incoming} ${fmt(a.receivedMessages)} (${sentReceived[1]?.pctLabel ?? "0%"})`,
         ]}
         chartClassName="h-64"
       >
@@ -124,7 +135,7 @@ export function WrapMainAnalytics({
           data={sentReceived}
           dataKey="count"
           nameKey="side"
-          config={SENT_RECEIVED_PIE}
+          config={pieConfig}
         >
           <EChartsPieChart.Legend isClickable />
           <EChartsPieChart.Tooltip />
@@ -138,17 +149,22 @@ export function WrapMainAnalytics({
         types={a.contentMix?.types ?? []}
         totalVoiceDurationSecs={a.contentMix?.totalVoiceDurationSecs ?? 0}
         exportName="main-message-types"
+        title={copy.typesTitle}
+        itemNoun={copy.volumeNoun}
+        voiceLabel={copy.typesVoiceLabel}
       />
 
-      <WordCloudChart
-        keywords={a.keywords}
-        mode="you"
-        title="Your word cloud"
-        description="Words you use most across all chats"
-        exportName="main-word-cloud"
-      />
+      {!copy.hideTextCards ? (
+        <WordCloudChart
+          keywords={a.keywords}
+          mode="you"
+          title="Your word cloud"
+          description="Words you use most across all chats"
+          exportName="main-word-cloud"
+        />
+      ) : null}
 
-      {!hideHuman ? (
+      {!hideHuman && !copy.hideTextCards ? (
         <ProfanityRankingCard
           wrapId={wrapId}
           selfName={analytics.displayName}
@@ -158,17 +174,24 @@ export function WrapMainAnalytics({
         />
       ) : null}
 
-      {!hideHuman ? (
+      {!hideHuman && !copy.hideTextCards ? (
         <TopEmojisCard emojis={a.emojis.topOverall} exportName="main-emojis" />
       ) : null}
 
       <CircadianRhythmCard
         hourlyTotal={a.circadian.hourlyTotal}
         exportName="main-circadian"
+        title={copy.circadianTitle}
+        seriesName={copy.circadianSeriesName}
+        itemNoun={copy.volumeNoun}
       />
 
       {a.heatmap.days.length > 0 && (
-        <CalendarHeatmap days={a.heatmap.days} exportName="main-heatmap" />
+        <CalendarHeatmap
+          days={a.heatmap.days}
+          title={copy.heatmapTitle}
+          exportName="main-heatmap"
+        />
       )}
     </section>
   )

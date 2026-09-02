@@ -4,6 +4,7 @@ import {
   LayoutGrid,
   MessageCircle,
   Music2,
+  Phone,
   Share2,
   Sparkles,
   type LucideIcon,
@@ -21,6 +22,7 @@ export type PlatformCategoryFilterValue = PlatformCategory | "all"
 
 const CATEGORY_ICONS = {
   messaging: MessageCircle,
+  phone: Phone,
   social: Share2,
   music: Music2,
   google: Globe,

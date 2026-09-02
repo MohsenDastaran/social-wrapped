@@ -29,10 +29,11 @@ export function isAndroidOnlyPlatform(id: PlatformId): boolean {
 }
 
 export type PlatformCategory =
-  "messaging" | "social" | "music" | "google" | "ai"
+  "messaging" | "phone" | "social" | "music" | "google" | "ai"
 
 export const PLATFORM_CATEGORY_ORDER = [
   "messaging",
+  "phone",
   "social",
   "music",
   "google",
@@ -41,6 +42,7 @@ export const PLATFORM_CATEGORY_ORDER = [
 
 export const PLATFORM_CATEGORY_LABELS: Record<PlatformCategory, string> = {
   messaging: "Messaging",
+  phone: "Phone",
   social: "Social",
   music: "Music",
   google: "Google",
@@ -159,7 +161,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "sms",
     name: "SMS",
-    category: "messaging",
+    category: "phone",
     androidOnly: true,
     importSource: "device",
     accentClass: "border-teal-500/50",
@@ -188,7 +190,7 @@ export const HIGH_PRIORITY_PLATFORMS: PlatformConfig[] = [
   {
     id: "calls",
     name: "Calls",
-    category: "messaging",
+    category: "phone",
     androidOnly: true,
     importSource: "device",
     accentClass: "border-amber-500/50",
@@ -492,11 +494,102 @@ export function wrapEntityLabel(
   return category === "ai" ? "chat" : "contact"
 }
 
+/** Labels and which cards to skip for a wrap (call log vs messaging). */
+export type WrapUiCopy = {
+  isCalls: boolean
+  hideTextCards: boolean
+  volumeNoun: "messages" | "calls"
+  volumeNounSingular: "message" | "call"
+  outgoing: string
+  incoming: string
+  vsTitle: string
+  vsDescription: string
+  entityPlural: string
+  entitySingular: string
+  topTitle: string
+  raceTitle: string
+  peopleDescription: string
+  heatmapTitle: string
+  heatmapDescription: string
+  circadianTitle: string
+  circadianSeriesName: string
+  typesTitle: string
+  typesVoiceLabel: string
+  activityTitle: string
+  activityEmpty: string
+  recentlyActive: string
+  faded: string
+  searchLabel: string
+  searchPlaceholder: string
+}
+
+export function wrapUiCopy(platformId: string | undefined): WrapUiCopy {
+  if (platformId === "calls") {
+    return {
+      isCalls: true,
+      hideTextCards: true,
+      volumeNoun: "calls",
+      volumeNounSingular: "call",
+      outgoing: "Outgoing",
+      incoming: "Incoming",
+      vsTitle: "Outgoing vs incoming",
+      vsDescription: "Outbound vs inbound share",
+      entityPlural: "numbers",
+      entitySingular: "number",
+      topTitle: "Top numbers",
+      raceTitle: "Call race",
+      peopleDescription:
+        "Numbers you call most. Names come from this phone’s contacts when you allow contacts access.",
+      heatmapTitle: "Call heatmap",
+      heatmapDescription: "Calls per day",
+      circadianTitle: "Calls by hour",
+      circadianSeriesName: "Calls",
+      typesTitle: "Call types",
+      typesVoiceLabel: "talk time",
+      activityTitle: "Calls over time",
+      activityEmpty: "No calls in this range.",
+      recentlyActive: "Most calls in the last 90 days",
+      faded: "Called a lot before, quiet in the last 90 days",
+      searchLabel: "Search numbers",
+      searchPlaceholder: "Search a number…",
+    }
+  }
+
+  return {
+    isCalls: false,
+    hideTextCards: false,
+    volumeNoun: "messages",
+    volumeNounSingular: "message",
+    outgoing: "Sent",
+    incoming: "Received",
+    vsTitle: "Sent vs received",
+    vsDescription: "Outbound vs inbound share",
+    entityPlural: "chats",
+    entitySingular: "chat",
+    topTitle: "Top contacts",
+    raceTitle: "Contact race",
+    peopleDescription:
+      "People and groups you message most. Search to find anyone, then tap to open their stats.",
+    heatmapTitle: "Messaging heatmap",
+    heatmapDescription: "Messages per day",
+    circadianTitle: "Messaging by hour",
+    circadianSeriesName: "Messages",
+    typesTitle: "Message types",
+    typesVoiceLabel: "voice",
+    activityTitle: "Messages over time",
+    activityEmpty: "No messages in this range.",
+    recentlyActive: "Most messages in the last 90 days",
+    faded: "Talked a lot before, quiet in the last 90 days",
+    searchLabel: "Search contacts",
+    searchPlaceholder: "Search a contact…",
+  }
+}
+
 /** Account-level volume noun for wrap copy (call log vs everything else). */
 export function wrapVolumeNoun(
   platformId: string | undefined
 ): "messages" | "calls" {
-  return platformId === "calls" ? "calls" : "messages"
+  return wrapUiCopy(platformId).volumeNoun
 }
 
 export function platformImportPath(id: PlatformId): string {

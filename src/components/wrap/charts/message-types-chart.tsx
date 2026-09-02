@@ -28,6 +28,9 @@ type MessageTypesChartProps = {
    * When set (and more than one has data), a segmented toggle appears.
    */
   scopes?: MessageTypesScope[]
+  title?: string
+  itemNoun?: string
+  voiceLabel?: string
 }
 
 /** Pie of message content types, with optional “hide normal” + scope toggle. */
@@ -36,6 +39,9 @@ export function MessageTypesChart({
   totalVoiceDurationSecs = 0,
   exportName,
   scopes,
+  title = "Message types",
+  itemNoun = "messages",
+  voiceLabel = "voice",
 }: MessageTypesChartProps) {
   const [hideNormal, setHideNormal] = useState(true)
 
@@ -69,15 +75,15 @@ export function MessageTypesChart({
 
   return (
     <WrapChartCard
-      title="Message types"
+      title={title}
       description={
         baseTypes.length === 0
           ? "Re-import your export to unlock the type breakdown"
           : hideNormal
-            ? "Share among non-normal messages only"
+            ? `Share among non-normal ${itemNoun} only`
             : voiceSecs > 0
-              ? `${fmtDuration(voiceSecs)} of voice · share by type`
-              : "Share of messages by content type"
+              ? `${fmtDuration(voiceSecs)} of ${voiceLabel} · share by type`
+              : `Share of ${itemNoun} by content type`
       }
       exportName={`${exportName}${scopeSuffix}`}
       exportSize="compact"
@@ -116,7 +122,9 @@ export function MessageTypesChart({
               onClick={() => setHideNormal((v) => !v)}
               aria-pressed={hideNormal}
               aria-label={
-                hideNormal ? "Show normal messages" : "Hide normal messages"
+                hideNormal
+                  ? `Show normal ${itemNoun}`
+                  : `Hide normal ${itemNoun}`
               }
               className="shrink-0"
             >
@@ -158,7 +166,7 @@ export function MessageTypesChart({
       ) : (
         <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
           {hideNormal
-            ? "No non-normal messages in this set."
+            ? `No non-normal ${itemNoun} in this set.`
             : "No type data yet. Re-import after updating to see normal, link, emoji, image, video, and more."}
         </div>
       )}

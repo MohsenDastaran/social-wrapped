@@ -8,7 +8,9 @@ import { cn } from "@/lib/utils"
 import { scrollYClass } from "@/lib/scroll"
 import {
   wrapEntityLabel,
+  wrapUiCopy,
   type PlatformCategory,
+  type WrapUiCopy,
 } from "@/lib/platforms"
 import {
   Bookmark,
@@ -45,6 +47,7 @@ type WrapTopContactsProps = {
   /** Extra context under the section title (e.g. X archive ID limits). */
   description?: string
   category?: PlatformCategory
+  platformId?: string
 }
 
 function namesMatch(a: string, b: string): boolean {
@@ -67,13 +70,15 @@ export function WrapTopContacts({
   onSelect,
   description,
   category,
+  platformId,
 }: WrapTopContactsProps) {
+  const copy = wrapUiCopy(platformId)
   const entityLabel = wrapEntityLabel(category)
   const sectionDescription =
     description ??
     (category === "ai"
       ? "Conversations ranked by message count. Tap one for the same charts as the main wrap, for that thread only."
-      : "People and groups you message most. Search to find anyone, then tap to open their stats.")
+      : copy.peopleDescription)
   const selfName = analytics.displayName
   const savedMessages =
     analytics.savedMessages ??
@@ -135,19 +140,19 @@ export function WrapTopContacts({
     <section className="flex flex-col gap-4">
       <header className="text-start">
         <h2 className="font-heading text-xl font-semibold tracking-tight">
-          {entityLabel === "chat" ? "Top chats" : "Top contacts"}
+          {entityLabel === "chat" ? "Top chats" : copy.topTitle}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">{sectionDescription}</p>
       </header>
 
-      {savedMessages ? (
+      {savedMessages && !copy.hideTextCards ? (
         <SavedMessagesCard chat={savedMessages} onSelect={onSelect} />
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <InsightListCard
           title="Recently active"
-          description="Most messages in the last 90 days"
+          description={copy.recentlyActive}
           icon={Clock3}
           exportName="recently-active-contacts"
           chats={recent}
@@ -155,36 +160,40 @@ export function WrapTopContacts({
         />
         <InsightListCard
           title="Faded friendships"
-          description="Talked a lot before, quiet in the last 90 days"
+          description={copy.faded}
           icon={UserX}
           exportName="faded-friendships"
           chats={faded}
           onSelect={onSelect}
         />
-        <InsightListCard
-          title="Ghosting experts"
-          description="Left your messages unanswered for 24h+"
-          icon={Ghost}
-          exportName="ghosting-experts"
-          chats={ghosters}
-          onSelect={onSelect}
-          valueFn={(chat) => contactGhostScore(chat, selfName)}
-          barClassName="bg-rose-600 dark:bg-rose-400"
-        />
-        <InsightListCard
-          title="Top groups"
-          description="Group chats by lifetime volume"
-          icon={MessagesSquare}
-          exportName="top-groups"
-          chats={groups}
-          onSelect={onSelect}
-        />
+        {!copy.hideTextCards ? (
+          <InsightListCard
+            title="Ghosting experts"
+            description="Left your messages unanswered for 24h+"
+            icon={Ghost}
+            exportName="ghosting-experts"
+            chats={ghosters}
+            onSelect={onSelect}
+            valueFn={(chat) => contactGhostScore(chat, selfName)}
+            barClassName="bg-rose-600 dark:bg-rose-400"
+          />
+        ) : null}
+        {!copy.hideTextCards ? (
+          <InsightListCard
+            title="Top groups"
+            description="Group chats by lifetime volume"
+            icon={MessagesSquare}
+            exportName="top-groups"
+            chats={groups}
+            onSelect={onSelect}
+          />
+        ) : null}
       </div>
 
       {directory.length > 1 ? (
         <ContactBarRaceChart
           chats={directory}
-          title={entityLabel === "chat" ? "Chat race" : "Contact race"}
+          title={entityLabel === "chat" ? "Chat race" : copy.raceTitle}
         />
       ) : null}
 
@@ -193,6 +202,7 @@ export function WrapTopContacts({
           chats={topContacts}
           directory={directory}
           entityLabel={entityLabel}
+          copy={copy}
           onSelect={onSelect}
         />
       ) : null}
@@ -399,11 +409,13 @@ function TopContactsList({
   chats,
   directory,
   entityLabel,
+  copy,
   onSelect,
 }: {
   chats: ChatResult[]
   directory: ChatResult[]
   entityLabel: ReturnType<typeof wrapEntityLabel>
+  copy: WrapUiCopy
   onSelect: (chatId: number) => void
 }) {
   const { ref, exporting, exportError, exportPng } =
@@ -426,7 +438,8 @@ function TopContactsList({
     ranked.forEach((chat, index) => map.set(chat.chatId, index))
     return map
   }, [ranked])
-  const noun = entityLabel === "chat" ? "chats" : "contacts"
+  const noun =
+    entityLabel === "chat" ? "chats" : copy.entityPlural
   const title = searching
     ? `${visible.length} ${visible.length === 1 ? "match" : "matches"}`
     : `Top ${Math.min(VISIBLE_CONTACTS, ranked.length)} ${noun}`
@@ -446,7 +459,7 @@ function TopContactsList({
           variant={searchOpen ? "secondary" : "outline"}
           size="icon-xs"
           data-export-ignore
-          aria-label={searchOpen ? "Close contact search" : "Search contacts"}
+          aria-label={searchOpen ? "Close search" : copy.searchLabel}
           aria-pressed={searchOpen}
           className="shrink-0"
           onClick={(e) => {
@@ -472,7 +485,7 @@ function TopContactsList({
           data-export-ignore
         >
           <label className="sr-only" htmlFor="top-contacts-search">
-            Search contacts
+            {copy.searchLabel}
           </label>
           <div className="relative">
             <Search
@@ -484,7 +497,7 @@ function TopContactsList({
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search a contact…"
+              placeholder={copy.searchPlaceholder}
               autoComplete="off"
               spellCheck={false}
               className={cn(
@@ -500,8 +513,8 @@ function TopContactsList({
       {visible.length === 0 ? (
         <p className="px-4 py-6 text-center text-sm text-muted-foreground">
           {searching
-            ? "No contacts match that name."
-            : "No contacts in this export."}
+            ? `No ${copy.entityPlural} match that name.`
+            : `No ${copy.entityPlural} in this export.`}
         </p>
       ) : (
         <ul
@@ -517,6 +530,7 @@ function TopContactsList({
               chat={chat}
               index={rankById.get(chat.chatId) ?? 0}
               max={max}
+              copy={copy}
               onSelect={onSelect}
             />
           ))}
@@ -539,11 +553,13 @@ function ContactRow({
   chat,
   index,
   max,
+  copy,
   onSelect,
 }: {
   chat: ChatResult
   index: number
   max: number
+  copy: WrapUiCopy
   onSelect: (chatId: number) => void
 }) {
   const d = chatDisplay(chat)
@@ -593,16 +609,16 @@ function ContactRow({
             <div
               className="h-full bg-teal-600 dark:bg-teal-400"
               style={{ width: `${(pct * sentPct) / 100}%` }}
-              title="Sent"
+              title={copy.outgoing}
             />
             <div
               className="h-full bg-amber-600 dark:bg-amber-400"
               style={{ width: `${(pct * (100 - sentPct)) / 100}%` }}
-              title="Received"
+              title={copy.incoming}
             />
           </div>
           <p className="mt-1 text-[0.65rem] text-muted-foreground">
-            Sent {fmt(chat.analytics.sentMessages)} · Received{" "}
+            {copy.outgoing} {fmt(chat.analytics.sentMessages)} · {copy.incoming}{" "}
             {fmt(chat.analytics.receivedMessages)}
           </p>
         </div>

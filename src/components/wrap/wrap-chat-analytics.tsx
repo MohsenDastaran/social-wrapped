@@ -21,7 +21,7 @@ import type {
 import { filterEmojiEntries } from "@/lib/emoji"
 import {
   omitHumanChatMetrics,
-  wrapVolumeNoun,
+  wrapUiCopy,
   type PlatformCategory,
 } from "@/lib/platforms"
 
@@ -46,7 +46,7 @@ export function WrapChatAnalytics({
   const a = chat.analytics
   const display = chatDisplay(chat)
   const isSavedMessages = display.isSavedMessages
-  const volumeNoun = wrapVolumeNoun(platformId)
+  const copy = wrapUiCopy(platformId)
   const emojiScopes = buildEmojiScopes(
     a.emojis,
     selfName,
@@ -111,7 +111,7 @@ export function WrapChatAnalytics({
         title={
           isSavedMessages
             ? "Saved Messages activity"
-            : volumeNoun === "calls"
+            : copy.isCalls
               ? `Calls with ${display.title}`
               : `Messages with ${display.title}`
         }
@@ -122,28 +122,31 @@ export function WrapChatAnalytics({
             ? (display.subtitle ?? display.title)
             : chat.chatName
         }
+        emptyLabel={copy.activityEmpty}
       />
 
-      <WordCloudChart
-        keywords={a.keywords}
-        youLabel={selfName}
-        themLabel={
-          display.isDeleted
-            ? (display.subtitle ?? "Contact")
-            : display.title
-        }
-        enableScopeToggle={!isSavedMessages}
-        mode={isSavedMessages ? "you" : "all"}
-        title={isSavedMessages ? "Saved Messages word cloud" : "Word cloud"}
-        description={
-          isSavedMessages
-            ? "Words you saved most often"
-            : "Most used words in this chat"
-        }
-        exportName={`chat-${chat.chatId}-word-cloud`}
-      />
+      {!copy.hideTextCards ? (
+        <WordCloudChart
+          keywords={a.keywords}
+          youLabel={selfName}
+          themLabel={
+            display.isDeleted
+              ? (display.subtitle ?? "Contact")
+              : display.title
+          }
+          enableScopeToggle={!isSavedMessages}
+          mode={isSavedMessages ? "you" : "all"}
+          title={isSavedMessages ? "Saved Messages word cloud" : "Word cloud"}
+          description={
+            isSavedMessages
+              ? "Words you saved most often"
+              : "Most used words in this chat"
+          }
+          exportName={`chat-${chat.chatId}-word-cloud`}
+        />
+      ) : null}
 
-      {!hideHuman && !isSavedMessages ? (
+      {!hideHuman && !isSavedMessages && !copy.hideTextCards ? (
         <ProfanityRankingCard
           wrapId={wrapId}
           chatId={chat.chatId}
@@ -153,7 +156,7 @@ export function WrapChatAnalytics({
         />
       ) : null}
 
-      {!isSavedMessages ? (
+      {!isSavedMessages && !copy.hideTextCards ? (
         <>
           <KeywordBattleChart
             keywords={a.keywords}
@@ -189,6 +192,9 @@ export function WrapChatAnalytics({
         totalVoiceDurationSecs={a.contentMix?.totalVoiceDurationSecs ?? 0}
         exportName={`chat-${chat.chatId}-message-types`}
         scopes={isSavedMessages ? undefined : messageTypesScopes}
+        title={copy.typesTitle}
+        itemNoun={copy.volumeNoun}
+        voiceLabel={copy.typesVoiceLabel}
       />
 
       {!isSavedMessages ? (
@@ -220,21 +226,23 @@ export function WrapChatAnalytics({
             highlightLabel="Fastest"
           />
 
-          <ComparisonKpiCard
-            title="Message length"
-            description="Average characters per message"
-            exportName={`chat-${chat.chatId}-length`}
-            rows={lengthRows}
-            metrics={[
-              {
-                key: "avgChars",
-                label: "Avg chars",
-                accent: "violet",
-                format: (n) => fmt(n),
-              },
-            ]}
-            highlightLabel="Longer"
-          />
+          {!copy.hideTextCards ? (
+            <ComparisonKpiCard
+              title="Message length"
+              description="Average characters per message"
+              exportName={`chat-${chat.chatId}-length`}
+              rows={lengthRows}
+              metrics={[
+                {
+                  key: "avgChars",
+                  label: "Avg chars",
+                  accent: "violet",
+                  format: (n) => fmt(n),
+                },
+              ]}
+              highlightLabel="Longer"
+            />
+          ) : null}
 
           {!hideHuman ? (
             <ComparisonKpiCard
@@ -254,13 +262,13 @@ export function WrapChatAnalytics({
           {!hideHuman ? (
             <ComparisonKpiCard
               title="Late night (1–5 AM)"
-              description={`${fmt(a.lateNight.totalLateNight)} messages`}
+              description={`${fmt(a.lateNight.totalLateNight)} ${copy.volumeNoun}`}
               exportName={`chat-${chat.chatId}-late-night`}
               rows={lateNightRows}
               metrics={[
                 {
                   key: "count",
-                  label: "Messages",
+                  label: copy.volumeNoun.replace(/^\w/, (c) => c.toUpperCase()),
                   accent: "indigo",
                 },
               ]}
@@ -268,24 +276,26 @@ export function WrapChatAnalytics({
             />
           ) : null}
 
-          <ComparisonKpiCard
-            title="Edited messages"
-            description={`${fmt(a.editTypo?.totalEdits ?? 0)} messages edited after sending`}
-            exportName={`chat-${chat.chatId}-edits`}
-            exportLines={(a.editTypo?.participants ?? []).map(
-              (p) => `${p.name} ${p.edits} edits`
-            )}
-            rows={editTypoRows}
-            metrics={[
-              { key: "edits", label: "Edits", accent: "violet" },
-            ]}
-            highlightKey="edits"
-            highlightLabel="Editor"
-          />
+          {!copy.hideTextCards ? (
+            <ComparisonKpiCard
+              title="Edited messages"
+              description={`${fmt(a.editTypo?.totalEdits ?? 0)} messages edited after sending`}
+              exportName={`chat-${chat.chatId}-edits`}
+              exportLines={(a.editTypo?.participants ?? []).map(
+                (p) => `${p.name} ${p.edits} edits`
+              )}
+              rows={editTypoRows}
+              metrics={[
+                { key: "edits", label: "Edits", accent: "violet" },
+              ]}
+              highlightKey="edits"
+              highlightLabel="Editor"
+            />
+          ) : null}
         </div>
       ) : null}
 
-      {!hideHuman ? (
+      {!hideHuman && !copy.hideTextCards ? (
         <TopEmojisCard
           emojis={a.emojis.topOverall}
           exportName={`chat-${chat.chatId}-emojis`}
@@ -299,13 +309,17 @@ export function WrapChatAnalytics({
         <CircadianRhythmCard
           participants={a.circadian.participants}
           exportName={`chat-${chat.chatId}-circadian`}
+          title={copy.circadianTitle}
+          seriesName={copy.circadianSeriesName}
+          itemNoun={copy.volumeNoun}
         />
       ) : null}
 
       {a.heatmap.days.length > 0 && (
         <CalendarHeatmap
           days={a.heatmap.days}
-          description="Messages per day in this chat"
+          title={copy.heatmapTitle}
+          description={`${copy.heatmapDescription} in this ${copy.entitySingular}`}
           exportName={`chat-${chat.chatId}-heatmap`}
         />
       )}
