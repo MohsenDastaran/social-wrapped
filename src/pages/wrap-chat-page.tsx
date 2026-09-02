@@ -10,7 +10,7 @@ import { chatDisplay } from "@/components/wrap/chat-display"
 import { WrapChatAnalytics } from "@/components/wrap/wrap-chat-analytics"
 import { WrapKpi } from "@/components/wrap/wrap-kpi"
 import { fmt } from "@/components/wrap/chart-theme"
-import { getPlatform } from "@/lib/platforms"
+import { getPlatform, wrapVolumeNoun } from "@/lib/platforms"
 import { getWrap, wrapPath, type WrapRecord } from "@/lib/wrap-history"
 
 /** Per-contact analytics — `/wrap/:wrapId/chat/:chatId`. */
@@ -61,6 +61,7 @@ export function WrapChatPage() {
   const display = chatDisplay(chat)
   const a = chat.analytics
   const isSavedMessages = display.isSavedMessages
+  const volumeNoun = wrapVolumeNoun(wrap.platformId)
 
   return (
     <div className="-mt-4 flex w-full max-w-4xl flex-col items-stretch gap-6 text-start sm:-mt-6 sm:gap-8 md:max-w-4xl lg:max-w-5xl">
@@ -111,7 +112,7 @@ export function WrapChatPage() {
       {isSavedMessages ? (
         <div className="grid grid-cols-1 gap-2 sm:max-w-xs sm:gap-3">
           <WrapKpi
-            label="Total messages"
+            label={volumeNoun === "calls" ? "Total calls" : "Total messages"}
             value={fmt(a.totalMessages)}
             icon={Hash}
             accent="emerald"
@@ -145,6 +146,7 @@ export function WrapChatPage() {
         selfName={wrap.analytics.displayName || wrap.stats.displayName}
         wrapId={wrap.id}
         category={platform?.category}
+        platformId={wrap.platformId}
       />
     </div>
   )

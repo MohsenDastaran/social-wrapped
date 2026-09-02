@@ -491,6 +491,13 @@ export function wrapEntityLabel(
   return category === "ai" ? "chat" : "contact"
 }
 
+/** Account-level volume noun for wrap copy (call log vs everything else). */
+export function wrapVolumeNoun(
+  platformId: string | undefined
+): "messages" | "calls" {
+  return platformId === "calls" ? "calls" : "messages"
+}
+
 export function platformImportPath(id: PlatformId): string {
   return `/import/${id}`
 }

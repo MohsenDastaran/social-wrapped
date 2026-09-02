@@ -4,6 +4,11 @@
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
+    <!-- On-device SMS / call wraps (sideload APK). Contacts names are optional. -->
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
     <application
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

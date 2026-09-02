@@ -11,6 +11,7 @@ import { MarkerHighlight } from "@/components/ui/animated/animated-text-08"
 import type { WrapAnalytics } from "@/platform/analytics-types"
 import {
   omitHumanChatMetrics,
+  wrapVolumeNoun,
   type PlatformCategory,
 } from "@/lib/platforms"
 import {
@@ -26,6 +27,7 @@ type WrapMainAnalyticsProps = {
   analytics: WrapAnalytics
   wrapId: string
   category?: PlatformCategory
+  platformId?: string
 }
 
 /** Account-wide analytics — chart-first layout. */
@@ -33,10 +35,12 @@ export function WrapMainAnalytics({
   analytics,
   wrapId,
   category,
+  platformId,
 }: WrapMainAnalyticsProps) {
   if (!analytics?.account) return null
   const a = analytics.account
   const hideHuman = omitHumanChatMetrics(category)
+  const volumeNoun = wrapVolumeNoun(platformId)
 
   const sentRecvTotal = a.volume.sent + a.volume.received
   const sentReceived = [
@@ -70,7 +74,7 @@ export function WrapMainAnalytics({
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Across all {fmt(analytics.chatCount)} chats · {fmt(a.totalMessages)}{" "}
-          messages
+          {volumeNoun}
         </p>
       </header>
 

@@ -21,6 +21,7 @@ import type {
 import { filterEmojiEntries } from "@/lib/emoji"
 import {
   omitHumanChatMetrics,
+  wrapVolumeNoun,
   type PlatformCategory,
 } from "@/lib/platforms"
 
@@ -30,6 +31,7 @@ type WrapChatAnalyticsProps = {
   selfName: string
   wrapId: string
   category?: PlatformCategory
+  platformId?: string
 }
 
 /** Per-contact analytics charts — used on the contact detail page. */
@@ -38,11 +40,13 @@ export function WrapChatAnalytics({
   selfName,
   wrapId,
   category,
+  platformId,
 }: WrapChatAnalyticsProps) {
   const hideHuman = omitHumanChatMetrics(category)
   const a = chat.analytics
   const display = chatDisplay(chat)
   const isSavedMessages = display.isSavedMessages
+  const volumeNoun = wrapVolumeNoun(platformId)
   const emojiScopes = buildEmojiScopes(
     a.emojis,
     selfName,
@@ -107,7 +111,9 @@ export function WrapChatAnalytics({
         title={
           isSavedMessages
             ? "Saved Messages activity"
-            : `Messages with ${display.title}`
+            : volumeNoun === "calls"
+              ? `Calls with ${display.title}`
+              : `Messages with ${display.title}`
         }
         exportName={`chat-${chat.chatId}-activity-over-time`}
         sentLabel="You"
