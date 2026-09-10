@@ -27,6 +27,8 @@ Imports stay on device. Exact fields depend on what the platform put in the arch
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Telegram    | Desktop JSON (`result.json` or export folder / ZIP)                                                                                |
 | WhatsApp    | Account information ZIP, or a per-chat `.txt` / ZIP                                                                                |
+| SMS         | Android app only — SMS inbox on this phone (no ZIP)                                                                                |
+| Calls       | Android app only — call log on this phone (no ZIP)                                                                                |
 | X (Twitter) | Full account archive ZIP                                                                                                           |
 | Google      | Takeout ZIP(s) — YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos metadata, Gmail **headers**, Drive **library metadata** |
 | YouTube     | Via Google Takeout                                                                                                                 |
@@ -38,7 +40,7 @@ Imports stay on device. Exact fields depend on what the platform put in the arch
 | LinkedIn    | Settings → Download your data (full archive ZIP)                                                                                   |
 | ChatGPT     | Settings → Data controls → Export data (ZIP)                                                                                       |
 
-Typical flow: save the official ZIP/JSON on disk → pick it in Social Wrapped → parse on device → charts, stories, and optional local video. Media binaries inside exports are generally skipped; metadata and text are used. Share images and video are rendered locally.
+Typical flow: save the official ZIP/JSON on disk → pick it in Social Wrapped → parse on device → charts, stories, and optional local video. SMS and calls are read on the Android app from this phone (no file export). Media binaries inside exports are generally skipped; metadata and text are used. Share images and video are rendered locally.
 
 ## Architecture
 
