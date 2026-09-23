@@ -35,7 +35,11 @@ import { cn } from "@/lib/utils"
 import { saveWrap, wrapEntryPath } from "@/lib/wrap-history"
 import { formatInvokeError } from "@/platform/api"
 import { importDevicePlatform } from "@/platform/device-import"
-import { importPlatformFiles, type ImportProgress } from "@/platform/import"
+import {
+  importPlatformFiles,
+  type ImportProgress,
+  type ImportProgressPhase,
+} from "@/platform/import"
 
 let demoImportStarted = false
 
@@ -110,6 +114,7 @@ export function PlatformImportView({
   const loading = progress !== null
   const selectedCount = files.length
   const deviceImport = platform.importSource === "device"
+  const deviceProgressTimer = useRef<number | null>(null)
 
   useEffect(() => {
     if (selectedCount === 0) return
@@ -236,17 +241,50 @@ export function PlatformImportView({
     void runAnalyze(files)
   }
 
-  async function runDeviceAnalyze() {
-    setError("")
+  function stopDeviceProgress() {
+    if (deviceProgressTimer.current == null) return
+    window.clearInterval(deviceProgressTimer.current)
+    deviceProgressTimer.current = null
+  }
+
+  useEffect(() => {
+    return () => {
+      if (deviceProgressTimer.current == null) return
+      window.clearInterval(deviceProgressTimer.current)
+      deviceProgressTimer.current = null
+    }
+  }, [])
+
+  function publishDeviceProgress(value: number, phase: ImportProgressPhase) {
+    const percent = Math.max(0, Math.min(100, Math.round(value)))
     setProgress({
-      phase: "reading",
-      percent: 8,
-      overallPercent: 8,
+      phase,
+      percent,
+      overallPercent: percent,
       current: 0,
       total: 1,
     })
+  }
+
+  async function runDeviceAnalyze() {
+    setError("")
+    stopDeviceProgress()
+    const started = performance.now()
+    publishDeviceProgress(4, "reading")
+    // The phone read is one native call with no progress events. Creep toward
+    // 92% so the bar keeps moving, then snap to 100% when the wrap is ready.
+    deviceProgressTimer.current = window.setInterval(() => {
+      const elapsed = performance.now() - started
+      const next = 92 * (1 - Math.exp(-elapsed / 4500))
+      publishDeviceProgress(
+        Math.max(4, next),
+        next >= 48 ? "computing" : "reading"
+      )
+    }, 140)
     try {
       const { analytics } = await importDevicePlatform(platform.id)
+      stopDeviceProgress()
+      publishDeviceProgress(100, "computing")
       const wrap = await saveWrap({
         platformId: platform.id,
         fileName: platform.name,
@@ -254,6 +292,7 @@ export function PlatformImportView({
       })
       navigate(wrapEntryPath(wrap), { replace: true })
     } catch (err) {
+      stopDeviceProgress()
       setError(formatInvokeError(err))
       setProgress(null)
     }
@@ -679,9 +718,13 @@ export function PlatformImportView({
           <div className="mt-3" aria-hidden>
             <div className="mb-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
               <span>
-                {progress.phase === "computing"
-                  ? "Phase 2 of 2 — Computing stats"
-                  : "Phase 1 of 2 — Reading export"}
+                {deviceImport
+                  ? progress.phase === "computing"
+                    ? "Phase 2 of 2 — Building your wrap"
+                    : "Phase 1 of 2 — Reading this phone"
+                  : progress.phase === "computing"
+                    ? "Phase 2 of 2 — Computing stats"
+                    : "Phase 1 of 2 — Reading export"}
               </span>
               <span className="tabular-nums">{progress.percent}%</span>
             </div>
