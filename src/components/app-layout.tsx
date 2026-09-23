@@ -8,7 +8,19 @@ import { SafeArea } from "@/components/safe-area"
 import { SiteHeader } from "@/components/site-header"
 import { StorageLimitGuard } from "@/components/storage-limit-guard"
 import { getAppSettings } from "@/lib/app-settings"
+import { applyRouteMeta } from "@/lib/site-meta"
 import { enforceRetentionPolicies } from "@/lib/wrap-history"
+
+/** Title, description, robots, and canonical for the URL just shown. */
+function RouteMeta() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    applyRouteMeta(pathname)
+  }, [pathname])
+
+  return null
+}
 
 /** Reset scroll when the route changes (e.g. wrap → contact). */
 function ScrollToTop() {
@@ -37,6 +49,7 @@ export function AppLayout() {
       edges={["top", "left", "right"]}
       className="relative flex min-h-svh flex-col"
     >
+      <RouteMeta />
       <ScrollToTop />
       <RetentionPruneOnOpen />
       <StorageLimitGuard />

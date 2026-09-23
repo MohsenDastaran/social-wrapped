@@ -7,7 +7,7 @@ Local review for **official** social media and other platform exports. Telegram,
 - **Use** — [wrapped.dastaran.com](https://wrapped.dastaran.com/)
 - **Download** — [latest GitHub Release](https://github.com/MohsenDastaran/social-wrapped/releases/latest) (Windows, macOS, Linux, Android)
 
-The website may load a small visitor count (and maybe ads later). That is not your export. Desktop apps run with the internet off. **Android APKs ship without the `INTERNET` permission** — the OS cannot grant those builds a network, so an archive imported on the phone has no path off the device through this app. Prefer the **arm64-v8a** APK on newer phones.
+The website may load a small visitor count (and maybe ads later). That is not your export. Desktop apps run with the internet off. **Android APKs ship without the** `INTERNET` **permission** — the OS cannot grant those builds a network, so an archive imported on the phone has no path off the device through this app. Prefer the **arm64-v8a** APK on newer phones.
 
 ## Privacy
 
@@ -23,12 +23,13 @@ The analytics engine (`crates/core`) is a **private git submodule**. It still ru
 
 Imports stay on device. Exact fields depend on what the platform put in the archive. How to request each file: in-app import help and [docs/target-platforms.md](./docs/target-platforms.md).
 
+
 | Platform    | Typical export                                                                                                                     |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Telegram    | Desktop JSON (`result.json` or export folder / ZIP)                                                                                |
 | WhatsApp    | Account information ZIP, or a per-chat `.txt` / ZIP                                                                                |
 | SMS         | Android app only — SMS inbox on this phone (no ZIP)                                                                                |
-| Calls       | Android app only — call log on this phone (no ZIP)                                                                                |
+| Calls       | Android app only — call log on this phone (no ZIP)                                                                                 |
 | X (Twitter) | Full account archive ZIP                                                                                                           |
 | Google      | Takeout ZIP(s) — YouTube, Chrome, My Activity, Fit, Keep, Calendar, Photos metadata, Gmail **headers**, Drive **library metadata** |
 | YouTube     | Via Google Takeout                                                                                                                 |
@@ -39,6 +40,7 @@ Imports stay on device. Exact fields depend on what the platform put in the arch
 | Apple Music | Official data export                                                                                                               |
 | LinkedIn    | Settings → Download your data (full archive ZIP)                                                                                   |
 | ChatGPT     | Settings → Data controls → Export data (ZIP)                                                                                       |
+
 
 Typical flow: save the official ZIP/JSON on disk → pick it in Social Wrapped → parse on device → charts, stories, and optional local video. SMS and calls are read on the Android app from this phone (no file export). Media binaries inside exports are generally skipped; metadata and text are used. Share images and video are rendered locally.
 
@@ -57,7 +59,7 @@ Official export (ZIP / JSON / TXT)
   Wrap results on this device  — charts, stories, optional local video
 ```
 
-Tauri 2 desktop/Android; the same UI runs in the browser. Data-flow audit points: [`src/platform/import.ts`](./src/platform/import.ts), [`src/lib/wrap-history.ts`](./src/lib/wrap-history.ts). In-app copy: Privacy page.
+Tauri 2 desktop/Android; the same UI runs in the browser. Data-flow audit points: `[src/platform/import.ts](./src/platform/import.ts)`, `[src/lib/wrap-history.ts](./src/lib/wrap-history.ts)`. In-app copy: Privacy page.
 
 ## Develop
 
@@ -69,4 +71,4 @@ bun run dev          # browser UI
 bun run tauri dev    # desktop — see docs/desktop-build.md
 ```
 
-Read access to private [`social-wrapped-core`](https://github.com/MohsenDastaran/social-wrapped-core) is required **to build the analyzer from source**. The public tree is enough to inspect import and storage. Prebuilt [releases](https://github.com/MohsenDastaran/social-wrapped/releases/latest) include the engine and still process archives locally.
+Read access to private `[social-wrapped-core](https://github.com/MohsenDastaran/social-wrapped-core)` is required **to build the analyzer from source**. The public tree is enough to inspect import and storage. Prebuilt [releases](https://github.com/MohsenDastaran/social-wrapped/releases/latest) include the engine and still process archives locally.

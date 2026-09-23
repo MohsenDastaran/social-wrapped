@@ -5,6 +5,9 @@ import "./index.css"
 import App from "./App.tsx"
 import { BootSplash } from "@/components/boot-splash"
 import { ThemeProvider } from "@/components/theme-provider.tsx"
+import { applyRouteMeta } from "@/lib/site-meta"
+
+applyRouteMeta(window.location.pathname)
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -1,15 +1,16 @@
-import { Navigate, useParams } from "react-router"
+import { useParams } from "react-router"
 
 import { PlatformImportView } from "@/components/platform-import-view"
-import { getPlatform, isPlatformEnabled } from "@/lib/platforms"
+import { getPlatform } from "@/lib/platforms"
+import { NotFoundPage } from "@/pages/not-found-page"
 
 /** Route wrapper — `/import/:platformId` → shared import view with platform props. */
 export function ImportPage() {
   const { platformId } = useParams<{ platformId: string }>()
   const platform = getPlatform(platformId)
 
-  if (!platform || !isPlatformEnabled(platform.id)) {
-    return <Navigate to="/" replace />
+  if (!platform) {
+    return <NotFoundPage />
   }
 
   return (

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /history
+Disallow: /settings
+Disallow: /wrap
+
+Sitemap: https://wrapped.dastaran.com/sitemap.xml
