@@ -2,11 +2,13 @@ import { HIGH_PRIORITY_PLATFORMS } from "@/lib/platforms"
 
 export const SITE_ORIGIN = "https://wrapped.dastaran.com"
 
+const HOME_TITLE = "Social Wrapped — your social exports, on your device"
 const HOME_DESCRIPTION =
-  "Review official social exports on your device. Telegram, Instagram, Google Takeout, and more — nothing is uploaded."
+  "Review official exports from Telegram, WhatsApp, Instagram, Google Takeout, and more. Charts are built on your device. Nothing is uploaded."
 
+const PRIVACY_TITLE = "Privacy — Social Wrapped"
 const PRIVACY_DESCRIPTION =
-  "How Social Wrapped keeps exports on this device, what is open to audit, and how to verify it."
+  "Social Wrapped keeps your exports on this device. No account, no archive upload, and the Android app has no internet permission."
 
 const ABOUT_DESCRIPTION =
   "Social Wrapped is a local review of the archives you already download from the apps you use."
@@ -29,12 +31,12 @@ function importMeta(name: string, description: string): RouteMeta {
 
 const STATIC_ROUTES: Record<string, RouteMeta> = {
   "/": {
-    title: "Social Wrapped",
+    title: HOME_TITLE,
     description: HOME_DESCRIPTION,
     index: true,
   },
   "/privacy": {
-    title: "Privacy — Social Wrapped",
+    title: PRIVACY_TITLE,
     description: PRIVACY_DESCRIPTION,
     index: true,
   },
@@ -44,7 +46,7 @@ const STATIC_ROUTES: Record<string, RouteMeta> = {
     index: true,
   },
   "/docs": {
-    title: "Privacy — Social Wrapped",
+    title: PRIVACY_TITLE,
     description: PRIVACY_DESCRIPTION,
     canonicalPath: "/privacy",
     index: true,
@@ -117,6 +119,33 @@ function upsertCanonical(href: string) {
   el.href = href
 }
 
+function upsertProperty(property: string, content: string) {
+  let el = document.head.querySelector<HTMLMetaElement>(
+    `meta[property="${property}"]`
+  )
+  if (!el) {
+    el = document.createElement("meta")
+    el.setAttribute("property", property)
+    document.head.appendChild(el)
+  }
+  el.content = content
+}
+
+function upsertJsonLd(data: Record<string, unknown> | null) {
+  const existing = document.head.querySelector<HTMLScriptElement>(
+    'script[data-seo="ld"]'
+  )
+  if (!data) {
+    existing?.remove()
+    return
+  }
+  const el = existing ?? document.createElement("script")
+  el.type = "application/ld+json"
+  el.dataset.seo = "ld"
+  el.textContent = JSON.stringify(data)
+  if (!existing) document.head.appendChild(el)
+}
+
 /** Set title, description, robots, and canonical for the current URL. */
 export function applyRouteMeta(pathname: string) {
   const path = normalizePath(pathname)
@@ -125,7 +154,40 @@ export function applyRouteMeta(pathname: string) {
   upsertMeta("description", meta.description)
   upsertMeta("robots", meta.index ? "index,follow" : "noindex,follow")
   const canonicalPath = meta.canonicalPath ?? path
-  upsertCanonical(
-    `${SITE_ORIGIN}${canonicalPath === "/" ? "/" : canonicalPath}`
-  )
+  const canonical = `${SITE_ORIGIN}${canonicalPath === "/" ? "/" : canonicalPath}`
+  upsertCanonical(canonical)
+  const image = `${SITE_ORIGIN}/social-wrapped.png`
+  upsertProperty("og:title", meta.title)
+  upsertProperty("og:description", meta.description)
+  upsertProperty("og:url", canonical)
+  upsertProperty("og:type", "website")
+  upsertProperty("og:image", image)
+  upsertMeta("twitter:card", "summary_large_image")
+  upsertMeta("twitter:title", meta.title)
+  upsertMeta("twitter:description", meta.description)
+  upsertMeta("twitter:image", image)
+  if (canonicalPath === "/") {
+    upsertJsonLd({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Social Wrapped",
+      url: `${SITE_ORIGIN}/`,
+      description: HOME_DESCRIPTION,
+    })
+  } else if (canonicalPath === "/privacy") {
+    upsertJsonLd({
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: "Privacy",
+      url: `${SITE_ORIGIN}/privacy`,
+      description: PRIVACY_DESCRIPTION,
+      isPartOf: {
+        "@type": "WebSite",
+        name: "Social Wrapped",
+        url: `${SITE_ORIGIN}/`,
+      },
+    })
+  } else {
+    upsertJsonLd(null)
+  }
 }

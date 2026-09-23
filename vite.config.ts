@@ -48,6 +48,22 @@ function ensureWasmBuilt(): Plugin {
   }
 }
 
+/** Copy the built shell to /privacy/ so that URL can be a real HTML document. */
+function privacyDocument(): Plugin {
+  return {
+    name: "privacy-document",
+    apply: "build",
+    closeBundle() {
+      const dist = path.resolve(__dirname, "dist")
+      const htmlPath = path.join(dist, "index.html")
+      if (!fs.existsSync(htmlPath)) return
+      const privacyDir = path.join(dist, "privacy")
+      fs.mkdirSync(privacyDir, { recursive: true })
+      fs.copyFileSync(htmlPath, path.join(privacyDir, "index.html"))
+    },
+  }
+}
+
 /** Serve Telegram mock fixtures to the browser at /mock/… */
 function mockFixtures(): Plugin {
   return {
@@ -95,6 +111,7 @@ export default defineConfig(async ({ mode }) => {
       react(),
       tailwindcss(),
       wasm(),
+      privacyDocument(),
     ],
 
     // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

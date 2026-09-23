@@ -101,7 +101,7 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.05, ease: "easeOut" }}
           >
-            Your wraps live here
+            Your social exports, on your device
           </motion.h1>
 
           <motion.p
@@ -110,9 +110,9 @@ export function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.15, ease: "easeOut" }}
           >
-            Wrapped is a platform for social media Analytics. It is a free and
-            open-source project that allows you to wrap your social media data
-            and share it with your friends and family.
+            Social Wrapped reads official downloads — Telegram, WhatsApp,
+            Instagram, Google Takeout, and more — and builds the charts on this
+            device. Nothing is uploaded.
           </motion.p>
 
           <motion.div

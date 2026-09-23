@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Social Wrapped</title>
+    <title>Social Wrapped — your social exports, on your device</title>
     <link rel="icon" type="image/svg+xml" href="/social-wrapped.svg" />
     <link
       rel="icon"
@@ -19,12 +19,126 @@
     />
     <meta
       name="description"
-      content="Review official social exports on your device. Telegram, Instagram, Google Takeout, and more — nothing is uploaded."
+      content="Review official exports from Telegram, WhatsApp, Instagram, Google Takeout, and more. Charts are built on your device. Nothing is uploaded."
     />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://wrapped.dastaran.com/" />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="Social Wrapped — your social exports, on your device"
+    />
+    <meta
+      property="og:description"
+      content="Review official exports from Telegram, WhatsApp, Instagram, Google Takeout, and more. Charts are built on your device. Nothing is uploaded."
+    />
+    <meta property="og:url" content="https://wrapped.dastaran.com/" />
+    <meta
+      property="og:image"
+      content="https://wrapped.dastaran.com/social-wrapped.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Social Wrapped — your social exports, on your device"
+    />
+    <meta
+      name="twitter:description"
+      content="Review official exports from Telegram, WhatsApp, Instagram, Google Takeout, and more. Charts are built on your device. Nothing is uploaded."
+    />
+    <meta
+      name="twitter:image"
+      content="https://wrapped.dastaran.com/social-wrapped.png"
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Social Wrapped",
+        "url": "https://wrapped.dastaran.com/",
+        "description": "Review official exports from Telegram, WhatsApp, Instagram, Google Takeout, and more. Charts are built on your device. Nothing is uploaded."
+      }
+    </script>
     <meta name="adgora-verify" content="de7918aaafe53e1d" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <article id="seo-home">
+        <h1>Social Wrapped</h1>
+        <p>
+          Review official exports from Telegram, WhatsApp, Instagram, Google
+          Takeout, and more. Charts are built on your device. Nothing is
+          uploaded.
+        </p>
+        <p><a href="/privacy">Privacy</a> · <a href="/about">About</a></p>
+      </article>
+      <article id="seo-privacy" hidden>
+        <h1>Privacy</h1>
+        <p>
+          Social Wrapped keeps your exports on this device. There is no
+          account, archives are not uploaded, and the Android app ships
+          without internet permission. You can read the public app shell and
+          check the network tab while importing.
+        </p>
+        <p><a href="/">Social Wrapped</a></p>
+      </article>
+      <script>
+        ;(function () {
+          var path = location.pathname.replace(/\/+$/, "") || "/"
+          var privacy = path === "/privacy" || path === "/docs"
+          var origin = "https://wrapped.dastaran.com"
+          if (privacy) {
+            var title = "Privacy — Social Wrapped"
+            var description =
+              "Social Wrapped keeps your exports on this device. No account, no archive upload, and the Android app has no internet permission."
+            document.title = title
+            var desc = document.querySelector('meta[name="description"]')
+            if (desc) desc.setAttribute("content", description)
+            var canon = document.querySelector('link[rel="canonical"]')
+            if (canon) canon.setAttribute("href", origin + "/privacy")
+            ;["og:title", "og:description", "og:url"].forEach(function (key, i) {
+              var el = document.querySelector('meta[property="' + key + '"]')
+              if (!el) return
+              el.setAttribute(
+                "content",
+                i === 0 ? title : i === 1 ? description : origin + "/privacy"
+              )
+            })
+            var twTitle = document.querySelector('meta[name="twitter:title"]')
+            var twDesc = document.querySelector(
+              'meta[name="twitter:description"]'
+            )
+            if (twTitle) twTitle.setAttribute("content", title)
+            if (twDesc) twDesc.setAttribute("content", description)
+            var ld = document.querySelector('script[type="application/ld+json"]')
+            if (ld) {
+              ld.textContent = JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "WebPage",
+                name: "Privacy",
+                url: origin + "/privacy",
+                description: description,
+                isPartOf: {
+                  "@type": "WebSite",
+                  name: "Social Wrapped",
+                  url: origin + "/",
+                },
+              })
+            }
+            var home = document.getElementById("seo-home")
+            var page = document.getElementById("seo-privacy")
+            if (home) home.remove()
+            if (page) page.hidden = false
+          } else if (path !== "/") {
+            var root = document.getElementById("root")
+            if (root) root.replaceChildren()
+          } else {
+            var extra = document.getElementById("seo-privacy")
+            if (extra) extra.remove()
+          }
+        })()
+      </script>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
